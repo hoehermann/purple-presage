@@ -1,0 +1,21 @@
+[package]
+name = "purple-presage-backend"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+name = "purple_presage_backend"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+# presage needs this, taken from https://github.com/whisperfish/presage/blob/main/Cargo.toml
+[patch.crates-io]
+"curve25519-dalek" = { git = 'https://github.com/signalapp/curve25519-dalek', branch = 'lizard2' }
+
+[dependencies]
+presage = { git = "https://github.com/whisperfish/presage" }
+presage-store-sled = { git = "https://github.com/whisperfish/presage" }
+
+log = "0.4.8"
+futures = "0.3"
+qr2term = { version = "0.2.2" }
