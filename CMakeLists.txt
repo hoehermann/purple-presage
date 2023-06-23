@@ -28,20 +28,20 @@ include(FetchContent)
 FetchContent_Declare( Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
 FetchContent_MakeAvailable(Corrosion)
 corrosion_import_crate(MANIFEST_PATH src/rust/Cargo.toml)
+target_link_libraries(purple_presage_backend INTERFACE m)
+# additional libraries obtained via cargo rustc -- --print native-static-libs :
+# gcc_s util rt pthread m dl c
 
 set(TARGET_NAME purple-presage)
 add_library(${TARGET_NAME} SHARED 
     "src/c/init.c"
 )
-target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend m)
+target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 
 add_executable(test-presage 
     "src/c/main.c"
 )
-target_link_libraries(test-presage PRIVATE purple_presage_backend m)
-# additional libraries obtained via cargo rustc -- --print native-static-libs :
-# gcc_s util rt pthread m dl c
-# PROBLEM: order is not maintained (purple_presage_backend.a is always put last, its dependencies are not fulfilled)
+target_link_libraries(test-presage PRIVATE purple_presage_backend)
 
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" PLUGIN_VERSION)
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
