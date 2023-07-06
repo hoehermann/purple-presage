@@ -50,7 +50,7 @@ static GList * status_types(PurpleAccount *account) {
         PurpleStatusType * status = purple_status_type_new(PURPLE_STATUS_OFFLINE, NULL, NULL, TRUE);
         types = g_list_append(types, status);
     }
-    return NULL;
+    return types;
 }
 
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
