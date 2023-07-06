@@ -5,31 +5,47 @@ use presage::{
 };
 use presage_store_sled::{SledStore, MigrationConflictStrategy};
 
-use std::ffi::CStr;
-
-/*
-const QUIET_ZONE_WIDTH: usize = 2;
-fn qr2string<D: AsRef<[u8]>>(data: D) -> Result<(), qr2term::QrError> {
-    // Generate QR code pixel matrix
-    let mut matrix = qr2term::qr::Qr::from(data)?.to_matrix();
-    matrix.surround(QUIET_ZONE_WIDTH, qr2term::render::QrLight);
-    let cursor = std::io::Cursor::new(Vec::<u8>::new());
-    // Render QR code to Cursor
-    //qr2term::Renderer::default().render(matrix, &mut cursor).expect("failed to render QR code into string");
-    Ok(())
-}*/
-
 extern "C" {
     fn presage_process_message_bridge(input: *const std::os::raw::c_char);
 }
 
+/*
+#[derive(Default)]
+#[repr(C)]
+pub struct PresageConnection{
+    runtime
+}
+
+
+impl PresageConnection{
+    pub fn init(&mut self) {
+        //
+    }
+}*/
+
+// https://stackoverflow.com/questions/66196972/how-to-pass-a-reference-pointer-to-a-rust-struct-to-a-c-ffi-interface
 #[no_mangle]
-pub unsafe extern "C" fn presage_link(c_device_name: *const std::os::raw::c_char) {
+pub extern fn presage_rust_init() -> *mut tokio::runtime::Runtime {
+    /*
+    let mut pc = PresageConnection::default();
+    pc.init();
+    */
     // https://stackoverflow.com/questions/64658556/how-do-i-use-a-custom-tokio-runtime-within-tokio-postgres-and-without-the-tokio
-    // TODO: do this once in init.
-    let rt = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").enable_io().enable_time().build().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").enable_io().enable_time().build().unwrap();
+    let runtime_box = Box::new(runtime);
+    Box::into_raw(runtime_box)
+}
+
+#[no_mangle]
+pub extern fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
+    unsafe { drop(Box::from_raw(runtime)); }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, c_device_name: *const std::os::raw::c_char) {
+    let runtime = rt.as_ref().unwrap();
     
-    let device_name: String = CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
+    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
     println!("presage presage_link invoked successfully! device_name is {device_name}");
     
     // from main
@@ -64,7 +80,6 @@ pub unsafe extern "C" fn presage_link(c_device_name: *const std::os::raw::c_char
                             let c_qrcodedata = std::ffi::CString::new(url.to_string()).unwrap();
                             println!("presage now calling presage_process_message_bridge…");
                             presage_process_message_bridge(c_qrcodedata.as_ptr());
-                            //qr2term::print_qr().expect("presage failed to render qrcode")
                         }
                         Err(e) => println!("presage Error linking device: {e}"),
                     }
@@ -72,10 +87,10 @@ pub unsafe extern "C" fn presage_link(c_device_name: *const std::os::raw::c_char
             );
                 
             println!("presage now entering block_on(manager)…");
-            match rt.block_on(manager) {
+            match runtime.block_on(manager) {
                 (Ok(manager), _) => {
                     println!("presage now entering block_on(manager.whoami())…");
-                    match rt.block_on(manager.whoami()) {
+                    match runtime.block_on(manager.whoami()) {
                         Ok(response) => {
                             let uuid = response.uuid;
                             println!("presage {uuid:?}");

@@ -53,12 +53,19 @@ static GList * status_types(PurpleAccount *account) {
     return types;
 }
 
+static void * rust_runtime;
+
+void * presage_rust_init();
+void presage_rust_destroy(void *);
+
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
+    rust_runtime = presage_rust_init();
     return TRUE;
 }
 
 static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
     purple_signals_disconnect_by_handle(plugin);
+    presage_rust_destroy(rust_runtime);
     return TRUE;
 }
 
@@ -71,7 +78,7 @@ static PurplePluginProtocolInfo prpl_info = {
 };
 
 static void plugin_init(PurplePlugin *plugin) {
-    // this is an example
+    //
 }
 
 static PurplePluginInfo info = {
