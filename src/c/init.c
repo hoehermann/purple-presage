@@ -58,6 +58,7 @@ static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
     if (rust_runtime != NULL) {
         presage_rust_destroy(rust_runtime);
     }
+    rust_runtime = NULL;
     return TRUE;
 }
 

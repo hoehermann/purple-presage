@@ -43,7 +43,7 @@ pub enum Cmd {
     Whoami,
 }
 
-async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C) {
+async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *const std::os::raw::c_void) {
     match subcommand {
         Cmd::LinkDevice {
             servers,
@@ -63,7 +63,7 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C) {
                             println!("rust: qr code ok.");
                             println!("rust: now calling presage_append_message…");
                             let message = Presage{
-                                account: std::ptr::null(), 
+                                account: account, 
                                 tx_ptr: std::ptr::null_mut(),
                                 qrcode: std::ffi::CString::new(url.to_string()).unwrap().into_raw()
                             };
@@ -93,7 +93,7 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *mut std::os::raw::c_void) {
+pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *const std::os::raw::c_void) {
     println!("rust: presage_rust_main for account {account:p}");
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
             match config_store {
                 Ok(config_store) => {
                     println!("rust: config_store OK");
-                    run(cmd, config_store).await
+                    run(cmd, config_store, account).await
                 }
                 Err(err) => {
                     println!("rust: {err:?}");

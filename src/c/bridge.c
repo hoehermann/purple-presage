@@ -31,7 +31,7 @@ static int account_exists(PurpleAccount *account)
 }
 
 /*
- * Handler for a message received by go-whatsapp.
+ * Handler for a message received by rust.
  * Called inside of the GTK eventloop.
  * Releases almost all memory allocated by CGO on heap.
  *
@@ -66,6 +66,9 @@ static gboolean process_message(gpointer data) {
     if (message->tx_ptr != NULL) {
         presage_rust_link(rust_runtime, message->tx_ptr, "devicename");
     }
+    if (message->qrcode != NULL) {
+        purple_debug_info(PLUGIN_NAME, "have qrcode data %s\n", message->qrcode);
+    }
     
     return FALSE;
 }
@@ -75,7 +78,7 @@ static gboolean process_message(gpointer data) {
 #endif
 
 /*
- * Handler for a message received by go-whatsapp.
+ * Handler for a message received by rust.
  * Called by go-whatsapp (outside of the GTK eventloop).
  * 
  * Yes, this is indeed neccessary – we checked.
