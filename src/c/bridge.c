@@ -38,7 +38,7 @@ static int account_exists(PurpleAccount *account)
  * Queries Pidgin for a list of all accounts.
  * Ignores message if no appropriate connection exists.
  */
-static void process_message(void * gwamsg) {
+//static void process_message(void * gwamsg) {
 /*
     if (gwamsg->msgtype == gowhatsapp_message_type_log) {
         // log messages do not need an active connection
@@ -56,7 +56,7 @@ static void process_message(void * gwamsg) {
     }
 */
     //gowhatsapp_process_message(gwamsg);
-}
+//}
 
 /*
  * Handler for a message received by go-whatsapp.
@@ -65,9 +65,12 @@ static void process_message(void * gwamsg) {
  *
  * @return Whether to execute again. Always FALSE.
  */
-static gboolean process_message_bridge(gpointer data)
+static gboolean process_message(gpointer data)
 {
     purple_debug_warning(PLUGIN_NAME, "process_message_bridge called.\n");
+    purple_debug_warning(PLUGIN_NAME, "data is: %s\n", data);
+
+    //presage_rust_link(rust_runtime, "devicename");
     //process_message
     return FALSE;
 }
@@ -82,12 +85,12 @@ static gboolean process_message_bridge(gpointer data)
  * 
  * Yes, this is indeed neccessary – we checked.
  */
-void presage_process_message_bridge(const char *str)
+void presage_append_message(const char *str)
 {
     //gowhatsapp_message_t *gwamsg_heap = g_memdup2(&gwamsg_go, sizeof gwamsg_go);
     purple_timeout_add(
         0, // schedule for immediate execution
-        process_message_bridge, // handle message in main thread
+        process_message, // handle message in main thread
         strdup(str) // data to handle in main thread
     );
 }

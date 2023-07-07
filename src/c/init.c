@@ -17,6 +17,8 @@
  */
 
 #include <purple.h>
+#include <stdint.h> // for intptr_t
+#include <unistd.h> // for sleep
 
 // for displaying an externally managed version number
 #ifndef PLUGIN_VERSION
@@ -26,14 +28,45 @@
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
 
-static void close(PurpleConnection *pc) {
+static void presage_close(PurpleConnection *pc) {
     // this is an example
 }
 
-void presage_link(char *);
+typedef struct {
+    PurpleAccount *account;
+    intptr_t tx_ptr;
+} Presage;
+
+static void * rust_runtime = NULL;
+
+void presage_rust_link(void *, char *);
+void presage_rust_main(void *, Presage *);
+
+static void * rust_main(void *presage) {
+    presage_rust_main(rust_runtime, presage);
+}
 
 static void login(PurpleAccount *account) {
-    presage_link("devicename");
+    g_return_if_fail(rust_runtime != NULL);
+    PurpleConnection *pc = purple_account_get_connection(account);
+    Presage *presage = g_new0(Presage, 1);
+    presage->account = account;
+    purple_connection_set_protocol_data(pc, presage);
+    pthread_t try_connect_thread;
+    int err = pthread_create(&try_connect_thread, NULL, rust_main, (void *)presage);
+    if (err == 0) {
+        // detach thread so it is "free'd" as soon it terminates
+        pthread_detach(try_connect_thread);
+    } else {
+        gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background: %s", strerror(err));
+        purple_connection_error_reason(purple_account_get_connection(account), PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg);
+        g_free(errmsg);
+    }
+    
+    while (presage->tx_ptr == 0) {
+        sleep(1);
+    }
+    printf("c: tx_ptr is now %p\n", (void *)presage->tx_ptr);
 }
 
 static const char * list_icon(PurpleAccount *account, PurpleBuddy *buddy) {
@@ -53,19 +86,22 @@ static GList * status_types(PurpleAccount *account) {
     return types;
 }
 
-static void * rust_runtime;
-
 void * presage_rust_init();
 void presage_rust_destroy(void *);
 
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
+    if (rust_runtime != NULL) {
+        return FALSE;
+    }
     rust_runtime = presage_rust_init();
     return TRUE;
 }
 
 static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
     purple_signals_disconnect_by_handle(plugin);
-    presage_rust_destroy(rust_runtime);
+    if (rust_runtime != NULL) {
+        presage_rust_destroy(rust_runtime);
+    }
     return TRUE;
 }
 
@@ -74,7 +110,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .list_icon = list_icon,
     .status_types = status_types, // this actually needs to exist, else the protocol cannot be set to "online"
     .login = login,
-    .close = close,
+    .close = presage_close,
 };
 
 static void plugin_init(PurplePlugin *plugin) {
