@@ -16,9 +16,7 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <purple.h>
-#include <stdint.h> // for intptr_t
-#include <unistd.h> // for sleep
+#include "presage.h"
 
 // for displaying an externally managed version number
 #ifndef PLUGIN_VERSION
@@ -28,46 +26,7 @@
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
 
-static void presage_close(PurpleConnection *pc) {
-    // this is an example
-}
-
-typedef struct {
-    PurpleAccount *account;
-    intptr_t tx_ptr;
-} Presage;
-
-static void * rust_runtime = NULL;
-
-void presage_rust_link(void *, char *);
-void presage_rust_main(void *, Presage *);
-
-static void * rust_main(void *presage) {
-    presage_rust_main(rust_runtime, presage);
-}
-
-static void login(PurpleAccount *account) {
-    g_return_if_fail(rust_runtime != NULL);
-    PurpleConnection *pc = purple_account_get_connection(account);
-    Presage *presage = g_new0(Presage, 1);
-    presage->account = account;
-    purple_connection_set_protocol_data(pc, presage);
-    pthread_t try_connect_thread;
-    int err = pthread_create(&try_connect_thread, NULL, rust_main, (void *)presage);
-    if (err == 0) {
-        // detach thread so it is "free'd" as soon it terminates
-        pthread_detach(try_connect_thread);
-    } else {
-        gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background: %s", strerror(err));
-        purple_connection_error_reason(purple_account_get_connection(account), PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg);
-        g_free(errmsg);
-    }
-    
-    while (presage->tx_ptr == 0) {
-        sleep(1);
-    }
-    printf("c: tx_ptr is now %p\n", (void *)presage->tx_ptr);
-}
+RustRuntime * rust_runtime = NULL;
 
 static const char * list_icon(PurpleAccount *account, PurpleBuddy *buddy) {
     return "signal";
@@ -85,9 +44,6 @@ static GList * status_types(PurpleAccount *account) {
     }
     return types;
 }
-
-void * presage_rust_init();
-void presage_rust_destroy(void *);
 
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
     if (rust_runtime != NULL) {
@@ -109,7 +65,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .struct_size = sizeof(PurplePluginProtocolInfo), // must be set for PURPLE_PROTOCOL_PLUGIN_HAS_FUNC to work across versions
     .list_icon = list_icon,
     .status_types = status_types, // this actually needs to exist, else the protocol cannot be set to "online"
-    .login = login,
+    .login = presage_login,
     .close = presage_close,
 };
 

@@ -1,6 +1,4 @@
-#include <purple.h>
-
-#define PLUGIN_NAME "presage"
+#include "presage.h"
 
 /////////////////////////////////////////////////////////////////////
 //                                                                 //
@@ -33,45 +31,42 @@ static int account_exists(PurpleAccount *account)
 }
 
 /*
- * Basic message processing.
- * Log messages are always processed.
- * Queries Pidgin for a list of all accounts.
- * Ignores message if no appropriate connection exists.
- */
-//static void process_message(void * gwamsg) {
-/*
-    if (gwamsg->msgtype == gowhatsapp_message_type_log) {
-        // log messages do not need an active connection
-        purple_debug(gwamsg->subtype, GOWHATSAPP_NAME, "%s", gwamsg->text);
-        return;
-    }
-    if (account_exists(gwamsg->account) == 0) {
-        purple_debug_warning(PLUGIN_NAME, "No account %p. Ignoring message.\n", gwamsg->account);
-        return;
-    }
-    PurpleConnection *connection = purple_account_get_connection(gwamsg->account);
-    if (connection == NULL) {
-        purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", gwamsg->account);
-        return;
-    }
-*/
-    //gowhatsapp_process_message(gwamsg);
-//}
-
-/*
  * Handler for a message received by go-whatsapp.
  * Called inside of the GTK eventloop.
  * Releases almost all memory allocated by CGO on heap.
  *
  * @return Whether to execute again. Always FALSE.
  */
-static gboolean process_message(gpointer data)
-{
-    purple_debug_warning(PLUGIN_NAME, "process_message_bridge called.\n");
-    purple_debug_warning(PLUGIN_NAME, "data is: %s\n", data);
+static gboolean process_message(gpointer data) {
+    g_return_val_if_fail(data != NULL, FALSE);
+    Presage * message = (Presage *)data;
+    purple_debug_info(PLUGIN_NAME, "process_message_bridge called.\n");
+    purple_debug_info(PLUGIN_NAME, "message is at %p\n", message);
+    purple_debug_info(PLUGIN_NAME, "account is at %p\n", message->account);
+    purple_debug_info(PLUGIN_NAME, "tx_ptr is at %p\n", message->tx_ptr);
+    purple_debug_info(PLUGIN_NAME, "qrcode is at %p\n", (void *)message->qrcode);
+    
+/*
+    if (gwamsg->msgtype == gowhatsapp_message_type_log) {
+        // log messages do not need an active connection
+        purple_debug(gwamsg->subtype, GOWHATSAPP_NAME, "%s", gwamsg->text);
+        return;
+    }
+*/
+    if (account_exists(message->account) == 0) {
+        purple_debug_warning(PLUGIN_NAME, "No account %p. Ignoring message.\n", message->account);
+        return FALSE;
+    }
+    PurpleConnection *connection = purple_account_get_connection(message->account);
+    if (connection == NULL) {
+        purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", message->account);
+        return FALSE;
+    }
 
-    //presage_rust_link(rust_runtime, "devicename");
-    //process_message
+    if (message->tx_ptr != NULL) {
+        presage_rust_link(rust_runtime, message->tx_ptr, "devicename");
+    }
+    
     return FALSE;
 }
 
@@ -85,12 +80,11 @@ static gboolean process_message(gpointer data)
  * 
  * Yes, this is indeed neccessary – we checked.
  */
-void presage_append_message(const char *str)
-{
-    //gowhatsapp_message_t *gwamsg_heap = g_memdup2(&gwamsg_go, sizeof gwamsg_go);
+void presage_append_message(const Presage *message_rust) {
+    Presage *message_heap = g_memdup2(message_rust, sizeof *message_rust);
     purple_timeout_add(
         0, // schedule for immediate execution
         process_message, // handle message in main thread
-        strdup(str) // data to handle in main thread
+        message_heap // data to handle in main thread
     );
 }

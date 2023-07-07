@@ -5,26 +5,18 @@ use presage::{
 };
 use presage_store_sled::{SledStore, MigrationConflictStrategy};
 
-extern "C" {
-    fn presage_append_message(input: *const std::os::raw::c_char);
-}
 
-/*
-#[derive(Default)]
 #[repr(C)]
-pub struct PresageConnection{
-    config_store: Store
+pub struct Presage {
+    pub account: *const std::os::raw::c_void,
+    //pub tx_ptr: *mut tokio::sync::mpsc::Sender<Cmd>,
+    pub tx_ptr: *mut std::os::raw::c_void,
+    pub qrcode: *const std::os::raw::c_char,
 }
 
-
-impl PresageConnection{
-    pub fn init(&mut self) {
-    }
-}*/
-    /*
-    let mut pc = PresageConnection::default();
-    pc.init();
-    */
+extern "C" {
+    fn presage_append_message(input: *const Presage);
+}
 
 // https://stackoverflow.com/questions/66196972/how-to-pass-a-reference-pointer-to-a-rust-struct-to-a-c-ffi-interface
 #[no_mangle]
@@ -68,10 +60,14 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C) {
                 async move {
                     match provisioning_link_rx.await {
                         Ok(url) => {
-                            println!("presage qr code ok.");
-                            let c_qrcodedata = std::ffi::CString::new(url.to_string()).unwrap();
-                            println!("presage now calling presage_append_message…");
-                            unsafe { presage_append_message(c_qrcodedata.as_ptr()); }
+                            println!("rust: qr code ok.");
+                            println!("rust: now calling presage_append_message…");
+                            let message = Presage{
+                                account: std::ptr::null(), 
+                                tx_ptr: std::ptr::null_mut(),
+                                qrcode: std::ffi::CString::new(url.to_string()).unwrap().into_raw()
+                            };
+                            unsafe { presage_append_message(&message); }
                         }
                         Err(e) => println!("Error linking device: {e}"),
                     }
@@ -96,29 +92,27 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C) {
     }
 }
 
-#[repr(C)]
-pub struct Presage {
-    pub account: *mut std::os::raw::c_void,
-    pub tx_ptr: *mut tokio::sync::mpsc::Sender<Cmd>,
-}
-
 #[no_mangle]
-pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, presage_ptr: *mut Presage) {
+pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *mut std::os::raw::c_void) {
+    println!("rust: presage_rust_main for account {account:p}");
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
-    let tx_box = Box::new(tx);
-    let tx_ptr = Box::into_raw(tx_box);
-    (*presage_ptr).tx_ptr = tx_ptr;
+    let tx_ptr = Box::into_raw(Box::new(tx));
     println!("rust: tx_ptr is now {tx_ptr:p}");
-    let msg = std::ffi::CString::new("eyyoooo").unwrap();
-    println!("presage now calling presage_append_message…");
-    unsafe { presage_append_message(msg.as_ptr()); }
+    let message = Presage{
+        account: account, 
+        tx_ptr: tx_ptr as *mut std::os::raw::c_void,
+        qrcode: std::ptr::null()
+    };
+    println!("rust: now calling presage_append_message…");
+    unsafe { presage_append_message(&message); }
+    println!("rust: presage_append_message has returned");
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
         while let Some(cmd) = rx.recv().await {
             // from main
             let db_path = "presage";
             let passphrase: Option<String> = None;
-            println!("presage opening config database from {db_path}");
+            println!("rust: opening config database from {db_path}");
             let config_store = SledStore::open_with_passphrase(
                 db_path,
                 passphrase,
@@ -126,11 +120,11 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, pre
             );
             match config_store {
                 Ok(config_store) => {
-                    println!("presage config_store OK");
+                    println!("rust: config_store OK");
                     run(cmd, config_store).await
                 }
                 Err(err) => {
-                    println!("presage {err:?}");
+                    println!("rust: {err:?}");
                 }
             }
         }
@@ -142,22 +136,23 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, pre
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, tx : *mut tokio::sync::mpsc::Sender<Cmd>, c_device_name: *const std::os::raw::c_char) {
     let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
-    println!("presage presage_rust_link invoked successfully! device_name is {device_name}");
+    println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
     
     // from args
-    let server: SignalServers = SignalServers::Production;//Staging;
+    //let server: SignalServers = SignalServers::Production;
+    let server: SignalServers = SignalServers::Staging;
     let cmd: Cmd = Cmd::LinkDevice {device_name: device_name, servers: server};
 
     let command_tx = tx.as_ref().unwrap();
     let runtime = rt.as_ref().unwrap();
     match runtime.block_on(command_tx.send(cmd)) {
         Ok(()) => {
-            println!("presage command_tx.send OK");
+            println!("rust: command_tx.send OK");
         }
         Err(err) => {
-            println!("presage command_tx.send {err}");
+            println!("rust: command_tx.send {err}");
         }
     }
     
-    println!("presage presage_rust_link ends now");
+    println!("rust: presage_rust_link ends now");
 }

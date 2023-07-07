@@ -33,6 +33,8 @@ set(TARGET_NAME purple-presage)
 add_library(${TARGET_NAME} SHARED 
     "src/c/init.c"
     "src/c/bridge.c"
+    "src/c/connection.c"
+    "src/c/presage.h"
 )
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 
