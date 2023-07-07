@@ -5,17 +5,17 @@
 #define PLUGIN_NAME "presage"
 
 // these should be supplied by rust in some way
-typedef struct {} RustRuntime;
-typedef struct {} RustChannelTx;
-RustRuntime * presage_rust_init();
-void presage_rust_destroy(RustRuntime *);
-void presage_rust_link(RustRuntime *, RustChannelTx *, char *);
+typedef struct _RustRuntime * RustRuntimePtr;
+typedef struct _RustChannelTx * RustChannelPtr;
+RustRuntimePtr presage_rust_init();
+void presage_rust_destroy(RustRuntimePtr);
+void presage_rust_link(RustRuntimePtr, RustChannelPtr, char *);
 
-extern RustRuntime * rust_runtime;
+extern RustRuntimePtr rust_runtime;
 
 typedef struct {
     PurpleAccount *account;
-    RustChannelTx *tx_ptr;
+    RustChannelPtr tx_ptr;
     char *qrcode;
 } Presage;
 

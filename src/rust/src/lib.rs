@@ -121,6 +121,7 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
             match config_store {
                 Ok(config_store) => {
                     println!("rust: config_store OK");
+                    // TODO: have while loop here (create connection to store once and re-use)
                     run(cmd, config_store, account).await
                 }
                 Err(err) => {

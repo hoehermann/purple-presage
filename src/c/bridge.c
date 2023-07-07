@@ -68,6 +68,7 @@ static gboolean process_message(gpointer data) {
     }
     if (message->qrcode != NULL) {
         purple_debug_info(PLUGIN_NAME, "have qrcode data %s\n", message->qrcode);
+        // TODO: deallocate qrcode via rust
     }
     
     return FALSE;

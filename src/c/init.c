@@ -26,7 +26,7 @@
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
 
-RustRuntime * rust_runtime = NULL;
+RustRuntimePtr rust_runtime = NULL;
 
 static const char * list_icon(PurpleAccount *account, PurpleBuddy *buddy) {
     return "signal";
