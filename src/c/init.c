@@ -62,17 +62,18 @@ static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
     return TRUE;
 }
 
+static void plugin_init(PurplePlugin *plugin) {
+    // nothing to do
+}
+
 static PurplePluginProtocolInfo prpl_info = {
     .struct_size = sizeof(PurplePluginProtocolInfo), // must be set for PURPLE_PROTOCOL_PLUGIN_HAS_FUNC to work across versions
     .list_icon = list_icon,
+    .options = OPT_PROTO_NO_PASSWORD,
     .status_types = status_types, // this actually needs to exist, else the protocol cannot be set to "online"
     .login = presage_login,
     .close = presage_close,
 };
-
-static void plugin_init(PurplePlugin *plugin) {
-    //
-}
 
 static PurplePluginInfo info = {
     .magic = PURPLE_PLUGIN_MAGIC,

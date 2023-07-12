@@ -20,3 +20,10 @@ presage-store-sled = { git = "https://github.com/whisperfish/presage" }
 futures = "0.3"
 # qr2term = { version = "0.2.2" }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }
+
+# https://github.com/johnthagen/min-sized-rust
+[profile.release]
+strip = true  # Automatically strip symbols from the binary. Needs rust 1.59 or newer.
+opt-level = "z"  # Optimize for size.
+lto = true
+codegen-units = 1

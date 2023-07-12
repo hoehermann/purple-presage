@@ -31,21 +31,9 @@ static int account_exists(PurpleAccount *account)
 }
 
 /*
- * Handler for a message received by rust.
- * Called inside of the GTK eventloop.
- * Releases almost all memory allocated by CGO on heap.
- *
- * @return Whether to execute again. Always FALSE.
+ * Handle a message according to its content.
  */
-static gboolean process_message(gpointer data) {
-    g_return_val_if_fail(data != NULL, FALSE);
-    Presage * message = (Presage *)data;
-    purple_debug_info(PLUGIN_NAME, "process_message_bridge called.\n");
-    purple_debug_info(PLUGIN_NAME, "message is at %p\n", message);
-    purple_debug_info(PLUGIN_NAME, "account is at %p\n", message->account);
-    purple_debug_info(PLUGIN_NAME, "tx_ptr is at %p\n", message->tx_ptr);
-    purple_debug_info(PLUGIN_NAME, "qrcode is at %p\n", (void *)message->qrcode);
-    
+static void handle_message(Presage * message) {
 /*
     if (gwamsg->msgtype == gowhatsapp_message_type_log) {
         // log messages do not need an active connection
@@ -55,22 +43,42 @@ static gboolean process_message(gpointer data) {
 */
     if (account_exists(message->account) == 0) {
         purple_debug_warning(PLUGIN_NAME, "No account %p. Ignoring message.\n", message->account);
-        return FALSE;
+        return;
     }
     PurpleConnection *connection = purple_account_get_connection(message->account);
     if (connection == NULL) {
         purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", message->account);
-        return FALSE;
+        return;
     }
 
+    Presage *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
-        presage_rust_link(rust_runtime, message->tx_ptr, "devicename");
+        presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
+        presage_request_qrcode(message);
     }
     if (message->qrcode != NULL) {
-        purple_debug_info(PLUGIN_NAME, "have qrcode data %s\n", message->qrcode);
-        // TODO: deallocate qrcode via rust
+        presage_handle_qrcode(connection, message->qrcode);
     }
-    
+}
+
+/*
+ * Process a message received by rust.
+ * Called inside of the GTK eventloop.
+ * Releases almost all memory allocated by rust.
+ *
+ * @return Whether to execute again. Always FALSE.
+ */
+static gboolean process_message(gpointer data) {
+    g_return_val_if_fail(data != NULL, FALSE);
+    Presage * message = (Presage *)data;
+    purple_debug_info(PLUGIN_NAME, "process_message called.\n");
+    purple_debug_info(PLUGIN_NAME, "message is at %p\n", message);
+    purple_debug_info(PLUGIN_NAME, "account is at %p\n", message->account);
+    purple_debug_info(PLUGIN_NAME, "tx_ptr is at %p\n", message->tx_ptr);
+    purple_debug_info(PLUGIN_NAME, "qrcode is at %p\n", (void *)message->qrcode);
+    handle_message(message);
+    // TODO: deallocate message->qrcode via rust
+    g_free(message);
     return FALSE;
 }
 

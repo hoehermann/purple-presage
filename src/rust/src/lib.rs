@@ -1,3 +1,6 @@
+//#![no_std]
+#![no_main]
+
 use futures::{future, channel::oneshot};
 use presage::{
     prelude::{SignalServers,},
@@ -93,7 +96,8 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *const std::os::raw::c_void) {
+pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *const std::os::raw::c_void, c_store_path: *const std::os::raw::c_char) {
+    let store_path: String = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
     println!("rust: presage_rust_main for account {account:p}");
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
@@ -110,11 +114,10 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
     runtime.block_on(async {
         while let Some(cmd) = rx.recv().await {
             // from main
-            let db_path = "presage";
             let passphrase: Option<String> = None;
-            println!("rust: opening config database from {db_path}");
+            //println!("rust: opening config database from {store_path}");
             let config_store = SledStore::open_with_passphrase(
-                db_path,
+                store_path.clone(),
                 passphrase,
                 MigrationConflictStrategy::Raise,
             );
@@ -140,8 +143,8 @@ pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, tx 
     println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
     
     // from args
-    //let server: SignalServers = SignalServers::Production;
-    let server: SignalServers = SignalServers::Staging;
+    let server: SignalServers = SignalServers::Production;
+    //let server: SignalServers = SignalServers::Staging;
     let cmd: Cmd = Cmd::LinkDevice {device_name: device_name, servers: server};
 
     let command_tx = tx.as_ref().unwrap();
