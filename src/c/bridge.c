@@ -54,10 +54,14 @@ static void handle_message(Presage * message) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
         presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
-        presage_request_qrcode(message);
+        presage_request_uuid(message);
+        //presage_request_qrcode(message);
     }
     if (message->qrcode != NULL) {
         presage_handle_qrcode(connection, message->qrcode);
+    }
+    if (message->uuid != NULL) {
+        presage_handle_uuid(connection, message->uuid);
     }
 }
 

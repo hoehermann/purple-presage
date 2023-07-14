@@ -28,7 +28,7 @@ void presage_login(PurpleAccount *account) {
     purple_connection_set_protocol_data(pc, presage);
     #ifdef WIN32
     HANDLE thread = CreateThread(NULL, 0, rust_main, account, 0, NULL);
-    // TODO: handle non-happy path
+    // TODO: detach and handle non-happy path
     #else
     pthread_t presage_thread;
     int err = pthread_create(&presage_thread, NULL, rust_main, (void *)account);

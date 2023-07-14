@@ -15,6 +15,7 @@ pub struct Presage {
     //pub tx_ptr: *mut tokio::sync::mpsc::Sender<Cmd>,
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
+    pub uuid: *const std::os::raw::c_char,
 }
 
 extern "C" {
@@ -68,7 +69,8 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
                             let message = Presage{
                                 account: account, 
                                 tx_ptr: std::ptr::null_mut(),
-                                qrcode: std::ffi::CString::new(url.to_string()).unwrap().into_raw()
+                                qrcode: std::ffi::CString::new(url.to_string()).unwrap().into_raw(),
+                                uuid: std::ptr::null(),
                             };
                             unsafe { presage_append_message(&message); }
                         }
@@ -81,7 +83,13 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
             match manager {
                 (Ok(manager), _) => {
                     let uuid = manager.whoami().await.unwrap().uuid;
-                    println!("{uuid:?}");
+                    let message = Presage{
+                        account: account, 
+                        tx_ptr: std::ptr::null_mut(),
+                        qrcode: std::ptr::null_mut(),
+                        uuid: std::ffi::CString::new(uuid.to_string()).unwrap().into_raw(),
+                    };
+                    unsafe { presage_append_message(&message); }
                 }
                 (Err(err), _) => {
                     println!("{err:?}");
@@ -105,31 +113,32 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
     let message = Presage{
         account: account, 
         tx_ptr: tx_ptr as *mut std::os::raw::c_void,
-        qrcode: std::ptr::null()
+        qrcode: std::ptr::null(),
+        uuid: std::ptr::null()
     };
     println!("rust: now calling presage_append_message…");
     unsafe { presage_append_message(&message); }
     println!("rust: presage_append_message has returned");
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
-        while let Some(cmd) = rx.recv().await {
-            // from main
-            let passphrase: Option<String> = None;
-            //println!("rust: opening config database from {store_path}");
-            let config_store = SledStore::open_with_passphrase(
-                store_path.clone(),
-                passphrase,
-                MigrationConflictStrategy::Raise,
-            );
-            match config_store {
-                Ok(config_store) => {
-                    println!("rust: config_store OK");
-                    // TODO: have while loop here (create connection to store once and re-use)
-                    run(cmd, config_store, account).await
+        // from main
+        let passphrase: Option<String> = None;
+        //println!("rust: opening config database from {store_path}");
+        let config_store = SledStore::open_with_passphrase(
+            store_path,
+            passphrase,
+            MigrationConflictStrategy::Raise,
+        );
+        match config_store {
+            Ok(config_store) => {
+                println!("rust: config_store OK");
+                while let Some(cmd) = rx.recv().await {
+                    // TODO: find out if config_store.clone() is the correct thing to do here
+                    run(cmd, config_store.clone(), account).await
                 }
-                Err(err) => {
-                    println!("rust: {err:?}");
-                }
+            }
+            Err(err) => {
+                println!("rust: {err:?}");
             }
         }
     });

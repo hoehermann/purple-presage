@@ -16,7 +16,8 @@ extern RustRuntimePtr rust_runtime;
 typedef struct {
     PurpleAccount *account;
     RustChannelPtr tx_ptr;
-    char *qrcode;
+    const char *qrcode;
+    const char *uuid;
 } Presage;
 
 void presage_login(PurpleAccount *account);
