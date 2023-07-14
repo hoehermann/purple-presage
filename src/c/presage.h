@@ -10,6 +10,7 @@ typedef struct _RustChannelTx * RustChannelPtr;
 RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
+void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
 
 extern RustRuntimePtr rust_runtime;
 
@@ -24,4 +25,5 @@ void presage_login(PurpleAccount *account);
 void presage_close(PurpleConnection *pc);
 
 void presage_handle_qrcode(PurpleConnection * connection, const char *qrcode);
-void presage_request_qrcode(Presage *presage);
+void presage_request_qrcode(PurpleConnection *connection);
+void presage_handle_uuid(PurpleConnection *connection, const char *uuid);

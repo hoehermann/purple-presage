@@ -72,7 +72,25 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
     }
 }
 
-void presage_request_qrcode(Presage *presage) {
+void presage_request_qrcode(PurpleConnection *connection) {
+    Presage *presage = purple_connection_get_protocol_data(connection);
     const char * device_name = purple_account_get_string(presage->account, "device-name", g_get_host_name());
     presage_rust_link(rust_runtime, presage->tx_ptr, device_name);
+}
+
+void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
+    if (uuid[0] == 0) {
+        presage_request_qrcode(connection);
+    } else {
+        const char *username = purple_account_get_username(purple_connection_get_account(connection));
+        if (purple_strequal(username, uuid)) {
+            Presage *presage = purple_connection_get_protocol_data(connection);
+            presage->uuid = g_strdup(uuid);
+            purple_connection_set_state(connection, PURPLE_CONNECTED);
+        } else {
+            char * errmsg = g_strdup_printf("Your username '%s' does not match the main device's ID '%s'. Please adjust your username.", username, uuid);
+            purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
+            g_free(errmsg);
+        }
+    }
 }

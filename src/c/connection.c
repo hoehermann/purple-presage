@@ -22,10 +22,17 @@ void presage_login(PurpleAccount *account) {
     purple_debug_info(PLUGIN_NAME, "login for account: %p\n", account);
     g_return_if_fail(rust_runtime != NULL);
     purple_debug_info(PLUGIN_NAME, "rust_runtime is at %p\n", rust_runtime);
-    PurpleConnection *pc = purple_account_get_connection(account);
+    PurpleConnection *connection = purple_account_get_connection(account);
+    // this protocol does not support anything special right now
+    PurpleConnectionFlags pc_flags = connection->flags;
+    pc_flags |= PURPLE_CONNECTION_NO_IMAGES;
+    pc_flags |= PURPLE_CONNECTION_NO_FONTSIZE;
+    pc_flags |= PURPLE_CONNECTION_NO_BGCOLOR;
+    connection->flags = pc_flags;
+    purple_connection_set_state(connection, PURPLE_CONNECTING);
     Presage *presage = g_new0(Presage, 1);
     presage->account = account;
-    purple_connection_set_protocol_data(pc, presage);
+    purple_connection_set_protocol_data(connection, presage);
     #ifdef WIN32
     HANDLE thread = CreateThread(NULL, 0, rust_main, account, 0, NULL);
     // TODO: detach and handle non-happy path
@@ -37,7 +44,7 @@ void presage_login(PurpleAccount *account) {
         pthread_detach(presage_thread);
     } else {
         gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background: %s", strerror(err));
-        purple_connection_error_reason(purple_account_get_connection(account), PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg);
+        purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
         g_free(errmsg);
     }
     #endif

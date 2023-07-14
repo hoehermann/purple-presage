@@ -86,7 +86,7 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
                     let message = Presage{
                         account: account, 
                         tx_ptr: std::ptr::null_mut(),
-                        qrcode: std::ptr::null_mut(),
+                        qrcode: std::ptr::null(),
                         uuid: std::ffi::CString::new(uuid.to_string()).unwrap().into_raw(),
                     };
                     unsafe { presage_append_message(&message); }
@@ -97,8 +97,32 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
             }
         }
         Cmd::Whoami => {
-            let _manager = Manager::load_registered(config_store).await;
-            //println!("{:?}", &manager.whoami().await);
+            let mut uuid = String::from("");
+            let manager = Manager::load_registered(config_store).await;
+            match manager {
+                Ok(manager) => {
+                    let whoami = manager.whoami().await;
+                    match whoami {
+                        Ok(whoami) => {
+                            uuid = whoami.uuid.to_string();
+                        }
+                        Err(err) => {
+                            // TODO: find out if this one is showing ServiceError(Unauthorized)
+                            println!("rust: whoami Err {err:?}");
+                        }
+                    }
+                }
+                Err(err) => {
+                    println!("rust: whoami manager Err {err:?}");
+                }
+            }
+            let message = Presage{
+                account: account, 
+                tx_ptr: std::ptr::null_mut(),
+                qrcode: std::ptr::null(),
+                uuid: std::ffi::CString::new(uuid).unwrap().into_raw(),
+            };
+            unsafe { presage_append_message(&message); }
         }
     }
 }
@@ -106,19 +130,15 @@ async fn run<C: Store + 'static>(subcommand: Cmd, config_store: C, account: *con
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, account: *const std::os::raw::c_void, c_store_path: *const std::os::raw::c_char) {
     let store_path: String = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
-    println!("rust: presage_rust_main for account {account:p}");
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
-    println!("rust: tx_ptr is now {tx_ptr:p}");
     let message = Presage{
         account: account, 
         tx_ptr: tx_ptr as *mut std::os::raw::c_void,
         qrcode: std::ptr::null(),
         uuid: std::ptr::null()
     };
-    println!("rust: now calling presage_append_message…");
     unsafe { presage_append_message(&message); }
-    println!("rust: presage_append_message has returned");
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
         // from main
@@ -138,7 +158,7 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
                 }
             }
             Err(err) => {
-                println!("rust: {err:?}");
+                println!("rust: config_store Err {err:?}");
             }
         }
     });
@@ -146,16 +166,7 @@ pub unsafe extern "C" fn presage_rust_main(rt: *mut tokio::runtime::Runtime, acc
 
 // let mut manager = Manager::load_registered(config_store).await?;
 
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, tx : *mut tokio::sync::mpsc::Sender<Cmd>, c_device_name: *const std::os::raw::c_char) {
-    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
-    println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
-    
-    // from args
-    let server: SignalServers = SignalServers::Production;
-    //let server: SignalServers = SignalServers::Staging;
-    let cmd: Cmd = Cmd::LinkDevice {device_name: device_name, servers: server};
-
+unsafe fn send_cmd(rt: *mut tokio::runtime::Runtime, tx : *mut tokio::sync::mpsc::Sender<Cmd>, cmd: Cmd) {
     let command_tx = tx.as_ref().unwrap();
     let runtime = rt.as_ref().unwrap();
     match runtime.block_on(command_tx.send(cmd)) {
@@ -166,6 +177,22 @@ pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, tx 
             println!("rust: command_tx.send {err}");
         }
     }
-    
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_link(rt: *mut tokio::runtime::Runtime, tx : *mut tokio::sync::mpsc::Sender<Cmd>, c_device_name: *const std::os::raw::c_char) {
+    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
+    println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
+    // from args
+    let server: SignalServers = SignalServers::Production;
+    //let server: SignalServers = SignalServers::Staging;
+    let cmd: Cmd = Cmd::LinkDevice {device_name: device_name, servers: server};
+    send_cmd(rt, tx, cmd);
     println!("rust: presage_rust_link ends now");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_whoami(rt: *mut tokio::runtime::Runtime, tx : *mut tokio::sync::mpsc::Sender<Cmd>) {
+    let cmd: Cmd = Cmd::Whoami {};
+    send_cmd(rt, tx, cmd);
 }
