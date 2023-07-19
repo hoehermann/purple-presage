@@ -1,6 +1,7 @@
 #pragma once
 
 #include <purple.h>
+#include <stdint.h>
 
 #define PLUGIN_NAME "presage"
 
@@ -20,11 +21,21 @@ typedef struct {
     RustChannelPtr tx_ptr;
     const char *qrcode;
     const char *uuid;
+    const uint64_t timestamp;
+    const uint64_t sent;
+    const char *who;
+    const char *group;
+    const char *body;
 } Presage;
 
+// connection
 void presage_login(PurpleAccount *account);
 void presage_close(PurpleConnection *pc);
 
+// qrcode (linking and identification)
 void presage_handle_qrcode(PurpleConnection * connection, const char *qrcode);
 void presage_request_qrcode(PurpleConnection *connection);
 void presage_handle_uuid(PurpleConnection *connection, const char *uuid);
+
+// text messages
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, uint64_t sent, uint64_t timestamp, const char *text);

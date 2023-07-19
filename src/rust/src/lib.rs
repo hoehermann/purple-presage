@@ -13,6 +13,28 @@ pub struct Presage {
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
     pub uuid: *const std::os::raw::c_char,
+    
+    pub timestamp: stdint::uint64_t,
+    pub sent: stdint::uint64_t,
+    pub who: *const std::os::raw::c_char,
+    pub group: *const std::os::raw::c_char,
+    pub body: *const std::os::raw::c_char,
+}
+
+impl Presage {
+    pub fn from_account(account: *const std::os::raw::c_void) -> Self {
+        Self  {
+            account: account,
+            tx_ptr: std::ptr::null_mut(),
+            qrcode: std::ptr::null(),
+            uuid: std::ptr::null(),
+            timestamp: 0,
+            sent: 0,
+            who: std::ptr::null(),
+            group: std::ptr::null(),
+            body: std::ptr::null(),
+        }
+    }
 }
 
 extern "C" {
@@ -49,6 +71,7 @@ fn print_message<C: Store>(
         println!("rust: failed to derive thread from content");
         return;
     };
+    let mut message = Presage::from_account(account);
 
     let format_data_message = |thread: &presage::Thread, data_message: &presage::prelude::content::DataMessage| match data_message {
         presage::prelude::content::DataMessage {
@@ -135,27 +158,35 @@ fn print_message<C: Store>(
         }
     } {
         let ts = content.metadata.timestamp;
-        let (prefix, body) = match msg {
+        let (who, group, body, sent) = match msg {
             Msg::Received(presage::Thread::Contact(sender), body) => {
-                let contact = format_contact(sender);
-                (format!("From {contact} @ {ts}: "), body)
+                let who = format_contact(sender);
+                (who, String::from(""), body, false)
             }
             Msg::Sent(presage::Thread::Contact(recipient), body) => {
-                let contact = format_contact(recipient);
-                (format!("To {contact} @ {ts}"), body)
+                let who = format_contact(recipient);
+                (who, String::from(""), body, true)
             }
             Msg::Received(presage::Thread::Group(key), body) => {
-                let sender = format_contact(&content.metadata.sender.uuid);
+                let who = format_contact(&content.metadata.sender.uuid);
                 let group = format_group(key);
-                (format!("From {sender} to group {group} @ {ts}: "), body)
+                (who, group, body, false)
             }
             Msg::Sent(presage::Thread::Group(key), body) => {
                 let group = format_group(key);
-                (format!("To group {group} @ {ts}"), body)
+                (String::from("") ,group, body, true)
             }
         };
 
-        println!("{prefix} / {body}");
+        println!("{who} in {group} wrote {body}");
+        message.timestamp = ts; 
+        message.sent = if sent { 1 } else { 0 };
+        if who != "" { message.who = std::ffi::CString::new(who).unwrap().into_raw(); }
+        if group != "" { message.group = std::ffi::CString::new(group).unwrap().into_raw(); }
+        message.body = std::ffi::CString::new(body).unwrap().into_raw();
+        unsafe {
+            presage_append_message(&message);
+        }
     }
 }
 
@@ -248,12 +279,8 @@ async fn run<C: Store + 'static>(
                         Ok(url) => {
                             println!("rust: qr code ok.");
                             println!("rust: now calling presage_append_message…");
-                            let message = Presage {
-                                account: account,
-                                tx_ptr: std::ptr::null_mut(),
-                                qrcode: std::ffi::CString::new(url.to_string()).unwrap().into_raw(),
-                                uuid: std::ptr::null(),
-                            };
+                            let mut message = Presage::from_account(account);
+                            message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
                             unsafe {
                                 presage_append_message(&message);
                             }
@@ -267,12 +294,8 @@ async fn run<C: Store + 'static>(
             match manager {
                 (Ok(manager), _) => {
                     let uuid = manager.whoami().await.unwrap().uuid;
-                    let message = Presage {
-                        account: account,
-                        tx_ptr: std::ptr::null_mut(),
-                        qrcode: std::ptr::null(),
-                        uuid: std::ffi::CString::new(uuid.to_string()).unwrap().into_raw(),
-                    };
+                    let mut message = Presage::from_account(account);
+                    message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                     unsafe {
                         presage_append_message(&message);
                     }
@@ -303,18 +326,15 @@ async fn run<C: Store + 'static>(
                     println!("rust: whoami manager Err {err:?}");
                 }
             }
-            let message = Presage {
-                account: account,
-                tx_ptr: std::ptr::null_mut(),
-                qrcode: std::ptr::null(),
-                uuid: std::ffi::CString::new(uuid).unwrap().into_raw(),
-            };
+            let mut message = Presage::from_account(account);
+            message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             unsafe {
                 presage_append_message(&message);
             }
         }
         
         Cmd::Receive => {
+            #[allow(unused_mut)]
             let mut manager = Manager::load_registered(config_store).await;
             match manager {
                 Ok(mut manager) => {
@@ -340,12 +360,8 @@ pub unsafe extern "C" fn presage_rust_main(
         .to_owned();
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
-    let message = Presage {
-        account: account,
-        tx_ptr: tx_ptr as *mut std::os::raw::c_void,
-        qrcode: std::ptr::null(),
-        uuid: std::ptr::null(),
-    };
+    let mut message = Presage::from_account(account);
+    message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
     unsafe {
         presage_append_message(&message);
     }

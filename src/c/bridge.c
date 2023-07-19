@@ -62,6 +62,9 @@ static void handle_message(Presage * message) {
     if (message->uuid != NULL) {
         presage_handle_uuid(connection, message->uuid);
     }
+    if (message->body != NULL) {
+        presage_handle_text(connection, message->who, message->group, message->sent, message->timestamp, message->body);
+    }
 }
 
 /*
