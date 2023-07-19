@@ -4,11 +4,12 @@
 use futures::{channel::oneshot, future};
 use presage::{prelude::SignalServers, Manager};
 use presage_store_sled::{MigrationConflictStrategy, SledStore};
+use presage::Store;
+use futures::StreamExt;
 
 #[repr(C)]
 pub struct Presage {
     pub account: *const std::os::raw::c_void,
-    //pub tx_ptr: *mut tokio::sync::mpsc::Sender<Cmd>,
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
     pub uuid: *const std::os::raw::c_char,
@@ -39,7 +40,180 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
     }
 }
 
-use presage::Store;
+fn print_message<C: Store>(
+    manager: &Manager<C, presage::Registered>,
+    content: &presage::prelude::Content,
+    account: *const std::os::raw::c_void,
+) {
+    let Ok(thread) = presage::Thread::try_from(content) else {
+        println!("rust: failed to derive thread from content");
+        return;
+    };
+
+    let format_data_message = |thread: &presage::Thread, data_message: &presage::prelude::content::DataMessage| match data_message {
+        presage::prelude::content::DataMessage {
+            quote:
+                Some(presage::prelude::proto::data_message::Quote {
+                    text: Some(quoted_text),
+                    ..
+                }),
+            body: Some(body),
+            ..
+        } => Some(format!("Answer to message \"{quoted_text}\": {body}")),
+        presage::prelude::content::DataMessage {
+            reaction:
+                Some(presage::prelude::proto::data_message::Reaction {
+                    target_sent_timestamp: Some(timestamp),
+                    emoji: Some(emoji),
+                    ..
+                }),
+            ..
+        } => {
+            let Ok(Some(message)) = manager.message(thread, *timestamp) else {
+                println!("rust: no message in {thread} sent at {timestamp}");
+                return None;
+            };
+
+            let presage::prelude::content::ContentBody::DataMessage(presage::prelude::DataMessage { body: Some(body), .. }) = message.body else {
+                println!("rust: message reacted to has no body");
+                return None;
+            };
+
+            Some(format!("Reacted with {emoji} to message: \"{body}\""))
+        }
+        presage::prelude::content::DataMessage {
+            body: Some(body), ..
+        } => Some(body.to_string()),
+        _ => Some("Empty data message".to_string()),
+    };
+
+    let format_contact = |uuid| {
+        manager
+            .contact_by_id(uuid)
+            .ok()
+            .flatten()
+            .filter(|c| !c.name.is_empty())
+            .map(|c| format!("{}: {}", c.name, uuid))
+            .unwrap_or_else(|| uuid.to_string())
+    };
+
+    let format_group = |key| {
+        manager
+            .group(key)
+            .ok()
+            .flatten()
+            .map(|g| g.title)
+            .unwrap_or_else(|| "<missing group>".to_string())
+    };
+
+    enum Msg<'a> {
+        Received(&'a presage::Thread, String),
+        Sent(&'a presage::Thread, String),
+    }
+
+    if let Some(msg) = match &content.body {
+        presage::prelude::content::ContentBody::NullMessage(_) => Some(Msg::Received(
+            &thread,
+            "Null message (for example deleted)".to_string(),
+        )),
+        presage::prelude::content::ContentBody::DataMessage(data_message) => {
+            format_data_message(&thread, data_message).map(|body| Msg::Received(&thread, body))
+        }
+        presage::prelude::content::ContentBody::SynchronizeMessage(presage::prelude::SyncMessage {
+            sent:
+                Some(presage::prelude::proto::sync_message::Sent {
+                    message: Some(data_message),
+                    ..
+                }),
+            ..
+        }) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
+        presage::prelude::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
+        presage::prelude::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
+        c => {
+            println!("rust: unsupported message {c:?}");
+            None
+        }
+    } {
+        let ts = content.metadata.timestamp;
+        let (prefix, body) = match msg {
+            Msg::Received(presage::Thread::Contact(sender), body) => {
+                let contact = format_contact(sender);
+                (format!("From {contact} @ {ts}: "), body)
+            }
+            Msg::Sent(presage::Thread::Contact(recipient), body) => {
+                let contact = format_contact(recipient);
+                (format!("To {contact} @ {ts}"), body)
+            }
+            Msg::Received(presage::Thread::Group(key), body) => {
+                let sender = format_contact(&content.metadata.sender.uuid);
+                let group = format_group(key);
+                (format!("From {sender} to group {group} @ {ts}: "), body)
+            }
+            Msg::Sent(presage::Thread::Group(key), body) => {
+                let group = format_group(key);
+                (format!("To group {group} @ {ts}"), body)
+            }
+        };
+
+        println!("{prefix} / {body}");
+    }
+}
+
+async fn process_incoming_message<C: Store>(
+    manager: &mut Manager<C, presage::Registered>,
+    content: &presage::prelude::Content,
+    account: *const std::os::raw::c_void
+) {
+    print_message(manager, content, account);
+
+    /*
+    let sender = content.metadata.sender.uuid;
+    if let ContentBody::DataMessage(DataMessage { attachments, .. }) = &content.body {
+        for attachment_pointer in attachments {
+            let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
+                log::warn!("failed to fetch attachment");
+                continue;
+            };
+
+            let extensions = mime_guess::get_mime_extensions_str(
+                attachment_pointer
+                    .content_type
+                    .as_deref()
+                    .unwrap_or("application/octet-stream"),
+            );
+            let extension = extensions.and_then(|e| e.first()).unwrap_or(&"bin");
+            let filename = attachment_pointer
+                .file_name
+                .clone()
+                .unwrap_or_else(|| Local::now().format("%Y-%m-%d-%H-%M-%s").to_string());
+            let file_path = attachments_tmp_dir.join(format!("presage-{filename}.{extension}",));
+            match fs::write(&file_path, &attachment_data).await {
+                Ok(_) => info!("saved attachment from {sender} to {}", file_path.display()),
+                Err(error) => error!(
+                    "failed to write attachment from {sender} to {}: {error}",
+                    file_path.display()
+                ),
+            }
+        }
+    }
+    */
+}
+
+async fn receive<C: Store>(
+    manager: &mut Manager<C, presage::Registered>,
+    account: *const std::os::raw::c_void,
+) {
+    let messages = manager
+        .receive_messages()
+        .await.unwrap(); // TODO: add error handling instead of unwrap
+
+    futures::pin_mut!(messages);
+
+    while let Some(content) = messages.next().await {
+        process_incoming_message(manager, &content, account)
+            .await;
+    }
+}
 
 // from main
 pub enum Cmd {
@@ -48,6 +222,7 @@ pub enum Cmd {
         device_name: String,
     },
     Whoami,
+    Receive,
 }
 
 async fn run<C: Store + 'static>(
@@ -107,6 +282,7 @@ async fn run<C: Store + 'static>(
                 }
             }
         }
+        
         Cmd::Whoami => {
             let mut uuid = String::from("");
             let manager = Manager::load_registered(config_store).await;
@@ -135,6 +311,18 @@ async fn run<C: Store + 'static>(
             };
             unsafe {
                 presage_append_message(&message);
+            }
+        }
+        
+        Cmd::Receive => {
+            let mut manager = Manager::load_registered(config_store).await;
+            match manager {
+                Ok(mut manager) => {
+                    receive(&mut manager, account).await;
+                }
+                Err(err) => {
+                    println!("rust: receive manager Err {err:?}");
+                }
             }
         }
     }
@@ -233,5 +421,14 @@ pub unsafe extern "C" fn presage_rust_whoami(
     tx: *mut tokio::sync::mpsc::Sender<Cmd>,
 ) {
     let cmd: Cmd = Cmd::Whoami {};
+    send_cmd(rt, tx, cmd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_receive(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<Cmd>,
+) {
+    let cmd: Cmd = Cmd::Receive {};
     send_cmd(rt, tx, cmd);
 }

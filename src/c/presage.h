@@ -11,6 +11,7 @@ RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
+void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 
 extern RustRuntimePtr rust_runtime;
 
