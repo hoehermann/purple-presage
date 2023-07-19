@@ -10,10 +10,8 @@ message(STATUS "PURPLE_LIBRARIES: ${PURPLE_LIBRARIES}")
 message(STATUS "PURPLE_PLUGIN_DIR: ${PURPLE_PLUGIN_DIR}")
 message(STATUS "PURPLE_DATA_DIR: ${PURPLE_DATA_DIR}")
 
-# find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
-# find_library(QRENCODE_LIBRARIES qrencode)
-# target_include_directories(main PRIVATE ${QRENCODE_INCLUDE_DIR})
-# target_link_libraries(main PRIVATE ${QRENCODE_LIBRARIES})
+find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
+find_library(QRENCODE_LIBRARIES qrencode)
 
 include(FetchContent)
 FetchContent_Declare( Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
@@ -30,7 +28,8 @@ add_library(${TARGET_NAME} SHARED
     "src/c/presage.h"
 )
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
-target_link_libraries(${TARGET_NAME} PRIVATE qrencode)
+target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
+target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 
 if (WIN32)
 target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib)

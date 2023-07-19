@@ -47,9 +47,8 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
         // poor man's PBM encoder
         gchar *head = g_strdup_printf("P1 %d %d ", imgwidth, imgwidth);
         int headlen = strlen(head);
-        gsize qrimglen = headlen+imgwidth*2*imgwidth*2;
-        gchar qrimgdata[qrimglen];
-        strncpy(qrimgdata, head, headlen+1);
+        const gsize qrimglen = headlen+imgwidth*2*imgwidth*2;
+        gchar * qrimgdata = g_strndup(head, qrimglen);
         g_free(head);
         gchar *imgptr = qrimgdata+headlen;
         // inspired by printQr in https://github.com/nayuki/QR-Code-generator/blob/master/c/qrcodegen-demo.c
@@ -67,6 +66,7 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
         }
         QRcode_free(qrcode);
         show_qrcode(connection, qrimgdata, qrimglen);
+        g_free(qrimgdata);
     } else {
         purple_debug_info(PLUGIN_NAME, "qrcodegen failed.\n");
     }
@@ -87,6 +87,7 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
             Presage *presage = purple_connection_get_protocol_data(connection);
             presage->uuid = g_strdup(uuid);
             purple_connection_set_state(connection, PURPLE_CONNECTED);
+            presage_rust_receive(rust_runtime, presage->tx_ptr);
         } else {
             char * errmsg = g_strdup_printf("Your username '%s' does not match the main device's ID '%s'. Please adjust your username.", username, uuid);
             purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
