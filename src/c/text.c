@@ -2,7 +2,7 @@
 
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, uint64_t sent, uint64_t timestamp, const char *text) {
     PurpleAccount *account = purple_connection_get_account(connection);
-    PurpleMessageFlags flags;
+    PurpleMessageFlags flags = 0;
     // taken from purple-whatsmeow
     if (purple_strequal(purple_account_get_username(account), who)) {
         flags |= PURPLE_MESSAGE_SEND;
@@ -17,6 +17,8 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
     }
     
     if (group == NULL) {
-        serv_got_im(connection, who, text, flags, timestamp);
+        serv_got_im(connection, who, text, flags, timestamp/1000);
+    } else {
+        // TODO
     }
 }

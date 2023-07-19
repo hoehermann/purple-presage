@@ -1,11 +1,11 @@
 //#![no_std]
 #![no_main]
 
+use futures::StreamExt;
 use futures::{channel::oneshot, future};
+use presage::Store;
 use presage::{prelude::SignalServers, Manager};
 use presage_store_sled::{MigrationConflictStrategy, SledStore};
-use presage::Store;
-use futures::StreamExt;
 
 #[repr(C)]
 pub struct Presage {
@@ -13,7 +13,7 @@ pub struct Presage {
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
     pub uuid: *const std::os::raw::c_char,
-    
+
     pub timestamp: stdint::uint64_t,
     pub sent: stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
@@ -23,7 +23,7 @@ pub struct Presage {
 
 impl Presage {
     pub fn from_account(account: *const std::os::raw::c_void) -> Self {
-        Self  {
+        Self {
             account: account,
             tx_ptr: std::ptr::null_mut(),
             qrcode: std::ptr::null(),
@@ -73,43 +73,47 @@ fn print_message<C: Store>(
     };
     let mut message = Presage::from_account(account);
 
-    let format_data_message = |thread: &presage::Thread, data_message: &presage::prelude::content::DataMessage| match data_message {
-        presage::prelude::content::DataMessage {
-            quote:
-                Some(presage::prelude::proto::data_message::Quote {
-                    text: Some(quoted_text),
+    let format_data_message =
+        |thread: &presage::Thread, data_message: &presage::prelude::content::DataMessage| {
+            match data_message {
+                presage::prelude::content::DataMessage {
+                    quote:
+                        Some(presage::prelude::proto::data_message::Quote {
+                            text: Some(quoted_text),
+                            ..
+                        }),
+                    body: Some(body),
                     ..
-                }),
-            body: Some(body),
-            ..
-        } => Some(format!("Answer to message \"{quoted_text}\": {body}")),
-        presage::prelude::content::DataMessage {
-            reaction:
-                Some(presage::prelude::proto::data_message::Reaction {
-                    target_sent_timestamp: Some(timestamp),
-                    emoji: Some(emoji),
+                } => Some(format!("Answer to message \"{quoted_text}\": {body}")),
+                presage::prelude::content::DataMessage {
+                    reaction:
+                        Some(presage::prelude::proto::data_message::Reaction {
+                            target_sent_timestamp: Some(timestamp),
+                            emoji: Some(emoji),
+                            ..
+                        }),
                     ..
-                }),
-            ..
-        } => {
-            let Ok(Some(message)) = manager.message(thread, *timestamp) else {
+                } => {
+                    let Ok(Some(message)) = manager.message(thread, *timestamp) else {
                 println!("rust: no message in {thread} sent at {timestamp}");
                 return None;
             };
 
-            let presage::prelude::content::ContentBody::DataMessage(presage::prelude::DataMessage { body: Some(body), .. }) = message.body else {
+                    let presage::prelude::content::ContentBody::DataMessage(presage::prelude::DataMessage { body: Some(body), .. }) = message.body else {
                 println!("rust: message reacted to has no body");
                 return None;
             };
 
-            Some(format!("Reacted with {emoji} to message: \"{body}\""))
-        }
-        presage::prelude::content::DataMessage {
-            body: Some(body), ..
-        } => Some(body.to_string()),
-        _ => Some("Empty data message".to_string()),
-    };
+                    Some(format!("Reacted with {emoji} to message: \"{body}\""))
+                }
+                presage::prelude::content::DataMessage {
+                    body: Some(body), ..
+                } => Some(body.to_string()),
+                _ => Some("Empty data message".to_string()),
+            }
+        };
 
+    /*
     let format_contact = |uuid| {
         manager
             .contact_by_id(uuid)
@@ -119,8 +123,7 @@ fn print_message<C: Store>(
             .map(|c| format!("{}: {}", c.name, uuid))
             .unwrap_or_else(|| uuid.to_string())
     };
-
-    let format_group = |key| {
+    let group_get_title = |key| {
         manager
             .group(key)
             .ok()
@@ -128,6 +131,7 @@ fn print_message<C: Store>(
             .map(|g| g.title)
             .unwrap_or_else(|| "<missing group>".to_string())
     };
+    */
 
     enum Msg<'a> {
         Received(&'a presage::Thread, String),
@@ -142,47 +146,52 @@ fn print_message<C: Store>(
         presage::prelude::content::ContentBody::DataMessage(data_message) => {
             format_data_message(&thread, data_message).map(|body| Msg::Received(&thread, body))
         }
-        presage::prelude::content::ContentBody::SynchronizeMessage(presage::prelude::SyncMessage {
-            sent:
-                Some(presage::prelude::proto::sync_message::Sent {
-                    message: Some(data_message),
-                    ..
-                }),
-            ..
-        }) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
-        presage::prelude::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
-        presage::prelude::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
+        presage::prelude::content::ContentBody::SynchronizeMessage(
+            presage::prelude::SyncMessage {
+                sent:
+                    Some(presage::prelude::proto::sync_message::Sent {
+                        message: Some(data_message),
+                        ..
+                    }),
+                ..
+            },
+        ) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
+        presage::prelude::content::ContentBody::CallMessage(_) => {
+            Some(Msg::Received(&thread, "is calling!".into()))
+        }
+        // TODO: forward this as typing message
+        //presage::prelude::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
         c => {
             println!("rust: unsupported message {c:?}");
             None
         }
     } {
-        let ts = content.metadata.timestamp;
         let (who, group, body, sent) = match msg {
             Msg::Received(presage::Thread::Contact(sender), body) => {
-                let who = format_contact(sender);
-                (who, String::from(""), body, false)
+                (sender.to_string(), String::from(""), body, false)
             }
             Msg::Sent(presage::Thread::Contact(recipient), body) => {
-                let who = format_contact(recipient);
-                (who, String::from(""), body, true)
+                (recipient.to_string(), String::from(""), body, true)
             }
             Msg::Received(presage::Thread::Group(key), body) => {
-                let who = format_contact(&content.metadata.sender.uuid);
-                let group = format_group(key);
-                (who, group, body, false)
+                let group = hex::encode(key);
+                (content.metadata.sender.uuid.to_string(), group, body, false)
             }
             Msg::Sent(presage::Thread::Group(key), body) => {
-                let group = format_group(key);
-                (String::from("") ,group, body, true)
+                let group = hex::encode(key);
+                (String::from(""), group, body, true)
             }
         };
 
         println!("{who} in {group} wrote {body}");
-        message.timestamp = ts; 
+        message.timestamp = content.metadata.timestamp;
         message.sent = if sent { 1 } else { 0 };
-        if who != "" { message.who = std::ffi::CString::new(who).unwrap().into_raw(); }
-        if group != "" { message.group = std::ffi::CString::new(group).unwrap().into_raw(); }
+        if who != "" {
+            message.who = std::ffi::CString::new(who).unwrap().into_raw();
+        }
+        if group != "" {
+            message.group = std::ffi::CString::new(group).unwrap().into_raw();
+        }
         message.body = std::ffi::CString::new(body).unwrap().into_raw();
         unsafe {
             presage_append_message(&message);
@@ -193,7 +202,7 @@ fn print_message<C: Store>(
 async fn process_incoming_message<C: Store>(
     manager: &mut Manager<C, presage::Registered>,
     content: &presage::prelude::Content,
-    account: *const std::os::raw::c_void
+    account: *const std::os::raw::c_void,
 ) {
     print_message(manager, content, account);
 
@@ -234,15 +243,12 @@ async fn receive<C: Store>(
     manager: &mut Manager<C, presage::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    let messages = manager
-        .receive_messages()
-        .await.unwrap(); // TODO: add error handling instead of unwrap
+    let messages = manager.receive_messages().await.unwrap(); // TODO: add error handling instead of unwrap
 
     futures::pin_mut!(messages);
 
     while let Some(content) = messages.next().await {
-        process_incoming_message(manager, &content, account)
-            .await;
+        process_incoming_message(manager, &content, account).await;
     }
 }
 
@@ -280,7 +286,8 @@ async fn run<C: Store + 'static>(
                             println!("rust: qr code ok.");
                             println!("rust: now calling presage_append_message…");
                             let mut message = Presage::from_account(account);
-                            message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
+                            message.qrcode =
+                                std::ffi::CString::new(url.to_string()).unwrap().into_raw();
                             unsafe {
                                 presage_append_message(&message);
                             }
@@ -305,7 +312,7 @@ async fn run<C: Store + 'static>(
                 }
             }
         }
-        
+
         Cmd::Whoami => {
             let mut uuid = String::from("");
             let manager = Manager::load_registered(config_store).await;
@@ -332,7 +339,7 @@ async fn run<C: Store + 'static>(
                 presage_append_message(&message);
             }
         }
-        
+
         Cmd::Receive => {
             #[allow(unused_mut)]
             let mut manager = Manager::load_registered(config_store).await;

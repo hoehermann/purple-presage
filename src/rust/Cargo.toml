@@ -16,7 +16,8 @@ crate-type = ["staticlib"]
 presage = { git = "https://github.com/whisperfish/presage" }
 presage-store-sled = { git = "https://github.com/whisperfish/presage" }
 
-stdint = "*"
+hex = "*"
+stdint = "0.2"
 futures = "0.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }
 
