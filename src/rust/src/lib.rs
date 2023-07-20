@@ -14,8 +14,9 @@ pub struct Presage {
     pub qrcode: *const std::os::raw::c_char,
     pub uuid: *const std::os::raw::c_char,
 
-    pub timestamp: stdint::uint64_t,
-    pub sent: stdint::uint64_t,
+    // TODO: find out how to use stdint on Windows
+    pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
+    pub sent: std::os::raw::c_ulonglong, //stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
