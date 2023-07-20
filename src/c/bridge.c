@@ -65,6 +65,12 @@ static void handle_message(Presage * message) {
     if (message->body != NULL) {
         presage_handle_text(connection, message->who, message->group, message->sent, message->timestamp, message->body);
     }
+    // release all the memory
+    presage_rust_free(message->qrcode);
+    presage_rust_free(message->uuid);
+    presage_rust_free(message->who);
+    presage_rust_free(message->group);
+    presage_rust_free(message->body);
 }
 
 /*

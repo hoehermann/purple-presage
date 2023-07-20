@@ -62,6 +62,16 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
+    if c_str == std::ptr::null_mut() {
+        return;
+    }
+    unsafe {
+        drop(Box::from_raw(c_str));
+    }
+}
+
 fn print_message<C: Store>(
     manager: &Manager<C, presage::Registered>,
     content: &presage::prelude::Content,

@@ -13,19 +13,20 @@ void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
 void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
+void presage_rust_free(char *);
 
 extern RustRuntimePtr rust_runtime;
 
 typedef struct {
     PurpleAccount *account;
     RustChannelPtr tx_ptr;
-    const char *qrcode;
-    const char *uuid;
+    char *qrcode;
+    char *uuid;
     const uint64_t timestamp;
     const uint64_t sent;
-    const char *who;
-    const char *group;
-    const char *body;
+    char *who;
+    char *group;
+    char *body;
 } Presage;
 
 // connection
