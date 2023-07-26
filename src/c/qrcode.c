@@ -2,7 +2,7 @@
 #include <qrencode.h>
 
 static void qrcode_done(PurpleConnection *connection, PurpleRequestFields *fields) {
-    // nothing to do?
+    // nothing to do.
 }
 
 static void qrcode_cancel(PurpleConnection *connection, PurpleRequestFields *fields) {
@@ -86,6 +86,7 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
         if (purple_strequal(username, uuid)) {
             Presage *presage = purple_connection_get_protocol_data(connection);
             presage->uuid = g_strdup(uuid);
+            purple_request_close_with_handle(connection); // close request displaying the QR code
             purple_connection_set_state(connection, PURPLE_CONNECTED);
             presage_rust_receive(rust_runtime, presage->tx_ptr);
         } else {
