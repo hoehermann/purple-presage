@@ -303,7 +303,6 @@ async fn run<C: Store + 'static>(
     subcommand: Cmd,
     config_store: C,
     account: *const std::os::raw::c_void,
-    runtime: &tokio::runtime::Runtime,
 ) {
     match subcommand {
         Cmd::LinkDevice {
@@ -379,19 +378,17 @@ async fn run<C: Store + 'static>(
         }
 
         Cmd::Receive => {
-            #[allow(unused_mut)]
-            let mut manager = Manager::load_registered(config_store).await;
-            match manager {
-                Ok(mut manager) => {
-                    let mut receiving_manager = manager.clone();
-                    runtime.spawn(async move {
-                        receive(&mut receiving_manager, account)
-                    });
+            tokio::task::spawn_local(async move {
+                let receiving_manager = Manager::load_registered(config_store).await;
+                match receiving_manager {
+                    Ok(mut receiving_manager) => {
+                        receive(&mut receiving_manager, account).await
+                    }
+                    Err(err) => {
+                        println!("rust: receive manager Err {err:?}");
+                    }
                 }
-                Err(err) => {
-                    println!("rust: receive manager Err {err:?}");
-                }
-            }
+            });
         }
 
         Cmd::Send { uuid, message } => {
@@ -428,28 +425,31 @@ pub unsafe extern "C" fn presage_rust_main(
     }
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
-        // from main
-        let passphrase: Option<String> = None;
-        //println!("rust: opening config database from {store_path}");
-        let config_store = SledStore::open_with_passphrase(
-            store_path,
-            passphrase,
-            MigrationConflictStrategy::Raise,
-        );
-        match config_store {
-            Ok(config_store) => {
-                println!("rust: config_store OK");
-                while let Some(cmd) = rx.recv().await {
-                    // TODO: find out if config_store.clone() is the correct thing to do here
-                    println!("rust: cmd run begins…");
-                    run(cmd, config_store.clone(), account, runtime).await;
-                    println!("rust: cmd run finished.");
+        let local = tokio::task::LocalSet::new();
+        local.run_until(async {
+            // from main
+            let passphrase: Option<String> = None;
+            //println!("rust: opening config database from {store_path}");
+            let config_store = SledStore::open_with_passphrase(
+                store_path,
+                passphrase,
+                MigrationConflictStrategy::Raise,
+            );
+            match config_store {
+                Ok(config_store) => {
+                    println!("rust: config_store OK");
+                    while let Some(cmd) = rx.recv().await {
+                        // TODO: find out if config_store.clone() is the correct thing to do here
+                        println!("rust: cmd run begins…");
+                        run(cmd, config_store.clone(), account).await;
+                        println!("rust: cmd run finished.");
+                    }
+                }
+                Err(err) => {
+                    println!("rust: config_store Err {err:?}");
                 }
             }
-            Err(err) => {
-                println!("rust: config_store Err {err:?}");
-            }
-        }
+        }).await;
     });
 }
 
