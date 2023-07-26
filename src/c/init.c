@@ -1,5 +1,5 @@
 /*
- *   cmake template for a libpurple plugin
+ *   purple-presage
  *   Copyright (C) 2023 Hermann Höhne
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -73,6 +73,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .status_types = status_types, // this actually needs to exist, else the protocol cannot be set to "online"
     .login = presage_login,
     .close = presage_close,
+    .send_im = presage_send_im,
 };
 
 static PurplePluginInfo info = {

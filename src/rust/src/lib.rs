@@ -16,7 +16,7 @@ pub struct Presage {
 
     // TODO: find out how to use stdint on Windows
     pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
-    pub sent: std::os::raw::c_ulonglong, //stdint::uint64_t,
+    pub sent: std::os::raw::c_ulonglong,      //stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
@@ -271,12 +271,39 @@ pub enum Cmd {
     },
     Whoami,
     Receive,
+    Send {
+        uuid: presage::prelude::Uuid,
+        message: String,
+    },
+}
+
+async fn send<C: Store + 'static>(
+    msg: &str,
+    uuid: &presage::prelude::Uuid,
+    manager: &mut Manager<C, presage::Registered>,
+) {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as u64;
+
+    let message = presage::prelude::ContentBody::DataMessage(presage::prelude::DataMessage {
+        body: Some(msg.to_string()),
+        timestamp: Some(timestamp),
+        ..Default::default()
+    });
+
+    manager
+        .send_message(*uuid, message, timestamp)
+        .await
+        .unwrap();
 }
 
 async fn run<C: Store + 'static>(
     subcommand: Cmd,
     config_store: C,
     account: *const std::os::raw::c_void,
+    runtime: &tokio::runtime::Runtime,
 ) {
     match subcommand {
         Cmd::LinkDevice {
@@ -356,10 +383,26 @@ async fn run<C: Store + 'static>(
             let mut manager = Manager::load_registered(config_store).await;
             match manager {
                 Ok(mut manager) => {
-                    receive(&mut manager, account).await;
+                    let mut receiving_manager = manager.clone();
+                    runtime.spawn(async move {
+                        receive(&mut receiving_manager, account)
+                    });
                 }
                 Err(err) => {
                     println!("rust: receive manager Err {err:?}");
+                }
+            }
+        }
+
+        Cmd::Send { uuid, message } => {
+            #[allow(unused_mut)]
+            let mut manager = Manager::load_registered(config_store).await;
+            match manager {
+                Ok(mut manager) => {
+                    send(&message, &uuid, &mut manager).await;
+                }
+                Err(err) => {
+                    println!("rust: send manager Err {err:?}");
                 }
             }
         }
@@ -398,7 +441,9 @@ pub unsafe extern "C" fn presage_rust_main(
                 println!("rust: config_store OK");
                 while let Some(cmd) = rx.recv().await {
                     // TODO: find out if config_store.clone() is the correct thing to do here
-                    run(cmd, config_store.clone(), account).await
+                    println!("rust: cmd run begins…");
+                    run(cmd, config_store.clone(), account, runtime).await;
+                    println!("rust: cmd run finished.");
                 }
             }
             Err(err) => {
@@ -464,5 +509,24 @@ pub unsafe extern "C" fn presage_rust_receive(
     tx: *mut tokio::sync::mpsc::Sender<Cmd>,
 ) {
     let cmd: Cmd = Cmd::Receive {};
+    send_cmd(rt, tx, cmd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_send(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<Cmd>,
+    c_uuid: *const std::os::raw::c_char,
+    c_message: *const std::os::raw::c_char,
+) {
+    let cmd: Cmd = Cmd::Send {
+        // TODO: add error handling instead of unwrap()
+        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid)
+            .to_str().unwrap()).unwrap(),
+        message: std::ffi::CStr::from_ptr(c_message)
+            .to_str()
+            .unwrap()
+            .to_owned(),
+    };
     send_cmd(rt, tx, cmd);
 }

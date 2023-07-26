@@ -13,6 +13,7 @@ void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
 void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
+void presage_rust_send(RustRuntimePtr, RustChannelPtr, const char *, const char *);
 void presage_rust_free(char *);
 
 extern RustRuntimePtr rust_runtime;
@@ -40,3 +41,4 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid);
 
 // text messages
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, uint64_t sent, uint64_t timestamp, const char *text);
+int presage_send_im(PurpleConnection *connection, const char *who, const char *message, PurpleMessageFlags flags);

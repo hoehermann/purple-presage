@@ -26,6 +26,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/connection.c"
     "src/c/qrcode.c"
     "src/c/text.c"
+    "src/c/direct.c"
     "src/c/presage.h"
 )
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
