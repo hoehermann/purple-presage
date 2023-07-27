@@ -269,6 +269,7 @@ pub enum Cmd {
         servers: SignalServers,
         device_name: String,
     },
+    Stop,
     Whoami,
     Receive,
     Send {
@@ -374,6 +375,36 @@ async fn run<C: Store + 'static>(
             send(&message, &uuid, &mut manager).await;
             Ok(manager)
         }
+        
+        Cmd::Stop { } => {
+            //Err(std::error::Error::from("Exit requested."))
+            Ok(manager.unwrap_or(Manager::load_registered(config_store).await?))
+        }
+    }
+}
+
+async fn mainloop(config_store: SledStore, mut rx: tokio::sync::mpsc::Receiver<Cmd>, account: *const std::os::raw::c_void) {
+    let mut manager: Option<Manager<SledStore, presage::Registered>> = None;
+    while let Some(cmd) = rx.recv().await {
+        match cmd {
+            Cmd::Stop => {
+                break;
+            }
+            _ => {
+                println!("rust: run begins…");
+                // TODO: find out if config_store.clone() is the correct thing to do here
+                match run(cmd, config_store.clone(), manager, account).await {
+                    Ok(m) => {
+                        manager = Some(m);
+                    }
+                    Err(err) => {
+                        manager = None;
+                        println!("rust: run Err {err:?}");
+                    }
+                }
+                println!("rust: run finished.");
+            }
+        }
     }
 }
 
@@ -387,7 +418,7 @@ pub unsafe extern "C" fn presage_rust_main(
         .to_str()
         .unwrap()
         .to_owned();
-    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
+    let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = Presage::from_account(account);
     message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
@@ -407,30 +438,17 @@ pub unsafe extern "C" fn presage_rust_main(
                 MigrationConflictStrategy::Raise,
             );
             match config_store {
-                Ok(config_store) => {
-                    println!("rust: config_store OK");
-                    let mut manager: Option<Manager<SledStore, presage::Registered>> = None;
-                    while let Some(cmd) = rx.recv().await {
-                        // TODO: find out if config_store.clone() is the correct thing to do here
-                        println!("rust: run begins…");
-                        match run(cmd, config_store.clone(), manager, account).await {
-                            Ok(m) => {
-                                manager = Some(m);
-                            }
-                            Err(err) => {
-                                manager = None;
-                                println!("rust: run Err {err:?}");
-                            }
-                        }
-                        println!("rust: run finished.");
-                    }
-                }
                 Err(err) => {
                     println!("rust: config_store Err {err:?}");
+                }
+                Ok(config_store) => {
+                    println!("rust: config_store OK");
+                    mainloop(config_store, rx, account).await;
                 }
             }
         }).await;
     });
+    println!("rust: main finished.");
 }
 
 // let mut manager = Manager::load_registered(config_store).await?;
@@ -472,6 +490,15 @@ pub unsafe extern "C" fn presage_rust_link(
     };
     send_cmd(rt, tx, cmd);
     println!("rust: presage_rust_link ends now");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_stop(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<Cmd>,
+) {
+    let cmd: Cmd = Cmd::Stop {};
+    send_cmd(rt, tx, cmd);
 }
 
 #[no_mangle]
