@@ -357,7 +357,7 @@ async fn run<C: presage::Store + 'static>(
         }
 
         Cmd::Receive => {
-            let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
+            let manager = manager.unwrap();
             let mut receiving_manager = manager.clone();
             tokio::task::spawn_local(async move {
                 receive(&mut receiving_manager, account).await
@@ -366,15 +366,13 @@ async fn run<C: presage::Store + 'static>(
         }
 
         Cmd::Send { uuid, message } => {
-            let mut manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
+            let mut manager = manager.unwrap();
             send(&message, &uuid, &mut manager).await?;
             Ok(manager)
         }
         
         Cmd::Exit { } => {
-            //Err(std::error::Error::from("Exit requested."))
-            // TODO: return an error
-            Ok(manager.unwrap_or(presage::Manager::load_registered(config_store).await?))
+            Err(presage::Error::IoError(std::io::Error::new(std::io::ErrorKind::Interrupted, "Exit command in inner loop.")))
         }
     }
 }
