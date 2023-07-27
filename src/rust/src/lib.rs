@@ -302,15 +302,16 @@ async fn send<C: Store + 'static>(
 async fn run<C: Store + 'static>(
     subcommand: Cmd,
     config_store: C,
+    manager: Option<Manager<C, presage::Registered>>,
     account: *const std::os::raw::c_void,
-) {
+) -> Result<Manager<C, presage::Registered>, presage::Error<<C>::Error>> {
     match subcommand {
         Cmd::LinkDevice {
             servers,
             device_name,
         } => {
             let (provisioning_link_tx, provisioning_link_rx) = oneshot::channel();
-            let manager = future::join(
+            let join_handle = future::join(
                 Manager::link_secondary_device(
                     config_store,
                     servers,
@@ -335,73 +336,43 @@ async fn run<C: Store + 'static>(
             )
             .await;
 
-            match manager {
-                (Ok(manager), _) => {
-                    let uuid = manager.whoami().await.unwrap().uuid;
-                    let mut message = Presage::from_account(account);
-                    message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                    unsafe {
-                        presage_append_message(&message);
-                    }
-                }
-                (Err(err), _) => {
-                    println!("{err:?}");
-                }
+            let mut message = Presage::from_account(account);
+            let qrcode_done = String::from("");
+            message.qrcode = std::ffi::CString::new(qrcode_done).unwrap().into_raw();
+            unsafe {
+                presage_append_message(&message);
             }
+            let (manager, _) = join_handle;
+            manager
         }
 
         Cmd::Whoami => {
             let mut uuid = String::from("");
-            let manager = Manager::load_registered(config_store).await;
-            match manager {
-                Ok(manager) => {
-                    let whoami = manager.whoami().await;
-                    match whoami {
-                        Ok(whoami) => {
-                            uuid = whoami.uuid.to_string();
-                        }
-                        Err(err) => {
-                            // TODO: find out if this one is showing ServiceError(Unauthorized)
-                            println!("rust: whoami Err {err:?}");
-                        }
-                    }
-                }
-                Err(err) => {
-                    println!("rust: whoami manager Err {err:?}");
-                }
-            }
+            let manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            let whoami = manager.whoami().await?;
+            uuid = whoami.uuid.to_string();
+            // TODO: find out if this one is showing ServiceError(Unauthorized)
             let mut message = Presage::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             unsafe {
                 presage_append_message(&message);
             }
+            Ok(manager)
         }
 
         Cmd::Receive => {
+            let manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            let mut receiving_manager = manager.clone();
             tokio::task::spawn_local(async move {
-                let receiving_manager = Manager::load_registered(config_store).await;
-                match receiving_manager {
-                    Ok(mut receiving_manager) => {
-                        receive(&mut receiving_manager, account).await
-                    }
-                    Err(err) => {
-                        println!("rust: receive manager Err {err:?}");
-                    }
-                }
+                receive(&mut receiving_manager, account).await
             });
+            Ok(manager)
         }
 
         Cmd::Send { uuid, message } => {
-            #[allow(unused_mut)]
-            let mut manager = Manager::load_registered(config_store).await;
-            match manager {
-                Ok(mut manager) => {
-                    send(&message, &uuid, &mut manager).await;
-                }
-                Err(err) => {
-                    println!("rust: send manager Err {err:?}");
-                }
-            }
+            let mut manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            send(&message, &uuid, &mut manager).await;
+            Ok(manager)
         }
     }
 }
@@ -438,11 +409,20 @@ pub unsafe extern "C" fn presage_rust_main(
             match config_store {
                 Ok(config_store) => {
                     println!("rust: config_store OK");
+                    let mut manager: Option<Manager<SledStore, presage::Registered>> = None;
                     while let Some(cmd) = rx.recv().await {
                         // TODO: find out if config_store.clone() is the correct thing to do here
-                        println!("rust: cmd run begins…");
-                        run(cmd, config_store.clone(), account).await;
-                        println!("rust: cmd run finished.");
+                        println!("rust: run begins…");
+                        match run(cmd, config_store.clone(), manager, account).await {
+                            Ok(m) => {
+                                manager = Some(m);
+                            }
+                            Err(err) => {
+                                manager = None;
+                                println!("rust: run Err {err:?}");
+                            }
+                        }
+                        println!("rust: run finished.");
                     }
                 }
                 Err(err) => {
