@@ -1,11 +1,7 @@
 //#![no_std]
 #![no_main]
 
-use futures::StreamExt;
-use futures::{channel::oneshot, future};
-use presage::Store;
-use presage::{prelude::SignalServers, Manager};
-use presage_store_sled::{MigrationConflictStrategy, SledStore};
+use futures::StreamExt; // for Stream.next()
 
 #[repr(C)]
 pub struct Presage {
@@ -73,8 +69,8 @@ pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
     }
 }
 
-fn print_message<C: Store>(
-    manager: &Manager<C, presage::Registered>,
+fn print_message<C: presage::Store>(
+    manager: &presage::Manager<C, presage::Registered>,
     content: &presage::prelude::Content,
     account: *const std::os::raw::c_void,
 ) {
@@ -210,8 +206,8 @@ fn print_message<C: Store>(
     }
 }
 
-async fn process_incoming_message<C: Store>(
-    manager: &mut Manager<C, presage::Registered>,
+async fn process_incoming_message<C: presage::Store>(
+    manager: &mut presage::Manager<C, presage::Registered>,
     content: &presage::prelude::Content,
     account: *const std::os::raw::c_void,
 ) {
@@ -250,8 +246,8 @@ async fn process_incoming_message<C: Store>(
     */
 }
 
-async fn receive<C: Store>(
-    manager: &mut Manager<C, presage::Registered>,
+async fn receive<C: presage::Store>(
+    manager: &mut presage::Manager<C, presage::Registered>,
     account: *const std::os::raw::c_void,
 ) {
     let messages = manager.receive_messages().await.unwrap(); // TODO: add error handling instead of unwrap
@@ -266,7 +262,7 @@ async fn receive<C: Store>(
 // from main
 pub enum Cmd {
     LinkDevice {
-        servers: SignalServers,
+        servers: presage::prelude::SignalServers,
         device_name: String,
     },
     Exit,
@@ -278,10 +274,10 @@ pub enum Cmd {
     },
 }
 
-async fn send<C: Store + 'static>(
+async fn send<C: presage::Store + 'static>(
     msg: &str,
     uuid: &presage::prelude::Uuid,
-    manager: &mut Manager<C, presage::Registered>,
+    manager: &mut presage::Manager<C, presage::Registered>,
 ) -> Result<(), presage::Error<<C>::Error>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -300,20 +296,20 @@ async fn send<C: Store + 'static>(
     Ok(())
 }
 
-async fn run<C: Store + 'static>(
+async fn run<C: presage::Store + 'static>(
     subcommand: Cmd,
     config_store: C,
-    manager: Option<Manager<C, presage::Registered>>,
+    manager: Option<presage::Manager<C, presage::Registered>>,
     account: *const std::os::raw::c_void,
-) -> Result<Manager<C, presage::Registered>, presage::Error<<C>::Error>> {
+) -> Result<presage::Manager<C, presage::Registered>, presage::Error<<C>::Error>> {
     match subcommand {
         Cmd::LinkDevice {
             servers,
             device_name,
         } => {
-            let (provisioning_link_tx, provisioning_link_rx) = oneshot::channel();
-            let join_handle = future::join(
-                Manager::link_secondary_device(
+            let (provisioning_link_tx, provisioning_link_rx) = futures::channel::oneshot::channel();
+            let join_handle = futures::future::join(
+                presage::Manager::link_secondary_device(
                     config_store,
                     servers,
                     device_name.clone(),
@@ -349,7 +345,7 @@ async fn run<C: Store + 'static>(
 
         Cmd::Whoami => {
             let mut uuid = String::from("");
-            let manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
             uuid = whoami.uuid.to_string();
             // TODO: find out if this one is showing ServiceError(Unauthorized)
@@ -362,7 +358,7 @@ async fn run<C: Store + 'static>(
         }
 
         Cmd::Receive => {
-            let manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let mut receiving_manager = manager.clone();
             tokio::task::spawn_local(async move {
                 receive(&mut receiving_manager, account).await
@@ -371,7 +367,7 @@ async fn run<C: Store + 'static>(
         }
 
         Cmd::Send { uuid, message } => {
-            let mut manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
+            let mut manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             send(&message, &uuid, &mut manager).await?;
             Ok(manager)
         }
@@ -379,13 +375,13 @@ async fn run<C: Store + 'static>(
         Cmd::Exit { } => {
             //Err(std::error::Error::from("Exit requested."))
             // TODO: return an error
-            Ok(manager.unwrap_or(Manager::load_registered(config_store).await?))
+            Ok(manager.unwrap_or(presage::Manager::load_registered(config_store).await?))
         }
     }
 }
 
-async fn mainloop(config_store: SledStore, mut rx: tokio::sync::mpsc::Receiver<Cmd>, account: *const std::os::raw::c_void) {
-    let mut manager: Option<Manager<SledStore, presage::Registered>> = None;
+async fn mainloop(config_store: presage_store_sled::SledStore, mut rx: tokio::sync::mpsc::Receiver<Cmd>, account: *const std::os::raw::c_void) {
+    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
             Cmd::Exit => {
@@ -433,10 +429,10 @@ pub unsafe extern "C" fn presage_rust_main(
             // from main
             let passphrase: Option<String> = None;
             //println!("rust: opening config database from {store_path}");
-            let config_store = SledStore::open_with_passphrase(
+            let config_store = presage_store_sled::SledStore::open_with_passphrase(
                 store_path,
                 passphrase,
-                MigrationConflictStrategy::Raise,
+                presage_store_sled::MigrationConflictStrategy::Raise,
             );
             match config_store {
                 Err(err) => {
@@ -481,8 +477,8 @@ pub unsafe extern "C" fn presage_rust_link(
         .to_owned();
     println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
     // from args
-    let server: SignalServers = SignalServers::Production;
-    //let server: SignalServers = SignalServers::Staging;
+    let server = presage::prelude::SignalServers::Production;
+    //let server = presage::prelude::SignalServers::Staging;
     let cmd: Cmd = Cmd::LinkDevice {
         device_name: device_name,
         servers: server,
