@@ -282,7 +282,7 @@ async fn send<C: Store + 'static>(
     msg: &str,
     uuid: &presage::prelude::Uuid,
     manager: &mut Manager<C, presage::Registered>,
-) {
+) -> Result<(), presage::Error<<C>::Error>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Time went backwards")
@@ -296,8 +296,8 @@ async fn send<C: Store + 'static>(
 
     manager
         .send_message(*uuid, message, timestamp)
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
 
 async fn run<C: Store + 'static>(
@@ -372,7 +372,7 @@ async fn run<C: Store + 'static>(
 
         Cmd::Send { uuid, message } => {
             let mut manager = manager.unwrap_or(Manager::load_registered(config_store).await?);
-            send(&message, &uuid, &mut manager).await;
+            send(&message, &uuid, &mut manager).await?;
             Ok(manager)
         }
         
