@@ -1,4 +1,3 @@
-//#![no_std]
 #![no_main]
 
 use futures::StreamExt; // for Stream.next()
@@ -102,14 +101,14 @@ fn print_message<C: presage::Store>(
                     ..
                 } => {
                     let Ok(Some(message)) = manager.message(thread, *timestamp) else {
-                println!("rust: no message in {thread} sent at {timestamp}");
-                return None;
-            };
+                        println!("rust: no message in {thread} sent at {timestamp}");
+                        return None;
+                    };
 
                     let presage::prelude::content::ContentBody::DataMessage(presage::prelude::DataMessage { body: Some(body), .. }) = message.body else {
-                println!("rust: message reacted to has no body");
-                return None;
-            };
+                        println!("rust: message reacted to has no body");
+                        return None;
+                    };
 
                     Some(format!("Reacted with {emoji} to message: \"{body}\""))
                 }
@@ -291,9 +290,7 @@ async fn send<C: presage::Store + 'static>(
         ..Default::default()
     });
 
-    manager
-        .send_message(*uuid, message, timestamp)
-        .await?;
+    manager.send_message(*uuid, message, timestamp).await?;
     Ok(())
 }
 
@@ -359,9 +356,7 @@ async fn run<C: presage::Store + 'static>(
         Cmd::Receive => {
             let manager = manager.unwrap();
             let mut receiving_manager = manager.clone();
-            tokio::task::spawn_local(async move {
-                receive(&mut receiving_manager, account).await
-            });
+            tokio::task::spawn_local(async move { receive(&mut receiving_manager, account).await });
             Ok(manager)
         }
 
@@ -370,15 +365,20 @@ async fn run<C: presage::Store + 'static>(
             send(&message, &uuid, &mut manager).await?;
             Ok(manager)
         }
-        
-        Cmd::Exit { } => {
-            Err(presage::Error::IoError(std::io::Error::new(std::io::ErrorKind::Interrupted, "Exit command in inner loop.")))
+
+        Cmd::Exit {} => {
+            panic!("Exit command reached inner loop.");
         }
     }
 }
 
-async fn mainloop(config_store: presage_store_sled::SledStore, mut rx: tokio::sync::mpsc::Receiver<Cmd>, account: *const std::os::raw::c_void) {
-    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> = None;
+async fn mainloop(
+    config_store: presage_store_sled::SledStore,
+    mut rx: tokio::sync::mpsc::Receiver<Cmd>,
+    account: *const std::os::raw::c_void,
+) {
+    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> =
+        None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
             Cmd::Exit => {
@@ -399,7 +399,8 @@ async fn mainloop(config_store: presage_store_sled::SledStore, mut rx: tokio::sy
                                 // tell the front-end we lost authorization
                                 let uuid = String::from("");
                                 let mut message = Presage::from_account(account);
-                                message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                                message.uuid =
+                                    std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                                 unsafe {
                                     presage_append_message(&message);
                                 }
@@ -440,25 +441,27 @@ pub unsafe extern "C" fn presage_rust_main(
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
         let local = tokio::task::LocalSet::new();
-        local.run_until(async {
-            // from main
-            let passphrase: Option<String> = None;
-            //println!("rust: opening config database from {store_path}");
-            let config_store = presage_store_sled::SledStore::open_with_passphrase(
-                store_path,
-                passphrase,
-                presage_store_sled::MigrationConflictStrategy::Raise,
-            );
-            match config_store {
-                Err(err) => {
-                    println!("rust: config_store Err {err:?}");
+        local
+            .run_until(async {
+                // from main
+                let passphrase: Option<String> = None;
+                //println!("rust: opening config database from {store_path}");
+                let config_store = presage_store_sled::SledStore::open_with_passphrase(
+                    store_path,
+                    passphrase,
+                    presage_store_sled::MigrationConflictStrategy::Raise,
+                );
+                match config_store {
+                    Err(err) => {
+                        println!("rust: config_store Err {err:?}");
+                    }
+                    Ok(config_store) => {
+                        println!("rust: config_store OK");
+                        mainloop(config_store, rx, account).await;
+                    }
                 }
-                Ok(config_store) => {
-                    println!("rust: config_store OK");
-                    mainloop(config_store, rx, account).await;
-                }
-            }
-        }).await;
+            })
+            .await;
     });
     println!("rust: main finished.");
 }
@@ -547,8 +550,8 @@ pub unsafe extern "C" fn presage_rust_send(
 ) {
     let cmd: Cmd = Cmd::Send {
         // TODO: add error handling instead of unwrap()
-        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid)
-            .to_str().unwrap()).unwrap(),
+        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap())
+            .unwrap(),
         message: std::ffi::CStr::from_ptr(c_message)
             .to_str()
             .unwrap()
