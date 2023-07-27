@@ -13,7 +13,7 @@ rust_main(void* account) {
     const char *username = purple_account_get_username(account);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
     presage_rust_main(rust_runtime, account, store_path);
-    printf("presage_rust_main has finished.");
+    printf("presage_rust_main has finished.\n");
     g_free(store_path);
     return 0;
 }
@@ -50,6 +50,8 @@ void presage_login(PurpleAccount *account) {
     #endif
 }
 
-void presage_close(PurpleConnection *pc) {
-    // TODO: close connection, stop rust thread, deallocate channel
+void presage_close(PurpleConnection *connection) {
+    Presage *presage = purple_connection_get_protocol_data(connection);
+    presage_rust_exit(rust_runtime, presage->tx_ptr);
+    // TODO: deallocate protocol data (including rust channel)
 }

@@ -269,7 +269,7 @@ pub enum Cmd {
         servers: SignalServers,
         device_name: String,
     },
-    Stop,
+    Exit,
     Whoami,
     Receive,
     Send {
@@ -376,8 +376,9 @@ async fn run<C: Store + 'static>(
             Ok(manager)
         }
         
-        Cmd::Stop { } => {
+        Cmd::Exit { } => {
             //Err(std::error::Error::from("Exit requested."))
+            // TODO: return an error
             Ok(manager.unwrap_or(Manager::load_registered(config_store).await?))
         }
     }
@@ -387,7 +388,7 @@ async fn mainloop(config_store: SledStore, mut rx: tokio::sync::mpsc::Receiver<C
     let mut manager: Option<Manager<SledStore, presage::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
-            Cmd::Stop => {
+            Cmd::Exit => {
                 break;
             }
             _ => {
@@ -451,8 +452,6 @@ pub unsafe extern "C" fn presage_rust_main(
     println!("rust: main finished.");
 }
 
-// let mut manager = Manager::load_registered(config_store).await?;
-
 unsafe fn send_cmd(
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<Cmd>,
@@ -462,7 +461,7 @@ unsafe fn send_cmd(
     let runtime = rt.as_ref().unwrap();
     match runtime.block_on(command_tx.send(cmd)) {
         Ok(()) => {
-            println!("rust: command_tx.send OK");
+            //println!("rust: command_tx.send OK");
         }
         Err(err) => {
             println!("rust: command_tx.send {err}");
@@ -497,7 +496,16 @@ pub unsafe extern "C" fn presage_rust_stop(
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<Cmd>,
 ) {
-    let cmd: Cmd = Cmd::Stop {};
+    let cmd: Cmd = Cmd::Exit {};
+    send_cmd(rt, tx, cmd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_exit(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<Cmd>,
+) {
+    let cmd: Cmd = Cmd::Exit {};
     send_cmd(rt, tx, cmd);
 }
 
