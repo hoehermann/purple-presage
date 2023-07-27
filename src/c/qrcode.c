@@ -37,7 +37,8 @@ static void show_qrcode(PurpleConnection *connection, gchar* qrimgdata, gsize qr
         connection);
 }
 
-void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
+static void generate_and_show_qrcode(PurpleConnection *connection, const char *data) {
+    g_return_if_fail(data != NULL);
     QRcode * qrcode = QRcode_encodeString(data, 0, QR_ECLEVEL_L, QR_MODE_8, 1);
     if (qrcode != NULL) {
         int border = 4;
@@ -72,6 +73,18 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
     }
 }
 
+void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
+    g_return_if_fail(data != NULL);
+    if (data[0] == 0) {
+        // empty string means "linking has finished"
+        purple_request_close_with_handle(connection); // close request displaying the QR code
+        Presage *presage = purple_connection_get_protocol_data(connection);
+        presage_rust_whoami(rust_runtime, presage->tx_ptr); // now that linking is done, get own uuid
+    } else {
+        generate_and_show_qrcode(connection, data);
+    }
+}
+
 void presage_request_qrcode(PurpleConnection *connection) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     const char * device_name = purple_account_get_string(presage->account, "device-name", g_get_host_name());
@@ -79,6 +92,7 @@ void presage_request_qrcode(PurpleConnection *connection) {
 }
 
 void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
+    g_return_if_fail(uuid != NULL);
     if (uuid[0] == 0) {
         presage_request_qrcode(connection);
     } else {

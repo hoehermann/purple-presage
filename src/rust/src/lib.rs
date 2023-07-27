@@ -260,6 +260,7 @@ async fn receive<C: presage::Store>(
 }
 
 // from main
+#[derive(Debug)]
 pub enum Cmd {
     LinkDevice {
         servers: presage::prelude::SignalServers,
@@ -344,11 +345,9 @@ async fn run<C: presage::Store + 'static>(
         }
 
         Cmd::Whoami => {
-            let mut uuid = String::from("");
             let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
-            uuid = whoami.uuid.to_string();
-            // TODO: find out if this one is showing ServiceError(Unauthorized)
+            let uuid = whoami.uuid.to_string();
             let mut message = Presage::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             unsafe {
@@ -388,11 +387,29 @@ async fn mainloop(config_store: presage_store_sled::SledStore, mut rx: tokio::sy
                 break;
             }
             _ => {
-                println!("rust: run begins…");
+                println!("rust: run {:?} begins…", cmd);
                 // TODO: find out if config_store.clone() is the correct thing to do here
                 match run(cmd, config_store.clone(), manager, account).await {
                     Ok(m) => {
                         manager = Some(m);
+                    }
+                    Err(presage::Error::ServiceError(err)) => {
+                        // can happen during whoami or send, possibly others
+                        manager = None;
+                        match err {
+                            presage::prelude::content::ServiceError::Unauthorized => {
+                                // tell the front-end we lost authorization
+                                let uuid = String::from("");
+                                let mut message = Presage::from_account(account);
+                                message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                                unsafe {
+                                    presage_append_message(&message);
+                                }
+                            }
+                            _ => {
+                                println!("rust: run ServiceError {err:?}");
+                            }
+                        }
                     }
                     Err(err) => {
                         manager = None;

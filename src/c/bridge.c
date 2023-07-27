@@ -83,13 +83,7 @@ static void handle_message(Presage * message) {
 static gboolean process_message(gpointer data) {
     g_return_val_if_fail(data != NULL, FALSE);
     Presage * message = (Presage *)data;
-    purple_debug_info(PLUGIN_NAME, "process_message called.\n");
-    purple_debug_info(PLUGIN_NAME, "message is at %p\n", message);
-    purple_debug_info(PLUGIN_NAME, "account is at %p\n", message->account);
-    purple_debug_info(PLUGIN_NAME, "tx_ptr is at %p\n", message->tx_ptr);
-    purple_debug_info(PLUGIN_NAME, "qrcode is at %p\n", (void *)message->qrcode);
     handle_message(message);
-    // TODO: deallocate message->qrcode via rust
     g_free(message);
     return FALSE;
 }
