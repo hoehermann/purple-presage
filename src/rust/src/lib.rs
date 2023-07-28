@@ -115,7 +115,12 @@ fn print_message<C: presage::Store>(
                 presage::prelude::content::DataMessage {
                     body: Some(body), ..
                 } => Some(body.to_string()),
-                _ => Some("Empty data message".to_string()),
+                c => {
+                    println!("rust: Empty data message {c:?}");
+                    // Note: flags: Some(4) with a timestamp (and a profile_key?) indicate "message sent"
+                    // Some("message has been sent".to_string())
+                    None
+                },
             }
         };
 
@@ -391,8 +396,19 @@ async fn mainloop(
                     Ok(m) => {
                         manager = Some(m);
                     }
+                    Err(presage::Error::NotYetRegisteredError) => {
+                        // can happen during whoami
+                        manager = None;
+                        // tell the front-end we lost authorization
+                        let uuid = String::from("");
+                        let mut message = Presage::from_account(account);
+                        message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                        unsafe {
+                            presage_append_message(&message);
+                        }
+                    }
                     Err(presage::Error::ServiceError(err)) => {
-                        // can happen during whoami or send, possibly others
+                        // can happen during whoami or send, possibly others, after main device has revoked the link
                         manager = None;
                         match err {
                             presage::prelude::content::ServiceError::Unauthorized => {
