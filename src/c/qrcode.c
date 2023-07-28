@@ -1,7 +1,7 @@
 #include "presage.h"
 #include <qrencode.h>
 
-static void qrcode_done(PurpleConnection *connection, PurpleRequestFields *fields) {
+static void qrcode_hide(PurpleConnection *connection, PurpleRequestFields *fields) {
     // nothing to do.
 }
 
@@ -25,11 +25,9 @@ static void show_qrcode(PurpleConnection *connection, gchar* qrimgdata, gsize qr
     PurpleAccount *account = purple_connection_get_account(connection);
     purple_request_fields(
         connection, "Signal Protocol", "Link to master device",
-        "For linking this account to a Signal master device, "
-        "please scan the QR code below. In the Signal App, "
-        "go to \"Preferences\" and \"Linked devices\".", 
+        "In the Signal App, go to \"Preferences\" and \"Linked devices\". Scan the QR code below. Wait for the window to close.", 
         fields,
-        "Done", G_CALLBACK(qrcode_done), 
+        "Hide", G_CALLBACK(qrcode_hide), 
         "Cancel", G_CALLBACK(qrcode_cancel),
         account, 
         purple_account_get_username(account), 
@@ -104,7 +102,7 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
             purple_connection_set_state(connection, PURPLE_CONNECTED);
             presage_rust_receive(rust_runtime, presage->tx_ptr);
         } else {
-            char * errmsg = g_strdup_printf("Your username '%s' does not match the main device's ID '%s'. Please adjust your username.", username, uuid);
+            char * errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
             purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
             g_free(errmsg);
         }
