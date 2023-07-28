@@ -43,3 +43,6 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid);
 // text messages
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, uint64_t sent, uint64_t timestamp, const char *text);
 int presage_send_im(PurpleConnection *connection, const char *who, const char *message, PurpleMessageFlags flags);
+
+// contact management
+void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleGroup *group);
