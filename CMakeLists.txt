@@ -28,6 +28,8 @@ add_library(${TARGET_NAME} SHARED
     "src/c/text.c"
     "src/c/direct.c"
     "src/c/contact.c"
+    "src/c/hehoe-common/blist.c"
+    "src/c/hehoe-common/blist.h"
     "src/c/presage.h"
 )
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)

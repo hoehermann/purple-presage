@@ -1,4 +1,5 @@
 #include "presage.h"
+#include "hehoe-common/blist.h"
 #include <qrencode.h>
 
 static void qrcode_hide(PurpleConnection *connection, PurpleRequestFields *fields) {
@@ -89,18 +90,21 @@ void presage_request_qrcode(PurpleConnection *connection) {
     presage_rust_link(rust_runtime, presage->tx_ptr, device_name);
 }
 
+// TODO: maybe move this into connection.c?
 void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
     g_return_if_fail(uuid != NULL);
     if (uuid[0] == 0) {
         presage_request_qrcode(connection);
     } else {
-        const char *username = purple_account_get_username(purple_connection_get_account(connection));
+        PurpleAccount *account = purple_connection_get_account(connection);
+        const char *username = purple_account_get_username(account);
         if (purple_strequal(username, uuid)) {
             Presage *presage = purple_connection_get_protocol_data(connection);
             presage->uuid = g_strdup(uuid);
             purple_request_close_with_handle(connection); // close request displaying the QR code
-            purple_connection_set_state(connection, PURPLE_CONNECTED);
             presage_rust_receive(rust_runtime, presage->tx_ptr);
+            purple_connection_set_state(connection, PURPLE_CONNECTED);
+            hehoe_blist_buddies_all_set_state(account, purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE)); // TODO: make user configurable
         } else {
             char * errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
             purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
