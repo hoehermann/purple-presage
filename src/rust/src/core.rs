@@ -1,3 +1,8 @@
+/*
+ * Runs a command.
+ * 
+ * Based on presage-cli's `run`.
+ */
 async fn run<C: presage::Store + 'static>(
     subcommand: crate::commands::Cmd,
     config_store: C,
@@ -61,6 +66,13 @@ async fn run<C: presage::Store + 'static>(
     }
 }
 
+/*
+ * Retrieves commands from the channel.
+ * 
+ * Delegates work to `run`, but catches the errors for forwarding to the front-end.
+ * 
+ * Based on presage-cli's main loop.
+ */
 pub async fn mainloop(
     config_store: presage_store_sled::SledStore,
     mut rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,
@@ -111,6 +123,25 @@ pub async fn mainloop(
                 }
                 println!("rust: run finished.");
             }
+        }
+    }
+}
+
+/*
+ * Opens the store and runs commands forever.
+ * 
+ * Based on presage-cli's main loop.
+ */
+pub async fn main(store_path: String, passphrase: Option<String>, rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,account: *const std::os::raw::c_void) {
+    //println!("rust: opening config database from {store_path}");
+    let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise);
+    match config_store {
+        Err(err) => {
+            println!("rust: config_store Err {err:?}");
+        }
+        Ok(config_store) => {
+            println!("rust: config_store OK");
+            mainloop(config_store, rx, account).await;
         }
     }
 }

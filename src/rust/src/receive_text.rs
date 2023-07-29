@@ -1,5 +1,10 @@
 use futures::StreamExt; // for Stream.next()
 
+/*
+ * Prepares a received message's text for the front-end.
+ * 
+ * Based on presage-cli's `print_message`.
+ */
 fn print_message<C: presage::Store>(
     manager: &presage::Manager<C, presage::Registered>,
     content: &presage::prelude::Content,
@@ -47,7 +52,7 @@ fn print_message<C: presage::Store>(
             } => Some(body.to_string()),
             c => {
                 println!("rust: Empty data message {c:?}");
-                // Note: flags: Some(4) with a timestamp (and a profile_key?) indicate "message sent"
+                // Note: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
                 // Some("message has been sent".to_string())
                 None
             }
@@ -124,6 +129,11 @@ fn print_message<C: presage::Store>(
     }
 }
 
+/*
+ * Prepares a received message (text and attachments) for further processing.
+ * 
+ * Based on presage-cli's `process_incoming_message`.
+ */
 async fn process_incoming_message<C: presage::Store>(
     manager: &mut presage::Manager<C, presage::Registered>,
     content: &presage::prelude::Content,
@@ -164,15 +174,28 @@ async fn process_incoming_message<C: presage::Store>(
     */
 }
 
+/*
+ * Receives messages from Signal servers.
+ * 
+ * Blocks forever.
+ * 
+ * Based on presage-cli's `receive`.
+ */
 pub async fn receive<C: presage::Store>(
     manager: &mut presage::Manager<C, presage::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    let messages = manager.receive_messages().await.unwrap(); // TODO: add error handling instead of unwrap
-
-    futures::pin_mut!(messages);
-
-    while let Some(content) = messages.next().await {
-        process_incoming_message(manager, &content, account).await;
+    let messages = manager.receive_messages().await;
+    match messages {
+        Ok(messages) => {
+            futures::pin_mut!(messages);
+            while let Some(content) = messages.next().await {
+                process_incoming_message(manager, &content, account).await;
+            }
+        }
+        Err(err) => {
+            // TODO: forward error to front-end
+            panic!("receive err {err}")
+        }
     }
 }

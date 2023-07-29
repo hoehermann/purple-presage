@@ -30,19 +30,25 @@ impl Presage {
 }
 
 extern "C" {
+    // this is implemented by bridge.c
     fn presage_append_message(message: *const Presage);
 }
 
+// wrapper around unsafe presage_append_message
 pub fn append_message(message: *const Presage) {
     unsafe {
         presage_append_message(message);
     }
 }
 
-// https://stackoverflow.com/questions/66196972/how-to-pass-a-reference-pointer-to-a-rust-struct-to-a-c-ffi-interface
+/*
+ * This library has no main function to annotate with `#[tokio::main]`, but needs a run-time. 
+ * This function creates a tokio runtime and boxes it so the runtime can live in the front-end.
+ * 
+ * https://stackoverflow.com/questions/66196972/ and https://stackoverflow.com/questions/64658556/ are helpful.
+ */
 #[no_mangle]
 pub extern "C" fn presage_rust_init() -> *mut tokio::runtime::Runtime {
-    // https://stackoverflow.com/questions/64658556/
     let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").enable_io().enable_time().build().unwrap();
     let runtime_box = Box::new(runtime);
     Box::into_raw(runtime_box)
@@ -65,125 +71,32 @@ pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
     }
 }
 
+/*
+ * Around the core's main function.
+ * 
+ * According to https://docs.rs/tokio/latest/tokio/task/struct.LocalSet.html, 
+ * the top call must be blocking. So this blocks until the main function finishes.
+ */
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_main(
     rt: *mut tokio::runtime::Runtime,
     account: *const std::os::raw::c_void,
     c_store_path: *const std::os::raw::c_char,
 ) {
-    let store_path: String = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
+    let store_path = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
+    
+    // create a channel for asynchronous communication of commands c → rust
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = Presage::from_account(account);
     message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
-    append_message(&message);
+    append_message(&message); // let front-end know how to reach us
+    
+    // now execute the actual program
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
         let local = tokio::task::LocalSet::new();
-        local
-            .run_until(async {
-                // from main
-                let passphrase: Option<String> = None;
-                //println!("rust: opening config database from {store_path}");
-                let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise);
-                match config_store {
-                    Err(err) => {
-                        println!("rust: config_store Err {err:?}");
-                    }
-                    Ok(config_store) => {
-                        println!("rust: config_store OK");
-                        crate::core::mainloop(config_store, rx, account).await;
-                    }
-                }
-            })
-            .await;
+        local.run_until(crate::core::main(store_path, None, rx, account)).await;
     });
     println!("rust: main finished.");
-}
-
-unsafe fn send_cmd(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-    cmd: crate::commands::Cmd,
-) {
-    let command_tx = tx.as_ref().unwrap();
-    let runtime = rt.as_ref().unwrap();
-    match runtime.block_on(command_tx.send(cmd)) {
-        Ok(()) => {
-            //println!("rust: command_tx.send OK");
-        }
-        Err(err) => {
-            println!("rust: command_tx.send {err}");
-        }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_link(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-    c_device_name: *const std::os::raw::c_char,
-) {
-    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
-    println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
-    // from args
-    let server = presage::prelude::SignalServers::Production;
-    //let server = presage::prelude::SignalServers::Staging;
-    let cmd = crate::commands::Cmd::LinkDevice {
-        device_name: device_name,
-        servers: server,
-    };
-    send_cmd(rt, tx, cmd);
-    println!("rust: presage_rust_link ends now");
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_stop(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-) {
-    let cmd = crate::commands::Cmd::Exit {};
-    send_cmd(rt, tx, cmd);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_exit(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-) {
-    let cmd = crate::commands::Cmd::Exit {};
-    send_cmd(rt, tx, cmd);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_whoami(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-) {
-    let cmd = crate::commands::Cmd::Whoami {};
-    send_cmd(rt, tx, cmd);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_receive(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-) {
-    let cmd = crate::commands::Cmd::Receive {};
-    send_cmd(rt, tx, cmd);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_send(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
-    c_uuid: *const std::os::raw::c_char,
-    c_message: *const std::os::raw::c_char,
-) {
-    let cmd = crate::commands::Cmd::Send {
-        // TODO: add error handling instead of unwrap()
-        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap(),
-        message: std::ffi::CStr::from_ptr(c_message).to_str().unwrap().to_owned(),
-    };
-    send_cmd(rt, tx, cmd);
 }

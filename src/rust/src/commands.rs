@@ -1,4 +1,4 @@
-// Cmd Struct taken from presage-cli main
+// struct taken from presage-cli
 #[derive(Debug)]
 pub enum Cmd {
     LinkDevice {
