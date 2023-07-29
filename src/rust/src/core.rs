@@ -10,37 +10,24 @@ async fn run<C: presage::Store + 'static>(
             device_name,
         } => {
             let (provisioning_link_tx, provisioning_link_rx) = futures::channel::oneshot::channel();
-            let join_handle = futures::future::join(
-                presage::Manager::link_secondary_device(
-                    config_store,
-                    servers,
-                    device_name.clone(),
-                    provisioning_link_tx,
-                ),
-                async move {
-                    match provisioning_link_rx.await {
-                        Ok(url) => {
-                            println!("rust: qr code ok.");
-                            println!("rust: now calling presage_append_message…");
-                            let mut message = crate::bridge::Presage::from_account(account);
-                            message.qrcode =
-                                std::ffi::CString::new(url.to_string()).unwrap().into_raw();
-                            unsafe {
-                                crate::bridge::presage_append_message(&message);
-                            }
-                        }
-                        Err(e) => println!("Error linking device: {e}"),
+            let join_handle = futures::future::join(presage::Manager::link_secondary_device(config_store, servers, device_name.clone(), provisioning_link_tx), async move {
+                match provisioning_link_rx.await {
+                    Ok(url) => {
+                        println!("rust: qr code ok.");
+                        println!("rust: now calling presage_append_message…");
+                        let mut message = crate::bridge::Presage::from_account(account);
+                        message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
+                        crate::bridge::append_message(&message);
                     }
-                },
-            )
+                    Err(e) => println!("Error linking device: {e}"),
+                }
+            })
             .await;
 
             let mut message = crate::bridge::Presage::from_account(account);
             let qrcode_done = String::from("");
             message.qrcode = std::ffi::CString::new(qrcode_done).unwrap().into_raw();
-            unsafe {
-                crate::bridge::presage_append_message(&message);
-            }
+            crate::bridge::append_message(&message);
             let (manager, _) = join_handle;
             manager
         }
@@ -51,9 +38,7 @@ async fn run<C: presage::Store + 'static>(
             let uuid = whoami.uuid.to_string();
             let mut message = crate::bridge::Presage::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-            unsafe {
-                crate::bridge::presage_append_message(&message);
-            }
+            crate::bridge::append_message(&message);
             Ok(manager)
         }
 
@@ -81,8 +66,7 @@ pub async fn mainloop(
     mut rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,
     account: *const std::os::raw::c_void,
 ) {
-    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> =
-        None;
+    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
             crate::commands::Cmd::Exit => {
@@ -102,9 +86,7 @@ pub async fn mainloop(
                         let uuid = String::from("");
                         let mut message = crate::bridge::Presage::from_account(account);
                         message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                        unsafe {
-                            crate::bridge::presage_append_message(&message);
-                        }
+                        crate::bridge::append_message(&message);
                     }
                     Err(presage::Error::ServiceError(err)) => {
                         // can happen during whoami or send, possibly others, after main device has revoked the link
@@ -114,11 +96,8 @@ pub async fn mainloop(
                                 // tell the front-end we lost authorization
                                 let uuid = String::from("");
                                 let mut message = crate::bridge::Presage::from_account(account);
-                                message.uuid =
-                                    std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                                unsafe {
-                                    crate::bridge::presage_append_message(&message);
-                                }
+                                message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                                crate::bridge::append_message(&message);
                             }
                             _ => {
                                 println!("rust: run ServiceError {err:?}");

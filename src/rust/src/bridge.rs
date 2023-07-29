@@ -30,19 +30,20 @@ impl Presage {
 }
 
 extern "C" {
-    pub fn presage_append_message(input: *const Presage);
+    fn presage_append_message(message: *const Presage);
+}
+
+pub fn append_message(message: *const Presage) {
+    unsafe {
+        presage_append_message(message);
+    }
 }
 
 // https://stackoverflow.com/questions/66196972/how-to-pass-a-reference-pointer-to-a-rust-struct-to-a-c-ffi-interface
 #[no_mangle]
 pub extern "C" fn presage_rust_init() -> *mut tokio::runtime::Runtime {
     // https://stackoverflow.com/questions/64658556/
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .thread_name("presage Tokio")
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").enable_io().enable_time().build().unwrap();
     let runtime_box = Box::new(runtime);
     Box::into_raw(runtime_box)
 }
@@ -70,17 +71,12 @@ pub unsafe extern "C" fn presage_rust_main(
     account: *const std::os::raw::c_void,
     c_store_path: *const std::os::raw::c_char,
 ) {
-    let store_path: String = std::ffi::CStr::from_ptr(c_store_path)
-        .to_str()
-        .unwrap()
-        .to_owned();
+    let store_path: String = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = Presage::from_account(account);
     message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
-    unsafe {
-        presage_append_message(&message);
-    }
+    append_message(&message);
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
         let local = tokio::task::LocalSet::new();
@@ -89,11 +85,7 @@ pub unsafe extern "C" fn presage_rust_main(
                 // from main
                 let passphrase: Option<String> = None;
                 //println!("rust: opening config database from {store_path}");
-                let config_store = presage_store_sled::SledStore::open_with_passphrase(
-                    store_path,
-                    passphrase,
-                    presage_store_sled::MigrationConflictStrategy::Raise,
-                );
+                let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise);
                 match config_store {
                     Err(err) => {
                         println!("rust: config_store Err {err:?}");
@@ -132,10 +124,7 @@ pub unsafe extern "C" fn presage_rust_link(
     tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
     c_device_name: *const std::os::raw::c_char,
 ) {
-    let device_name: String = std::ffi::CStr::from_ptr(c_device_name)
-        .to_str()
-        .unwrap()
-        .to_owned();
+    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
     println!("rust: presage_rust_link invoked successfully! device_name is {device_name}");
     // from args
     let server = presage::prelude::SignalServers::Production;
@@ -180,7 +169,7 @@ pub unsafe extern "C" fn presage_rust_receive(
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::commands::Cmd>,
 ) {
-    let cmd= crate::commands::Cmd::Receive {};
+    let cmd = crate::commands::Cmd::Receive {};
     send_cmd(rt, tx, cmd);
 }
 
@@ -193,12 +182,8 @@ pub unsafe extern "C" fn presage_rust_send(
 ) {
     let cmd = crate::commands::Cmd::Send {
         // TODO: add error handling instead of unwrap()
-        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap())
-            .unwrap(),
-        message: std::ffi::CStr::from_ptr(c_message)
-            .to_str()
-            .unwrap()
-            .to_owned(),
+        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap(),
+        message: std::ffi::CStr::from_ptr(c_message).to_str().unwrap().to_owned(),
     };
     send_cmd(rt, tx, cmd);
 }
