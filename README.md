@@ -1,8 +1,40 @@
 A proof of concept using [presage](https://github.com/whisperfish/presage) in libpurple.
 
-### Linux
+## Set-up
 
-#### Build
+1. Create a new Pidgin account. Enter your Signal account UUID as username. In case you do not know your UUID, just enter anything. The plug-in will tell you what to use.
+2. Enable the connection. A window with the QR-code should pop-up. Scan it with your master device. Wait for the window to close.
+
+## Features
+
+### Present
+
+* Can link against a master device via QR-Code.
+* Can receive a simple text message from a contact.
+* Can reply with a simple text message.
+* Can add contacts to buddy list manually
+
+### Missing
+
+Everything else, most notably:
+
+* Error handling
+* Group chat
+* Contact management
+* Attachments, stickers, mentions, replies, quotes, styles,…
+* Support for phone numbers
+* Support for alternative UIs
+
+This list is not exhaustive.
+
+### Known Issues
+
+* Own messages sent via other device are displayed as written by contact.
+* Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is no error handling, the user cannot to know for sure.
+
+## Building
+
+### Linux
 
     git clone --recurse-submodules https://github.com/hoehermann/purple-presage
     mkdir purple-presage/build
