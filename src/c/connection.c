@@ -9,7 +9,7 @@ DWORD WINAPI
 void * 
 #endif 
 rust_main(void* account) {
-    const char *user_dir = purple_user_dir();
+    const char *user_dir = purple_config_dir();
     const char *username = purple_account_get_username(account);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
     presage_rust_main(rust_runtime, account, store_path);
@@ -24,12 +24,12 @@ void presage_login(PurpleAccount *account) {
     purple_debug_info(PLUGIN_NAME, "rust_runtime is at %p\n", rust_runtime);
     PurpleConnection *connection = purple_account_get_connection(account);
     // this protocol does not support anything special right now
-    PurpleConnectionFlags pc_flags = connection->flags;
-    pc_flags |= PURPLE_CONNECTION_NO_IMAGES;
-    pc_flags |= PURPLE_CONNECTION_NO_FONTSIZE;
-    pc_flags |= PURPLE_CONNECTION_NO_BGCOLOR;
-    connection->flags = pc_flags;
-    purple_connection_set_state(connection, PURPLE_CONNECTING);
+    PurpleConnectionFlags pc_flags = purple_connection_get_flags(connection);
+    pc_flags |= PURPLE_CONNECTION_FLAG_NO_IMAGES;
+    pc_flags |= PURPLE_CONNECTION_FLAG_NO_FONTSIZE;
+    pc_flags |= PURPLE_CONNECTION_FLAG_NO_BGCOLOR;
+    purple_connection_set_flags(connection, pc_flags);
+    purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTING);
     Presage *presage = g_new0(Presage, 1);
     presage->account = account;
     purple_connection_set_protocol_data(connection, presage);
@@ -44,7 +44,7 @@ void presage_login(PurpleAccount *account) {
         pthread_detach(presage_thread);
     } else {
         gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background: %s", strerror(err));
-        purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
+        purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
         g_free(errmsg);
     }
     #endif

@@ -1,9 +1,13 @@
 #pragma once
 
-#include <purple.h>
+#include "hehoe-purple2and3/purple.h"
 #include <stdint.h>
 
 #define PLUGIN_NAME "presage"
+
+// https://github.com/LLNL/lbann/issues/117#issuecomment-334333286
+#define MAKE_STR(x) _MAKE_STR(x)
+#define _MAKE_STR(x) #x
 
 // these should be supplied by rust in some way
 typedef struct _RustRuntime * RustRuntimePtr;
@@ -31,6 +35,9 @@ typedef struct {
     char *body;
 } Presage;
 
+// procotol properties
+GList * presage_status_types(PurpleAccount *account);
+
 // connection
 void presage_login(PurpleAccount *account);
 void presage_close(PurpleConnection *pc);
@@ -46,3 +53,4 @@ int presage_send_im(PurpleConnection *connection, const char *who, const char *m
 
 // contact management
 void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleGroup *group);
+void presage_blist_buddies_all_set_state(PurpleAccount *account, const gchar *status_str);

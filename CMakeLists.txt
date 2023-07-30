@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.24) # for COMPILE_WARNING_AS_ERROR
 
 project("purple-presage")
 
@@ -29,23 +29,25 @@ add_library(${TARGET_NAME} SHARED
     "src/c/direct.c"
     "src/c/contact.c"
     "src/c/status.c"
-    "src/c/hehoe-common/blist.c"
-    "src/c/hehoe-common/blist.h"
     "src/c/presage.h"
+    "src/c/hehoe-purple2and3/purple.h"
 )
 if (${PURPLE_VERSION} VERSION_LESS "3.0.0")
 target_sources(${TARGET_NAME} PRIVATE
     "src/c/init2.c"
+    "src/c/hehoe-purple2and3/purple-2.h"
 )
 else()
 target_sources(${TARGET_NAME} PRIVATE
     "src/c/init3.c"
+    "src/c/init3.h"
+    "src/c/hehoe-purple2and3/purple-3.c"
+    "src/c/hehoe-purple2and3/purple-3.h"
 )
 endif()
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
-
 if (WIN32)
     target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib)
 else()
@@ -53,6 +55,7 @@ else()
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
     # gcc_s util rt pthread m dl c
 endif()
+set_property(TARGET purple-presage PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" PLUGIN_VERSION)
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})

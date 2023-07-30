@@ -22,9 +22,6 @@
 #ifndef PLUGIN_VERSION
 #error Must set PLUGIN_VERSION in build system
 #endif
-// https://github.com/LLNL/lbann/issues/117#issuecomment-334333286
-#define MAKE_STR(x) _MAKE_STR(x)
-#define _MAKE_STR(x) #x
 
 RustRuntimePtr rust_runtime = NULL;
 
@@ -57,7 +54,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .struct_size = sizeof(PurplePluginProtocolInfo), // must be set for PURPLE_PROTOCOL_PLUGIN_HAS_FUNC to work across versions
     .list_icon = list_icon,
     .options = OPT_PROTO_NO_PASSWORD,
-    .status_types = status_types, // this actually needs to exist, else the protocol cannot be set to "online"
+    .status_types = presage_status_types, // this actually needs to exist, else the protocol cannot be set to "online"
     .login = presage_login,
     .close = presage_close,
     .send_im = presage_send_im,

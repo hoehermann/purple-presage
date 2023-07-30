@@ -1,5 +1,4 @@
 #include "presage.h"
-#include "hehoe-common/blist.h"
 #include <qrencode.h>
 
 static void qrcode_hide(PurpleConnection *connection, PurpleRequestFields *fields) {
@@ -7,7 +6,7 @@ static void qrcode_hide(PurpleConnection *connection, PurpleRequestFields *field
 }
 
 static void qrcode_cancel(PurpleConnection *connection, PurpleRequestFields *fields) {
-    purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "Linking was cancelled.");
+    purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "Linking was cancelled.");
 }
 
 static void show_qrcode(PurpleConnection *connection, gchar* qrimgdata, gsize qrimglen) {
@@ -30,9 +29,7 @@ static void show_qrcode(PurpleConnection *connection, gchar* qrimgdata, gsize qr
         fields,
         "Hide", G_CALLBACK(qrcode_hide), 
         "Cancel", G_CALLBACK(qrcode_cancel),
-        account, 
-        purple_account_get_username(account), 
-        NULL, 
+        purple_request_cpar_from_account(account),
         connection);
 }
 
@@ -103,11 +100,11 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
             presage->uuid = g_strdup(uuid);
             purple_request_close_with_handle(connection); // close request displaying the QR code
             presage_rust_receive(rust_runtime, presage->tx_ptr);
-            purple_connection_set_state(connection, PURPLE_CONNECTED);
-            hehoe_blist_buddies_all_set_state(account, purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE)); // TODO: make user configurable
+            purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
+            presage_blist_buddies_all_set_state(account, purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE)); // TODO: make user configurable
         } else {
             char * errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
-            purple_connection_error_reason(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
+            purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
             g_free(errmsg);
         }
     }

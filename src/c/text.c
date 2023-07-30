@@ -16,13 +16,13 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
         if (flags & PURPLE_MESSAGE_SEND) {
             // display message sent from own account (other device as well as local echo)
             // cannot use purple_serv_got_im since it sets the flag PURPLE_MESSAGE_RECV
-            PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, account);
+            PurpleConversation *conv = purple_conversation_find_im_by_name(who, account);
             if (conv == NULL) {
-                conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, account, who); // MEMCHECK: caller takes ownership
+                conv = purple_im_conversation_new(account, who); // MEMCHECK: caller takes ownership
             }
             purple_conv_im_write(purple_conversation_get_im_data(conv), who, text, flags, timestamp/1000);
         } else {
-            serv_got_im(connection, who, text, flags, timestamp/1000);
+            purple_serv_got_im(connection, who, text, flags, timestamp/1000);
         }
     } else {
         // TODO
