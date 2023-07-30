@@ -32,19 +32,6 @@ static const char * list_icon(PurpleAccount *account, PurpleBuddy *buddy) {
     return "signal";
 }
 
-static GList * status_types(PurpleAccount *account) {
-    GList *types = NULL;
-    {
-        PurpleStatusType * status = purple_status_type_new(PURPLE_STATUS_AVAILABLE, NULL, NULL, TRUE);
-        types = g_list_append(types, status);
-    }
-    {
-        PurpleStatusType * status = purple_status_type_new(PURPLE_STATUS_OFFLINE, NULL, NULL, TRUE);
-        types = g_list_append(types, status);
-    }
-    return types;
-}
-
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
     if (rust_runtime != NULL) {
         return FALSE;

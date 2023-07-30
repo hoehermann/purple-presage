@@ -9,6 +9,7 @@ message(STATUS "PURPLE_LIBRARY_DIRS: ${PURPLE_LIBRARY_DIRS}")
 message(STATUS "PURPLE_LIBRARIES: ${PURPLE_LIBRARIES}")
 message(STATUS "PURPLE_PLUGIN_DIR: ${PURPLE_PLUGIN_DIR}")
 message(STATUS "PURPLE_DATA_DIR: ${PURPLE_DATA_DIR}")
+message(STATUS "PURPLE_VERSION: ${PURPLE_VERSION}")
 
 find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
 find_library(QRENCODE_LIBRARIES qrencode)
@@ -20,18 +21,27 @@ set(Rust_PROFILE "release" CACHE STRING "dev or release")
 corrosion_import_crate(MANIFEST_PATH src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
 
 set(TARGET_NAME purple-presage)
-add_library(${TARGET_NAME} SHARED 
-    "src/c/init.c"
+add_library(${TARGET_NAME} SHARED
     "src/c/bridge.c"
     "src/c/connection.c"
     "src/c/qrcode.c"
     "src/c/text.c"
     "src/c/direct.c"
     "src/c/contact.c"
+    "src/c/status.c"
     "src/c/hehoe-common/blist.c"
     "src/c/hehoe-common/blist.h"
     "src/c/presage.h"
 )
+if (${PURPLE_VERSION} VERSION_LESS "3.0.0")
+target_sources(${TARGET_NAME} PRIVATE
+    "src/c/init2.c"
+)
+else()
+target_sources(${TARGET_NAME} PRIVATE
+    "src/c/init3.c"
+)
+endif()
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
@@ -56,4 +66,6 @@ else()
     install(TARGETS ${TARGET_NAME} DESTINATION "${PURPLE_PLUGIN_DIR}")
 endif()
 
-install(DIRECTORY "pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
+if ("${PURPLE_VERSION}" VERSION_LESS "3.0.0")
+    install(DIRECTORY "pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
+endif()
