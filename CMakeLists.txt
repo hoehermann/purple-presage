@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.24) # for COMPILE_WARNING_AS_ERROR
+﻿cmake_minimum_required(VERSION 3.18) # see submodules/purple-cmake
 
 project("purple-presage")
 
@@ -55,7 +55,7 @@ else()
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
     # gcc_s util rt pthread m dl c
 endif()
-set_property(TARGET purple-presage PROPERTY COMPILE_WARNING_AS_ERROR ON)
+set_property(TARGET purple-presage PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
 
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" PLUGIN_VERSION)
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
