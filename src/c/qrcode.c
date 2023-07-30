@@ -9,18 +9,20 @@ static void qrcode_cancel(PurpleConnection *connection, PurpleRequestFields *fie
     purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "Linking was cancelled.");
 }
 
-static void show_qrcode(PurpleConnection *connection, gchar* qrimgdata, gsize qrimglen) {
+static void show_qrcode(PurpleConnection *connection, const char *qrstring, gchar* qrimgdata, gsize qrimglen) {
     // Dispalay qrcode for scanning
     PurpleRequestFields* fields = purple_request_fields_new();
     PurpleRequestFieldGroup* group = purple_request_field_group_new(NULL);
-    PurpleRequestField* field;
 
     purple_request_fields_add_group(fields, group);
-
-    field = purple_request_field_image_new(
-                "qr_code", "QR code",
-                 qrimgdata, qrimglen);
-    purple_request_field_group_add_field(group, field);
+    {
+        PurpleRequestField *field = purple_request_field_string_new("qr_string", "QR Code Data", qrstring, FALSE);
+        purple_request_field_group_add_field(group, field);
+    }
+    {
+        PurpleRequestField *field = purple_request_field_image_new("qr_code", "QR Code", qrimgdata, qrimglen);
+        purple_request_field_group_add_field(group, field);
+    }
 
     PurpleAccount *account = purple_connection_get_account(connection);
     purple_request_fields(
@@ -62,7 +64,7 @@ static void generate_and_show_qrcode(PurpleConnection *connection, const char *d
             }
         }
         QRcode_free(qrcode);
-        show_qrcode(connection, qrimgdata, qrimglen);
+        show_qrcode(connection, data, qrimgdata, qrimglen);
         g_free(qrimgdata);
     } else {
         purple_debug_info(PLUGIN_NAME, "qrcodegen failed.\n");
