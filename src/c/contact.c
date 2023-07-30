@@ -5,5 +5,5 @@
  * (i.e. by manual user interaction).
  */
 void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleGroup *group) {
-    //presage_assume_buddy_online(buddy); TODO
+    purple_prpl_got_user_status(purple_connection_get_account(connection), buddy->name, purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE) /* TODO: make user configurable */, NULL);
 }
