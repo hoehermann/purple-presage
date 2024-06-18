@@ -10,6 +10,7 @@ fn print_message<C: presage::store::Store>(
     content: &presage::libsignal_service::content::Content,
     account: *const std::os::raw::c_void,
 ) {
+    println!("rust: print_message called…");
     let Ok(thread) = presage::store::Thread::try_from(content) else {
         println!("rust: failed to derive thread from content");
         return;
@@ -185,12 +186,16 @@ pub async fn receive<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *const std::os::raw::c_void,
 ) {
+    println!("rust: receive on separate thread begins…");
     // TODO: presage docs say „As a client, it is heavily recommended to run this once in `ReceivingMode::InitialSync` once before enabling the possiblity of sending messages.“
     let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
     match messages {
         Ok(messages) => {
+            println!("rust: receive got a message");
             futures::pin_mut!(messages);
             while let Some(content) = messages.next().await {
+                // TODO: find out why this hangs forever (sending is possible, though)
+                println!("rust: receive got a message's content");
                 process_incoming_message(manager, &content, account).await;
             }
         }
@@ -199,4 +204,5 @@ pub async fn receive<C: presage::store::Store>(
             panic!("receive err {err}")
         }
     }
+    println!("rust: receive on separate thread finished.");
 }
