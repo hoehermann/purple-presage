@@ -3,14 +3,14 @@
  * 
  * Taken from presage-cli
  */
-pub async fn send<C: presage::Store + 'static>(
+pub async fn send<C: presage::store::Store + 'static>(
     message: &str,
-    uuid: &presage::prelude::Uuid,
-    manager: &mut presage::Manager<C, presage::Registered>,
+    uuid: &presage::libsignal_service::prelude::Uuid,
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
 ) -> Result<(), presage::Error<<C>::Error>> {
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
 
-    let message = presage::prelude::ContentBody::DataMessage(presage::prelude::DataMessage {
+    let message = presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
         body: Some(message.to_string()),
         timestamp: Some(timestamp),
         ..Default::default()

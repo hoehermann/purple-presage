@@ -5,49 +5,49 @@ use futures::StreamExt; // for Stream.next()
  * 
  * Based on presage-cli's `print_message`.
  */
-fn print_message<C: presage::Store>(
-    manager: &presage::Manager<C, presage::Registered>,
-    content: &presage::prelude::Content,
+fn print_message<C: presage::store::Store>(
+    manager: &presage::Manager<C, presage::manager::Registered>,
+    content: &presage::libsignal_service::content::Content,
     account: *const std::os::raw::c_void,
 ) {
-    let Ok(thread) = presage::Thread::try_from(content) else {
+    let Ok(thread) = presage::store::Thread::try_from(content) else {
         println!("rust: failed to derive thread from content");
         return;
     };
     let mut message = crate::bridge::Presage::from_account(account);
 
-    let format_data_message = |thread: &presage::Thread, data_message: &presage::prelude::content::DataMessage| {
+    let format_data_message = |thread: &presage::store::Thread, data_message: &presage::libsignal_service::content::DataMessage| {
         match data_message {
-            presage::prelude::content::DataMessage {
-                quote: Some(presage::prelude::proto::data_message::Quote {
+            presage::libsignal_service::content::DataMessage {
+                quote: Some(presage::proto::data_message::Quote {
                     text: Some(quoted_text),
                     ..
                 }),
                 body: Some(body),
                 ..
             } => Some(format!("Answer to message \"{quoted_text}\": {body}")),
-            presage::prelude::content::DataMessage {
+            presage::libsignal_service::content::DataMessage {
                 reaction:
-                    Some(presage::prelude::proto::data_message::Reaction {
+                    Some(presage::proto::data_message::Reaction {
                         target_sent_timestamp: Some(timestamp),
                         emoji: Some(emoji),
                         ..
                     }),
                 ..
             } => {
-                let Ok(Some(message)) = manager.message(thread, *timestamp) else {
+                let Ok(Some(message)) = manager.store().message(thread, *timestamp) else {
                         println!("rust: no message in {thread} sent at {timestamp}");
                         return None;
                     };
 
-                let presage::prelude::content::ContentBody::DataMessage(presage::prelude::DataMessage { body: Some(body), .. }) = message.body else {
+                let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { body: Some(body), .. }) = message.body else {
                         println!("rust: message reacted to has no body");
                         return None;
                     };
 
                 Some(format!("Reacted with {emoji} to message: \"{body}\""))
             }
-            presage::prelude::content::DataMessage {
+            presage::libsignal_service::content::DataMessage {
                 body: Some(body), ..
             } => Some(body.to_string()),
             c => {
@@ -80,36 +80,36 @@ fn print_message<C: presage::Store>(
     */
 
     enum Msg<'a> {
-        Received(&'a presage::Thread, String),
-        Sent(&'a presage::Thread, String),
+        Received(&'a presage::store::Thread, String),
+        Sent(&'a presage::store::Thread, String),
     }
 
     if let Some(msg) = match &content.body {
-        presage::prelude::content::ContentBody::NullMessage(_) => Some(Msg::Received(&thread, "Null message (for example deleted)".to_string())),
-        presage::prelude::content::ContentBody::DataMessage(data_message) => format_data_message(&thread, data_message).map(|body| Msg::Received(&thread, body)),
-        presage::prelude::content::ContentBody::SynchronizeMessage(presage::prelude::SyncMessage {
-            sent: Some(presage::prelude::proto::sync_message::Sent {
+        presage::libsignal_service::content::ContentBody::NullMessage(_) => Some(Msg::Received(&thread, "Null message (for example deleted)".to_string())),
+        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => format_data_message(&thread, data_message).map(|body| Msg::Received(&thread, body)),
+        presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
+            sent: Some(presage::proto::sync_message::Sent {
                 message: Some(data_message),
                 ..
             }),
             ..
         }) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
-        presage::prelude::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
+        presage::libsignal_service::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
         // TODO: forward this as typing message
-        //presage::prelude::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
+        //presage::libsignal_service::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
         c => {
             println!("rust: unsupported message {c:?}");
             None
         }
     } {
         let (who, group, body, sent) = match msg {
-            Msg::Received(presage::Thread::Contact(sender), body) => (sender.to_string(), String::from(""), body, false),
-            Msg::Sent(presage::Thread::Contact(recipient), body) => (recipient.to_string(), String::from(""), body, true),
-            Msg::Received(presage::Thread::Group(key), body) => {
+            Msg::Received(presage::store::Thread::Contact(sender), body) => (sender.to_string(), String::from(""), body, false),
+            Msg::Sent(presage::store::Thread::Contact(recipient), body) => (recipient.to_string(), String::from(""), body, true),
+            Msg::Received(presage::store::Thread::Group(key), body) => {
                 let group = hex::encode(key);
                 (content.metadata.sender.uuid.to_string(), group, body, false)
             }
-            Msg::Sent(presage::Thread::Group(key), body) => {
+            Msg::Sent(presage::store::Thread::Group(key), body) => {
                 let group = hex::encode(key);
                 (String::from(""), group, body, true)
             }
@@ -134,9 +134,9 @@ fn print_message<C: presage::Store>(
  * 
  * Based on presage-cli's `process_incoming_message`.
  */
-async fn process_incoming_message<C: presage::Store>(
-    manager: &mut presage::Manager<C, presage::Registered>,
-    content: &presage::prelude::Content,
+async fn process_incoming_message<C: presage::store::Store>(
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
+    content: &presage::libsignal_service::content::Content,
     account: *const std::os::raw::c_void,
 ) {
     print_message(manager, content, account);
@@ -181,11 +181,12 @@ async fn process_incoming_message<C: presage::Store>(
  * 
  * Based on presage-cli's `receive`.
  */
-pub async fn receive<C: presage::Store>(
-    manager: &mut presage::Manager<C, presage::Registered>,
+pub async fn receive<C: presage::store::Store>(
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    let messages = manager.receive_messages().await;
+    // TODO: presage docs say „As a client, it is heavily recommended to run this once in `ReceivingMode::InitialSync` once before enabling the possiblity of sending messages.“
+    let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
     match messages {
         Ok(messages) => {
             futures::pin_mut!(messages);

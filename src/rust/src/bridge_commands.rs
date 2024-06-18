@@ -25,8 +25,8 @@ pub unsafe extern "C" fn presage_rust_link(
     c_device_name: *const std::os::raw::c_char,
 ) {
     let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
-    let server = presage::prelude::SignalServers::Production;
-    //let server = presage::prelude::SignalServers::Staging;
+    let server = presage::libsignal_service::configuration::SignalServers::Production;
+    //let server = presage::libsignal_service::configuration::SignalServers::Staging;
     let cmd = crate::commands::Cmd::LinkDevice {
         device_name: device_name,
         servers: server,
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn presage_rust_send(
 ) {
     let cmd = crate::commands::Cmd::Send {
         // TODO: add error handling instead of unwrap()
-        uuid: presage::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap(),
+        uuid: presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap(),
         message: std::ffi::CStr::from_ptr(c_message).to_str().unwrap().to_owned(),
     };
     send_cmd(rt, tx, cmd);

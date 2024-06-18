@@ -2,14 +2,14 @@
 #[derive(Debug)]
 pub enum Cmd {
     LinkDevice {
-        servers: presage::prelude::SignalServers,
+        servers: presage::libsignal_service::configuration::SignalServers,
         device_name: String,
     },
     Exit,
     Whoami,
     Receive,
     Send {
-        uuid: presage::prelude::Uuid,
+        uuid: presage::libsignal_service::prelude::Uuid,
         message: String,
     },
 }

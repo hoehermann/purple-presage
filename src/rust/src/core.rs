@@ -3,12 +3,12 @@
  * 
  * Based on presage-cli's `run`.
  */
-async fn run<C: presage::Store + 'static>(
+async fn run<C: presage::store::Store + 'static>(
     subcommand: crate::commands::Cmd,
     config_store: C,
-    manager: Option<presage::Manager<C, presage::Registered>>,
+    manager: Option<presage::Manager<C, presage::manager::Registered>>,
     account: *const std::os::raw::c_void,
-) -> Result<presage::Manager<C, presage::Registered>, presage::Error<<C>::Error>> {
+) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
     match subcommand {
         crate::commands::Cmd::LinkDevice {
             servers,
@@ -78,7 +78,7 @@ pub async fn mainloop(
     mut rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,
     account: *const std::os::raw::c_void,
 ) {
-    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::Registered>> = None;
+    let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
             crate::commands::Cmd::Exit => {
@@ -104,7 +104,7 @@ pub async fn mainloop(
                         // can happen during whoami or send, possibly others, after main device has revoked the link
                         manager = None;
                         match err {
-                            presage::prelude::content::ServiceError::Unauthorized => {
+                            presage::libsignal_service::push_service::ServiceError::Unauthorized => {
                                 // tell the front-end we lost authorization
                                 let uuid = String::from("");
                                 let mut message = crate::bridge::Presage::from_account(account);
@@ -134,7 +134,7 @@ pub async fn mainloop(
  */
 pub async fn main(store_path: String, passphrase: Option<String>, rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,account: *const std::os::raw::c_void) {
     //println!("rust: opening config database from {store_path}");
-    let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise);
+    let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
     match config_store {
         Err(err) => {
             println!("rust: config_store Err {err:?}");
