@@ -8,13 +8,14 @@ name = "purple_presage_backend"
 path = "src/lib.rs"
 crate-type = ["staticlib"]
 
-# presage needs this, taken from https://github.com/whisperfish/presage/blob/0.6.1/Cargo.toml
+# presage needs this, taken from https://github.com/whisperfish/presage/blob/f93f2dee5b9f0ca3b30b545143194431d9136549/Cargo.toml
 [patch.crates-io]
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.1' }
 
 [dependencies]
-presage = { git = "https://github.com/whisperfish/presage", tag = "0.6.1" }
-presage-store-sled = { git = "https://github.com/whisperfish/presage", tag = "0.6.1" }
+# note: tag = "0.6.1" did not receive any SynchronizeMessage
+presage = { git = "https://github.com/whisperfish/presage", rev = "f93f2dee5b9f0ca3b30b545143194431d9136549" }
+presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "f93f2dee5b9f0ca3b30b545143194431d9136549" }
 
 hex = "*"
 #stdint = "0.2"
