@@ -1,7 +1,6 @@
-
 /*
  * Sends a text message to a contact identified by their uuid or to a group identified by its key.
- * 
+ *
  * Taken from presage-cli
  */
 pub async fn send<C: presage::store::Store + 'static>(

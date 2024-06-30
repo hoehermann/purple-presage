@@ -2,7 +2,7 @@ use futures::StreamExt; // for Stream.next()
 
 /*
  * Prepares a received message's text for the front-end.
- * 
+ *
  * Based on presage-cli's `print_message`.
  */
 fn print_message<C: presage::store::Store>(
@@ -37,14 +37,17 @@ fn print_message<C: presage::store::Store>(
                 ..
             } => {
                 let Ok(Some(message)) = manager.store().message(thread, *timestamp) else {
-                        println!("rust: no message in {thread} sent at {timestamp}");
-                        return None;
-                    };
+                    println!("rust: no message in {thread} sent at {timestamp}");
+                    return None;
+                };
 
-                let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { body: Some(body), .. }) = message.body else {
-                        println!("rust: message reacted to has no body");
-                        return None;
-                    };
+                let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
+                    body: Some(body), ..
+                }) = message.body
+                else {
+                    println!("rust: message reacted to has no body");
+                    return None;
+                };
 
                 Some(format!("Reacted with {emoji} to message: \"{body}\""))
             }
@@ -135,7 +138,7 @@ fn print_message<C: presage::store::Store>(
 
 /*
  * Prepares a received message (text and attachments) for further processing.
- * 
+ *
  * Based on presage-cli's `process_incoming_message`.
  */
 async fn process_incoming_message<C: presage::store::Store>(
@@ -180,9 +183,9 @@ async fn process_incoming_message<C: presage::store::Store>(
 
 /*
  * Receives messages from Signal servers.
- * 
+ *
  * Blocks forever.
- * 
+ *
  * Based on presage-cli's `receive`.
  */
 pub async fn receive<C: presage::store::Store>(

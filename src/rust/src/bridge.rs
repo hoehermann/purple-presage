@@ -42,9 +42,9 @@ pub fn append_message(message: *const Presage) {
 }
 
 /*
- * This library has no main function to annotate with `#[tokio::main]`, but needs a run-time. 
+ * This library has no main function to annotate with `#[tokio::main]`, but needs a run-time.
  * This function creates a tokio runtime and boxes it so the runtime can live in the front-end.
- * 
+ *
  * https://stackoverflow.com/questions/66196972/ and https://stackoverflow.com/questions/64658556/ are helpful.
  */
 #[no_mangle]
@@ -73,8 +73,8 @@ pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
 
 /*
  * Around the core's main function.
- * 
- * According to https://docs.rs/tokio/latest/tokio/task/struct.LocalSet.html, 
+ *
+ * According to https://docs.rs/tokio/latest/tokio/task/struct.LocalSet.html,
  * the top call must be blocking. So this blocks until the main function finishes.
  */
 #[no_mangle]
@@ -84,14 +84,14 @@ pub unsafe extern "C" fn presage_rust_main(
     c_store_path: *const std::os::raw::c_char,
 ) {
     let store_path = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
-    
+
     // create a channel for asynchronous communication of commands c → rust
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = Presage::from_account(account);
     message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
     append_message(&message); // let front-end know how to reach us
-    
+
     // now execute the actual program
     let runtime = rt.as_ref().unwrap();
     runtime.block_on(async {
