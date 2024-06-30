@@ -25,6 +25,15 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
             purple_serv_got_im(connection, who, text, flags, timestamp/1000);
         }
     } else {
-        // TODO
+        PurpleConversation *conv = purple_find_chat(connection, g_str_hash(group));
+        if (conv == NULL) {
+            conv = serv_got_joined_chat(connection, g_str_hash(group), group);
+            // TODO: obtain and set chat title
+        }
+        if (flags & PURPLE_MESSAGE_SEND) {
+            // the backend does not include the username for sync messages
+            who = purple_account_get_username(account);
+        }
+        purple_serv_got_chat_in(connection, g_str_hash(group), who, flags, text, timestamp);
     }
 }

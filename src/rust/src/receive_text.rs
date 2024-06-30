@@ -96,8 +96,9 @@ fn print_message<C: presage::store::Store>(
             ..
         }) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
-        // TODO: forward this as typing message
-        //presage::libsignal_service::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
+        // TODO: forward these properly
+        presage::libsignal_service::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
+        presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => Some(Msg::Received(&thread, "received a message.".into())),
         c => {
             println!("rust: unsupported message {c:?}");
             None
@@ -120,9 +121,11 @@ fn print_message<C: presage::store::Store>(
         message.timestamp = content.metadata.timestamp;
         message.sent = if sent { 1 } else { 0 };
         if who != "" {
+            // NOTE: for sync messages to groups, who is the empty string (see above)
             message.who = std::ffi::CString::new(who).unwrap().into_raw();
         }
         if group != "" {
+            // NOTE: in direct conversations, group is the empty string (see above)
             message.group = std::ffi::CString::new(group).unwrap().into_raw();
         }
         message.body = std::ffi::CString::new(body).unwrap().into_raw();

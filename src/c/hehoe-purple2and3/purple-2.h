@@ -30,3 +30,4 @@
 
 // serv
 #define purple_serv_got_im serv_got_im
+#define purple_serv_got_chat_in serv_got_chat_in

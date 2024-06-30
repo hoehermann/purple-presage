@@ -29,7 +29,6 @@ This list is not exhaustive.
 
 ### Known Issues
 
-* Own messages sent via other device are displayed as written by contact.
 * Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is no error handling, the user cannot to know for sure.
 
 ## Building
