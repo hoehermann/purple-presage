@@ -26,9 +26,10 @@ add_library(${TARGET_NAME} SHARED
     "src/c/connection.c"
     "src/c/qrcode.c"
     "src/c/text.c"
-    "src/c/direct.c"
+    "src/c/send.c"
     "src/c/contact.c"
     "src/c/status.c"
+    "src/c/groups.c"
     "src/c/presage.h"
     "src/c/hehoe-purple2and3/purple.h"
 )

@@ -4,13 +4,13 @@
  * Based on presage-cli's `run`.
  */
 async fn run<C: presage::store::Store + 'static>(
-    subcommand: crate::commands::Cmd,
+    subcommand: crate::structs::Cmd,
     config_store: C,
     manager: Option<presage::Manager<C, presage::manager::Registered>>,
     account: *const std::os::raw::c_void,
 ) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
     match subcommand {
-        crate::commands::Cmd::LinkDevice {
+        crate::structs::Cmd::LinkDevice {
             servers,
             device_name,
         } => {
@@ -37,7 +37,7 @@ async fn run<C: presage::store::Store + 'static>(
             manager
         }
 
-        crate::commands::Cmd::Whoami => {
+        crate::structs::Cmd::Whoami => {
             let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
             let uuid = whoami.uuid.to_string();
@@ -47,20 +47,20 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::commands::Cmd::Receive => {
+        crate::structs::Cmd::Receive => {
             let manager = manager.unwrap();
             let mut receiving_manager = manager.clone();
             tokio::task::spawn_local(async move { crate::receive_text::receive(&mut receiving_manager, account).await });
             Ok(manager)
         }
 
-        crate::commands::Cmd::Send { uuid, message } => {
+        crate::structs::Cmd::Send { recipient, message } => {
             let mut manager = manager.unwrap();
-            crate::send_text::send(&message, &uuid, &mut manager).await?;
+            crate::send_text::send(&mut manager, recipient, &message).await?;
             Ok(manager)
         }
 
-        crate::commands::Cmd::Exit {} => {
+        crate::structs::Cmd::Exit {} => {
             panic!("Exit command reached inner loop.");
         }
     }
@@ -75,13 +75,13 @@ async fn run<C: presage::store::Store + 'static>(
  */
 pub async fn mainloop(
     config_store: presage_store_sled::SledStore,
-    mut rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,
+    mut rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *const std::os::raw::c_void,
 ) {
     let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
-            crate::commands::Cmd::Exit => {
+            crate::structs::Cmd::Exit => {
                 break;
             }
             _ => {
@@ -132,7 +132,7 @@ pub async fn mainloop(
  * 
  * Based on presage-cli's main loop.
  */
-pub async fn main(store_path: String, passphrase: Option<String>, rx: tokio::sync::mpsc::Receiver<crate::commands::Cmd>,account: *const std::os::raw::c_void) {
+pub async fn main(store_path: String, passphrase: Option<String>, rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,account: *const std::os::raw::c_void) {
     //println!("rust: opening config database from {store_path}");
     let config_store = presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
     match config_store {

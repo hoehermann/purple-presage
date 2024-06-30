@@ -1,7 +1,7 @@
 #![no_main]
 
 mod bridge;
-mod commands;
+mod structs;
 mod bridge_commands;
 mod core;
 mod receive_text;

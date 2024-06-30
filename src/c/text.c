@@ -28,6 +28,7 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
         PurpleConversation *conv = purple_find_chat(connection, g_str_hash(group));
         if (conv == NULL) {
             conv = serv_got_joined_chat(connection, g_str_hash(group), group);
+            purple_conversation_set_data(conv, "name", g_strdup(group)); // MEMCHECK: this leaks, but there is no mechanism to stop it
             // TODO: obtain and set chat title
         }
         if (flags & PURPLE_MESSAGE_SEND) {

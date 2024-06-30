@@ -59,6 +59,8 @@ static PurplePluginProtocolInfo prpl_info = {
     .close = presage_close,
     .send_im = presage_send_im,
     .add_buddy = presage_add_buddy,
+    .set_chat_topic = presage_set_chat_topic,
+    .chat_send = presage_send_chat
 };
 
 static PurplePluginInfo info = {

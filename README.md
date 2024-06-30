@@ -10,7 +10,7 @@ A proof of concept using [presage](https://github.com/whisperfish/presage) in li
 ### Present
 
 * Can link against a master device via QR-Code.
-* Can receive a simple text message from a contact.
+* Can receive a simple text message from a contact or a group.
 * Can reply with a simple text message.
 * Can add contacts to buddy list manually
 
@@ -19,7 +19,6 @@ A proof of concept using [presage](https://github.com/whisperfish/presage) in li
 Everything else, most notably:
 
 * Error handling
-* Group chat
 * Contact management
 * Attachments, stickers, mentions, replies, quotes, styles,…
 * Support for phone numbers
