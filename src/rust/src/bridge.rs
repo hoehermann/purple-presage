@@ -10,6 +10,7 @@ pub struct Presage {
     pub sent: std::os::raw::c_ulonglong,      //stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
+    pub title: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
 }
 
@@ -24,6 +25,7 @@ impl Presage {
             sent: 0,
             who: std::ptr::null(),
             group: std::ptr::null(),
+            title: std::ptr::null(),
             body: std::ptr::null(),
         }
     }

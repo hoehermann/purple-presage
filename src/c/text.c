@@ -1,6 +1,6 @@
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, uint64_t sent, uint64_t timestamp, const char *text) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, const char *title, uint64_t sent, uint64_t timestamp, const char *text) {
     PurpleAccount *account = purple_connection_get_account(connection);
     PurpleMessageFlags flags = 0;
     if (sent) {
@@ -27,9 +27,15 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
     } else {
         PurpleConversation *conv = purple_find_chat(connection, g_str_hash(group));
         if (conv == NULL) {
-            conv = serv_got_joined_chat(connection, g_str_hash(group), group);
+            conv = serv_got_joined_chat(connection, g_str_hash(group), title); // TODO: be really sure about setting the name to the topic here
             purple_conversation_set_data(conv, "name", g_strdup(group)); // MEMCHECK: this leaks, but there is no mechanism to stop it
-            // TODO: obtain and set chat title
+            PurpleConvChat *conv_chat = purple_conversation_get_chat_data(conv);
+            purple_conv_chat_set_nick(conv_chat, purple_account_get_username(account));
+            /*
+            TODO: find out how to use this
+            purple_debug_info(PLUGIN_NAME, "Chat title is „%s“.\n", title);
+            purple_conv_chat_set_topic(conv_chat, NULL, title);
+            */
         }
         if (flags & PURPLE_MESSAGE_SEND) {
             // the backend does not include the username for sync messages

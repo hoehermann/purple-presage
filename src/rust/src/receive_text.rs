@@ -15,7 +15,6 @@ fn print_message<C: presage::store::Store>(
         println!("rust: failed to derive thread from content");
         return;
     };
-    let mut message = crate::bridge::Presage::from_account(account);
 
     let format_data_message = |thread: &presage::store::Thread, data_message: &presage::libsignal_service::content::DataMessage| {
         match data_message {
@@ -73,15 +72,16 @@ fn print_message<C: presage::store::Store>(
             .map(|c| format!("{}: {}", c.name, uuid))
             .unwrap_or_else(|| uuid.to_string())
     };
+    */
     let group_get_title = |key| {
         manager
+            .store()
             .group(key)
             .ok()
             .flatten()
             .map(|g| g.title)
             .unwrap_or_else(|| "<missing group>".to_string())
     };
-    */
 
     enum Msg<'a> {
         Received(&'a presage::store::Thread, String),
@@ -107,31 +107,34 @@ fn print_message<C: presage::store::Store>(
             None
         }
     } {
-        let (who, group, body, sent) = match msg {
-            Msg::Received(presage::store::Thread::Contact(sender), body) => (sender.to_string(), String::from(""), body, false),
-            Msg::Sent(presage::store::Thread::Contact(recipient), body) => (recipient.to_string(), String::from(""), body, true),
+        let mut message = crate::bridge::Presage::from_account(account);
+        message.timestamp = content.metadata.timestamp;
+        match msg {
+            Msg::Received(presage::store::Thread::Contact(sender), body) => {
+                message.sent = 0;
+                message.who = std::ffi::CString::new(sender.to_string()).unwrap().into_raw();
+                message.body = std::ffi::CString::new(body).unwrap().into_raw();
+            }
+            Msg::Sent(presage::store::Thread::Contact(recipient), body) => {
+                message.sent = 1;
+                message.who = std::ffi::CString::new(recipient.to_string()).unwrap().into_raw();
+                message.body = std::ffi::CString::new(body).unwrap().into_raw();
+            }
             Msg::Received(presage::store::Thread::Group(key), body) => {
-                let group = hex::encode(key);
-                (content.metadata.sender.uuid.to_string(), group, body, false)
+                message.sent = 0;
+                message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
+                message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
+                message.title = std::ffi::CString::new(group_get_title(*key)).unwrap().into_raw();
+                message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
             Msg::Sent(presage::store::Thread::Group(key), body) => {
-                let group = hex::encode(key);
-                (String::from(""), group, body, true)
+                message.sent = 1;
+                message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
+                message.title = std::ffi::CString::new(group_get_title(*key)).unwrap().into_raw();
+                message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
         };
-
-        println!("{who} in {group} wrote {body}");
-        message.timestamp = content.metadata.timestamp;
-        message.sent = if sent { 1 } else { 0 };
-        if who != "" {
-            // NOTE: for sync messages to groups, who is the empty string (see above)
-            message.who = std::ffi::CString::new(who).unwrap().into_raw();
-        }
-        if group != "" {
-            // NOTE: in direct conversations, group is the empty string (see above)
-            message.group = std::ffi::CString::new(group).unwrap().into_raw();
-        }
-        message.body = std::ffi::CString::new(body).unwrap().into_raw();
+        //println!("{who} in {group} wrote {body}");
         crate::bridge::append_message(&message);
     }
 }
