@@ -31,3 +31,8 @@
 // serv
 #define purple_serv_got_im serv_got_im
 #define purple_serv_got_chat_in serv_got_chat_in
+#define purple_serv_got_alias serv_got_alias
+
+// blist
+#define purple_blist_find_group purple_find_group
+#define purple_blist_find_buddy purple_find_buddy

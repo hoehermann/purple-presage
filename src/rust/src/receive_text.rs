@@ -62,17 +62,16 @@ fn print_message<C: presage::store::Store>(
         }
     };
 
-    /*
     let format_contact = |uuid| {
         manager
+            .store()
             .contact_by_id(uuid)
             .ok()
             .flatten()
             .filter(|c| !c.name.is_empty())
-            .map(|c| format!("{}: {}", c.name, uuid))
+            .map(|c| c.name)
             .unwrap_or_else(|| uuid.to_string())
     };
-    */
     let group_get_title = |key| {
         manager
             .store()
@@ -100,8 +99,8 @@ fn print_message<C: presage::store::Store>(
         }) => format_data_message(&thread, data_message).map(|body| Msg::Sent(&thread, body)),
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some(Msg::Received(&thread, "is calling!".into())),
         // TODO: forward these properly
-        presage::libsignal_service::content::ContentBody::TypingMessage(_) => Some(Msg::Received(&thread, "is typing...".into())),
-        presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => Some(Msg::Received(&thread, "received a message.".into())),
+        presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, //Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
+        presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, //Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
         c => {
             println!("rust: unsupported message {c:?}");
             None
@@ -113,6 +112,7 @@ fn print_message<C: presage::store::Store>(
             Msg::Received(presage::store::Thread::Contact(sender), body) => {
                 message.sent = 0;
                 message.who = std::ffi::CString::new(sender.to_string()).unwrap().into_raw();
+                message.name = std::ffi::CString::new(format_contact(sender)).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
             Msg::Sent(presage::store::Thread::Contact(recipient), body) => {
@@ -123,6 +123,7 @@ fn print_message<C: presage::store::Store>(
             Msg::Received(presage::store::Thread::Group(key), body) => {
                 message.sent = 0;
                 message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
+                message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.uuid)).unwrap().into_raw();
                 message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
                 message.title = std::ffi::CString::new(group_get_title(*key)).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();

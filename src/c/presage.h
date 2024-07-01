@@ -32,6 +32,7 @@ typedef struct {
     const uint64_t timestamp;
     const uint64_t sent;
     char *who;
+    char *name;
     char *group;
     char *title;
     char *body;
@@ -50,7 +51,7 @@ void presage_request_qrcode(PurpleConnection *connection);
 void presage_handle_uuid(PurpleConnection *connection, const char *uuid);
 
 // text messages
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *group, const char *title, uint64_t sent, uint64_t timestamp, const char *text);
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, uint64_t sent, uint64_t timestamp, const char *text);
 int presage_send_im(PurpleConnection *connection, const char *who, const char *message, PurpleMessageFlags flags);
 int presage_send_chat(PurpleConnection *connection, int id, const gchar *message, PurpleMessageFlags flags);
 
