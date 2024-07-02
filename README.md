@@ -1,20 +1,24 @@
 A proof of concept using [presage](https://github.com/whisperfish/presage) in libpurple.
 
-## Set-up
+### Download
+
+* [Latest Build for Windows](https://nightly.link/hoehermann/purple-presage/workflows/build/master/libpurple-presage.dll.zip)
+
+### Set-up
 
 1. Create a new Pidgin account. Enter your Signal account UUID as username. In case you do not know your UUID, just enter anything. The plug-in will tell you what to use.
 2. Enable the connection. A window with the QR-code should pop-up. Scan it with your master device. Wait for the window to close.
 
-## Features
+### Features
 
-### Present
+#### Present
 
 * Can link against a master device via QR-Code.
 * Can receive a simple text message from a contact or a group.
 * Can reply with a simple text message.
-* Can add contacts to buddy list manually
+* Can add contacts to buddy list manually.
 
-### Missing
+#### Missing
 
 Everything else, most notably:
 
@@ -30,9 +34,17 @@ This list is not exhaustive.
 
 * Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is no error handling, the user cannot to know for sure.
 
-## Building
+### Building
 
-### Linux
+#### Linux
+
+##### Dependencies
+
+* `libpurple-dev`
+* `libqrencode-dev`
+* `protobuf` (or any other package which provides the `protoc` compiler)
+
+##### Build
 
     git clone --recurse-submodules https://github.com/hoehermann/purple-presage
     mkdir purple-presage/build
@@ -41,11 +53,11 @@ This list is not exhaustive.
     cmake --build .
     sudo cmake --install .
 
-### Windows
+#### Windows
 
 purple-presage is known to compile with MSVC 19.30 and rust 1.71. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
 
-#### Dependencies
+##### Dependencies
 
 Install dependencies via vcpkg:
 
@@ -55,7 +67,7 @@ protoc needs to be in your PATH. You can install it with any method you like, in
 
     vcpkg.exe install protobuf
 
-#### Build
+##### Build
 
 Same as Linux build instructions, but may need to modify:
 
@@ -63,7 +75,7 @@ Same as Linux build instructions, but may need to modify:
 
         cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
 
-    If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.69-i686-pc-windows-msvc"`.
+    You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
@@ -71,7 +83,7 @@ Same as Linux build instructions, but may need to modify:
         cmake --install .
         cmake --build . --target run
 
-#### Notes
+##### Notes
 
 purple-presage must be built with MSVC. MinGW's GCC encountered a number of issues such as [incompatibility with rustc versions newer than 1.69](https://github.com/rust-lang/rust/issues/112368) and not shipping libbcrypt by default.
 
