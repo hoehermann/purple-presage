@@ -51,13 +51,17 @@ Install dependencies via vcpkg:
 
     vcpkg.exe install libqrencode:x86-windows-static
 
+protoc needs to be in your PATH. You can install it with any method you like, including vcpkg:
+
+    vcpkg.exe install protobuf
+
 #### Build
 
 Same as Linux build instructions, but may need to modify:
 
 1. Generate project:
 
-        cmake -DCMAKE_BUILD_TYPE=Debug -GNinja -DCMAKE_PREFIX_PATH=wherever/vcpkg/installed/x86-windows -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
 
     If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.69-i686-pc-windows-msvc"`.
 
