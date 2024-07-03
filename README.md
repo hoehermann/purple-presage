@@ -38,6 +38,14 @@ This list is not exhaustive.
 
 #### Linux
 
+##### Dependencies
+
+* `libpurple-dev`
+* `libqrencode-dev`
+* `protobuf` (or any other package which provides the `protoc` compiler)
+
+##### Build
+
     git clone --recurse-submodules https://github.com/hoehermann/purple-presage
     mkdir purple-presage/build
     cd purple-presage/build
@@ -67,7 +75,7 @@ Same as Linux build instructions, but may need to modify:
 
         cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
 
-    If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.69-i686-pc-windows-msvc"`.
+    You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
