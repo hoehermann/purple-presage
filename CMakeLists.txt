@@ -28,7 +28,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/qrcode.c"
     "src/c/text.c"
     "src/c/send.c"
-    "src/c/contact.c"
+    "src/c/blist.c"
     "src/c/status.c"
     "src/c/groups.c"
     "src/c/presage.h"
