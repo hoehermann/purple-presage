@@ -30,41 +30,7 @@ static int account_exists(PurpleAccount *account)
     return exists;
 }
 
-/*
- * Handle a message according to its content.
- */
-static void handle_message(Presage * message) {
-/*
-    if (gwamsg->msgtype == gowhatsapp_message_type_log) {
-        // log messages do not need an active connection
-        purple_debug(gwamsg->subtype, GOWHATSAPP_NAME, "%s", gwamsg->text);
-        return;
-    }
-*/
-    if (account_exists(message->account) == 0) {
-        purple_debug_warning(PLUGIN_NAME, "No account %p. Ignoring message.\n", message->account);
-        return;
-    }
-    PurpleConnection *connection = purple_account_get_connection(message->account);
-    if (connection == NULL) {
-        purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", message->account);
-        return;
-    }
-
-    Presage *presage = purple_connection_get_protocol_data(connection);
-    if (message->tx_ptr != NULL) {
-        presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
-        presage_rust_whoami(rust_runtime, presage->tx_ptr);
-    }
-    if (message->qrcode != NULL) {
-        presage_handle_qrcode(connection, message->qrcode);
-    }
-    if (message->uuid != NULL) {
-        presage_handle_uuid(connection, message->uuid);
-    }
-    if (message->body != NULL) {
-        presage_handle_text(connection, message->who, message->name, message->group, message->title, message->sent, message->timestamp, message->body);
-    }
+void free_message(Presage * message) {
     // release all the memory
     presage_rust_free(message->qrcode);
     presage_rust_free(message->uuid);
@@ -73,6 +39,44 @@ static void handle_message(Presage * message) {
     presage_rust_free(message->group);
     presage_rust_free(message->title);
     presage_rust_free(message->body);
+}
+
+/*
+ * Handle a message according to its content.
+ */
+static void handle_message(Presage * message) {
+    if (message->debug >= 0) {
+        // log messages do not need an active connection
+        purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
+        free_message(message);
+        return;
+    }
+    if (account_exists(message->account) == 0) {
+        purple_debug_warning(PLUGIN_NAME, "No account %p. Ignoring message.\n", message->account);
+        free_message(message);
+        return;
+    }
+    PurpleConnection *connection = purple_account_get_connection(message->account);
+    if (connection == NULL) {
+        purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", message->account);
+        free_message(message);
+        return;
+    }
+
+    Presage *presage = purple_connection_get_protocol_data(connection);
+    if (message->tx_ptr != NULL) {
+        presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
+        presage_rust_whoami(rust_runtime, presage->tx_ptr);
+    } else if (message->qrcode != NULL) {
+        presage_handle_qrcode(connection, message->qrcode);
+    } else if (message->uuid != NULL) {
+        presage_handle_uuid(connection, message->uuid);
+    } else if (message->error >= 0) {
+        purple_connection_error(connection, message->error, message->body);
+    } else if (message->body != NULL) {
+        presage_handle_text(connection, message->who, message->name, message->group, message->title, message->sent, message->timestamp, message->body);
+    }
+    free_message(message);
 }
 
 /*

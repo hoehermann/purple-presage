@@ -210,8 +210,10 @@ pub async fn receive<C: presage::store::Store>(
             }
         }
         Err(err) => {
-            // TODO: forward error to front-end
-            panic!("receive err {err}")
+            let mut message = crate::bridge::Presage::from_account(account);
+            message.error = 15; // PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR
+            message.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();
+            crate::bridge::append_message(&message);
         }
     }
     println!("rust: receive on separate thread finished.");

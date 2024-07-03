@@ -1,4 +1,60 @@
 /*
+Look at these error levels from Purple:
+ 
+typedef enum
+{
+	PURPLE_CONNECTION_ERROR_NETWORK_ERROR = 0,
+	PURPLE_CONNECTION_ERROR_INVALID_USERNAME = 1,
+	PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED = 2,
+	PURPLE_CONNECTION_ERROR_AUTHENTICATION_IMPOSSIBLE = 3,
+	PURPLE_CONNECTION_ERROR_NO_SSL_SUPPORT = 4,
+	PURPLE_CONNECTION_ERROR_ENCRYPTION_ERROR = 5,
+	PURPLE_CONNECTION_ERROR_NAME_IN_USE = 6,
+	PURPLE_CONNECTION_ERROR_INVALID_SETTINGS = 7,
+	PURPLE_CONNECTION_ERROR_CERT_NOT_PROVIDED = 8,
+	PURPLE_CONNECTION_ERROR_CERT_UNTRUSTED = 9,
+	PURPLE_CONNECTION_ERROR_CERT_EXPIRED = 10,
+	PURPLE_CONNECTION_ERROR_CERT_NOT_ACTIVATED = 11,
+	PURPLE_CONNECTION_ERROR_CERT_HOSTNAME_MISMATCH = 12,
+	PURPLE_CONNECTION_ERROR_CERT_FINGERPRINT_MISMATCH = 13,
+	PURPLE_CONNECTION_ERROR_CERT_SELF_SIGNED = 14,
+	PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR = 15,
+	PURPLE_CONNECTION_ERROR_OTHER_ERROR = 16
+} PurpleConnectionError;
+
+TODO: Automatically convert from libpurple/connection.h.
+*/
+
+pub fn purple_error(account: *const std::os::raw::c_void, level:i32, msg: String) {
+    let mut message = crate::bridge::Presage::from_account(account);
+    message.error = level;
+    message.body = std::ffi::CString::new(msg).unwrap().into_raw();
+    crate::bridge::append_message(&message);
+}
+
+/*
+Look at these debug levels from Purple:
+ 
+typedef enum
+{
+	PURPLE_DEBUG_ALL = 0,  /**< All debug levels.              */
+	PURPLE_DEBUG_MISC,     /**< General chatter.               */
+	PURPLE_DEBUG_INFO,     /**< General operation Information. */
+	PURPLE_DEBUG_WARNING,  /**< Warnings.                      */
+	PURPLE_DEBUG_ERROR,    /**< Errors.                        */
+	PURPLE_DEBUG_FATAL     /**< Fatal errors.                  */
+} PurpleDebugLevel;
+
+TODO: Automatically convert from libpurple/debug.h.
+*/
+pub fn purple_debug(account: *const std::os::raw::c_void, level:i32, msg: String) {
+    let mut message = crate::bridge::Presage::from_account(account);
+    message.debug = level;
+    message.body = std::ffi::CString::new(msg).unwrap().into_raw();
+    crate::bridge::append_message(&message);
+}
+
+/*
  * Runs a command.
  *
  * Based on presage-cli's `run`.
@@ -85,7 +141,7 @@ pub async fn mainloop(
                 break;
             }
             _ => {
-                println!("rust: run {:?} begins…", cmd);
+                purple_debug(account, 2, format!("run {:?} begins…\n", cmd));
                 // TODO: find out if config_store.clone() is the correct thing to do here
                 match run(cmd, config_store.clone(), manager, account).await {
                     Ok(m) => {
@@ -121,7 +177,7 @@ pub async fn mainloop(
                         println!("rust: run Err {err:?}");
                     }
                 }
-                println!("rust: run finished.");
+                purple_debug(account, 2, String::from("run finished.\n"));
             }
         }
     }
@@ -143,10 +199,10 @@ pub async fn main(
         presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
     match config_store {
         Err(err) => {
-            println!("rust: config_store Err {err:?}");
+            purple_error(account, 16, format!("config_store Err {err:?}"));
         }
         Ok(config_store) => {
-            println!("rust: config_store OK");
+            purple_debug(account, 2, String::from("config_store OK\n"));
             mainloop(config_store, rx, account).await;
         }
     }

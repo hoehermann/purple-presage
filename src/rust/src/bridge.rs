@@ -1,10 +1,12 @@
+// TODO: automatically create C header from this declaration
 #[repr(C)]
 pub struct Presage {
     pub account: *const std::os::raw::c_void,
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
     pub uuid: *const std::os::raw::c_char,
-
+    pub debug: std::os::raw::c_int,
+    pub error: std::os::raw::c_int,
     // TODO: find out how to use stdint on Windows
     pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
     pub sent: std::os::raw::c_ulonglong,      //stdint::uint64_t,
@@ -22,6 +24,8 @@ impl Presage {
             tx_ptr: std::ptr::null_mut(),
             qrcode: std::ptr::null(),
             uuid: std::ptr::null(),
+            debug: -1,
+            error: -1,
             timestamp: 0,
             sent: 0,
             who: std::ptr::null(),

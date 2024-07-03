@@ -24,11 +24,14 @@ void presage_rust_free(char *);
 
 extern RustRuntimePtr rust_runtime;
 
+// TODO: generate this struct declaration automatically from rust declaration
 typedef struct {
     PurpleAccount *account;
     RustChannelPtr tx_ptr;
     char *qrcode;
     char *uuid;
+    const int32_t debug;
+    const int32_t error;
     const uint64_t timestamp;
     const uint64_t sent;
     char *who;
