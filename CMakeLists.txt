@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.18) # see submodules/purple-cmake
+cmake_minimum_required(VERSION 3.18) # see submodules/purple-cmake
 
 project("purple-presage")
 
@@ -15,12 +15,13 @@ find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
 find_library(QRENCODE_LIBRARIES qrencode)
 
 include(FetchContent)
-FetchContent_Declare( Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
+FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
 FetchContent_MakeAvailable(Corrosion)
-set(Rust_PROFILE "release" CACHE STRING "dev or release")
+set(Rust_PROFILE "release" CACHE STRING "Rust profile")
+set_property(CACHE Rust_PROFILE PROPERTY STRINGS "dev" "release")
 corrosion_import_crate(MANIFEST_PATH src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
 
-set(TARGET_NAME purple-presage)
+set(TARGET_NAME "presage")
 add_library(${TARGET_NAME} SHARED
     "src/c/bridge.c"
     "src/c/connection.c"
@@ -34,17 +35,17 @@ add_library(${TARGET_NAME} SHARED
     "src/c/hehoe-purple2and3/purple.h"
 )
 if (${PURPLE_VERSION} VERSION_LESS "3.0.0")
-target_sources(${TARGET_NAME} PRIVATE
-    "src/c/init2.c"
-    "src/c/hehoe-purple2and3/purple-2.h"
-)
+    target_sources(${TARGET_NAME} PRIVATE
+        "src/c/init2.c"
+        "src/c/hehoe-purple2and3/purple-2.h"
+    )
 else()
-target_sources(${TARGET_NAME} PRIVATE
-    "src/c/init3.c"
-    "src/c/init3.h"
-    "src/c/hehoe-purple2and3/purple-3.c"
-    "src/c/hehoe-purple2and3/purple-3.h"
-)
+    target_sources(${TARGET_NAME} PRIVATE
+        "src/c/init3.c"
+        "src/c/init3.h"
+        "src/c/hehoe-purple2and3/purple-3.c"
+        "src/c/hehoe-purple2and3/purple-3.h"
+    )
 endif()
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
@@ -57,7 +58,7 @@ else()
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
     # gcc_s util rt pthread m dl c
 endif()
-set_property(TARGET purple-presage PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
+set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
 
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" PLUGIN_VERSION)
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
