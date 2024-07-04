@@ -64,7 +64,7 @@ void presage_blist_buddies_all_set_online(PurpleAccount *account);
 void presage_blist_update_buddy(PurpleAccount *account, const char *uuid, const char *name);
 void presage_blist_set_online(PurpleAccount *account, PurpleBuddy *buddy);
 void presage_blist_buddies_all_set_online(PurpleAccount *account);
-void presage_blist_update_group(PurpleAccount *account, const char *group, const char *topic);
+void presage_blist_update_chat(PurpleAccount *account, const char *identifier, const char *topic);
 
 // group management
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);

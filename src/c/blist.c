@@ -64,15 +64,15 @@ void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleG
 /*
  * Add group chat to blist. Updates existing group chat if found.
  */
-void presage_blist_update_group(PurpleAccount *account, const char *group, const char *topic) {
-    PurpleChat *chat = purple_blist_find_chat(account, group); // can only work if chat_info is defined
+void presage_blist_update_chat(PurpleAccount *account, const char *identifier, const char *topic) {
+    PurpleChat *chat = purple_blist_find_chat(account, identifier); // can only work if chat_info is defined
 
     if (chat == NULL) {
         GHashTable *comp = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free); // MEMCHECK: purple_chat_new takes ownership
-        g_hash_table_insert(comp, "name", g_strdup(group)); // MEMCHECK: g_strdup'ed string released by GHashTable's value_destroy_func g_free (see above)
-        chat = purple_blist_chat_new(account, group, comp); // MEMCHECK: blist takes ownership
-        PurpleGroup *purple_group = presage_blist_get_group();
-        purple_blist_add_chat(chat, purple_group, NULL);
+        g_hash_table_insert(comp, "name", g_strdup(identifier)); // MEMCHECK: g_strdup'ed string released by GHashTable's value_destroy_func g_free (see above)
+        chat = purple_blist_chat_new(account, identifier, comp); // MEMCHECK: blist takes ownership
+        PurpleGroup *group = presage_blist_get_group();
+        purple_blist_add_chat(chat, group, NULL);
     }
 
     if (topic != NULL) {

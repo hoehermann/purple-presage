@@ -33,7 +33,7 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
         }
     } else {
         // group message
-        presage_blist_update_group(account, group, title); // add to blist first for aliasing
+        presage_blist_update_chat(account, group, title); // add to blist first for aliasing
         PurpleConversation *conv = purple_find_chat(connection, g_str_hash(group));
         if (conv == NULL) {
             conv = serv_got_joined_chat(connection, g_str_hash(group), title); // TODO: be really sure about setting the name to the topic here
