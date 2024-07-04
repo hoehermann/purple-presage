@@ -144,9 +144,15 @@ async fn process_incoming_message<C: presage::store::Store>(
 ) {
     print_message(manager, content, account);
 
+    if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { attachments, .. }) = &content.body {
+        if !attachments.is_empty() {
+            let mut message = crate::bridge::Presage::from_account(account);
+            message.timestamp = content.metadata.timestamp;
+            message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
+            message.body = std::ffi::CString::new(String::from("[Message with attachment detected. This plug-in currently does not handle attachments.]")).unwrap().into_raw();
+            crate::bridge::append_message(&message);
+        }
     /*
-    let sender = content.metadata.sender.uuid;
-    if let ContentBody::DataMessage(DataMessage { attachments, .. }) = &content.body {
         for attachment_pointer in attachments {
             let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
                 log::warn!("failed to fetch attachment");
@@ -173,8 +179,8 @@ async fn process_incoming_message<C: presage::store::Store>(
                 ),
             }
         }
-    }
     */
+    }
 }
 
 /*
@@ -195,7 +201,7 @@ pub async fn receive<C: presage::store::Store>(
             println!("rust: receive got a message");
             futures::pin_mut!(messages);
             while let Some(content) = messages.next().await {
-                // NOTE: This blocks until there is a message to be handled
+                // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
                 println!("rust: receive got a message's content");
                 process_incoming_message(manager, &content, account).await;
             }

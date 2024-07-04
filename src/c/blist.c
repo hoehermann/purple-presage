@@ -29,7 +29,7 @@ void presage_blist_update_buddy(PurpleAccount *account, const char *who, const c
     // update name after checking against local alias and persisted name
     const char *local_alias = purple_buddy_get_alias(buddy);
     const char *server_alias = purple_blist_node_get_string(&buddy->node, "server_alias");
-    if (name != NULL && !purple_strequal(local_alias, name) && !purple_strequal(server_alias, name)) {
+    if (name != NULL && *name && !purple_strequal(local_alias, name) && !purple_strequal(server_alias, name)) {
         purple_serv_got_alias(purple_account_get_connection(account), who, name); // it seems buddy->server_alias is not persisted
         purple_blist_node_set_string(&buddy->node, "server_alias", name); // explicitly persisting the new name
     }
