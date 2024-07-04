@@ -41,3 +41,19 @@ GList * presage_chat_info(PurpleConnection *connection) {
 
     return infos; // MEMCHECK: caller takes ownership
 }
+
+/*
+ * The user wants to join a chat.
+ * 
+ * data is a table filled with the information needed to join the chat
+ * as defined by chat_info_defaults. We only need the identifier.
+ * 
+ * Note: In purple, "name" is implicitly set to the roomlist room name in 
+ * purple_roomlist_room_join, see libpurple/roomlist.c
+ * 
+ * Since group chat participation is handled by the main device, this function
+ * does not actually send any requests to the server.
+ */
+void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
+    purple_notify_message(NULL, PURPLE_NOTIFY_MSG_INFO, "Not implemented", "Opening group chat not implemented.", NULL, NULL, NULL);
+}

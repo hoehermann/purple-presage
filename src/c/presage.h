@@ -72,3 +72,4 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 // group management
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);
 GList * presage_chat_info(PurpleConnection *connection);
+void presage_join_chat(PurpleConnection *connection, GHashTable *data);
