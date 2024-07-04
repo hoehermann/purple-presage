@@ -101,10 +101,11 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
             Presage *presage = purple_connection_get_protocol_data(connection);
             presage->uuid = g_strdup(uuid);
             purple_request_close_with_handle(connection); // close request displaying the QR code
-            // TODO: do a Cmd::RequestContactsSync (or ReceivingMode::InitialSync) here, wait for completion, then start mark connection as connected and only then start receiving
-            presage_rust_receive(rust_runtime, presage->tx_ptr);
-            purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
-            presage_blist_buddies_all_set_online(account); // TODO: make user configurable
+            /* 
+            Now that we established correctness of the uuid, start initial sync (and then receive). The presage docs state: 
+            „As a client, it is heavily recommended to run this once in `ReceivingMode::InitialSync` once before enabling the possiblity of sending messages.“
+            */
+            presage_rust_initial_sync(rust_runtime, presage->tx_ptr);
         } else {
             char * errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
             purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);

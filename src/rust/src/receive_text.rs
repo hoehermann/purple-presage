@@ -72,15 +72,7 @@ fn print_message<C: presage::store::Store>(
             .map(|c| c.name)
             .unwrap_or_else(|| uuid.to_string())
     };
-    let group_get_title = |key| {
-        manager
-            .store()
-            .group(key)
-            .ok()
-            .flatten()
-            .map(|g| g.title)
-            .unwrap_or_else(|| "<missing group>".to_string())
-    };
+    let group_get_title = |key| manager.store().group(key).ok().flatten().map(|g| g.title).unwrap_or_else(|| "<missing group>".to_string());
 
     enum Msg<'a> {
         Received(&'a presage::store::Thread, String),
@@ -197,23 +189,19 @@ pub async fn receive<C: presage::store::Store>(
     account: *const std::os::raw::c_void,
 ) {
     println!("rust: receive on separate thread begins…");
-    // TODO: presage docs say „As a client, it is heavily recommended to run this once in `ReceivingMode::InitialSync` once before enabling the possiblity of sending messages.“
     let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
     match messages {
         Ok(messages) => {
             println!("rust: receive got a message");
             futures::pin_mut!(messages);
             while let Some(content) = messages.next().await {
-                // TODO: find out why this hangs forever (sending is possible, though)
+                // NOTE: This blocks until there is a message to be handled
                 println!("rust: receive got a message's content");
                 process_incoming_message(manager, &content, account).await;
             }
         }
         Err(err) => {
-            let mut message = crate::bridge::Presage::from_account(account);
-            message.error = 15; // PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR
-            message.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();
-            crate::bridge::append_message(&message);
+            crate::core::purple_error(account, 16, err.to_string());
         }
     }
     println!("rust: receive on separate thread finished.");

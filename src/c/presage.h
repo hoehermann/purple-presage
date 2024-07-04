@@ -16,6 +16,7 @@ RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
+void presage_rust_initial_sync(RustRuntimePtr, RustChannelPtr);
 void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *);
@@ -32,6 +33,8 @@ typedef struct {
     char *uuid;
     const int32_t debug;
     const int32_t error;
+    const int32_t connected;
+    const int32_t padding;
     const uint64_t timestamp;
     const uint64_t sent;
     char *who;

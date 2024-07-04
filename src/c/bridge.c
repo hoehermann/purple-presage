@@ -71,6 +71,12 @@ static void handle_message(Presage * message) {
         presage_handle_qrcode(connection, message->qrcode);
     } else if (message->uuid != NULL) {
         presage_handle_uuid(connection, message->uuid);
+    } else if (message->connected >= 0) {
+        // backend says, connection has been set-up, start receiving
+        // TODO: protect against starting more than one receiver
+        presage_rust_receive(rust_runtime, presage->tx_ptr);
+        purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
+        presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
     } else if (message->error >= 0) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->body != NULL) {

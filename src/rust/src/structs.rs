@@ -9,6 +9,7 @@ pub enum Cmd {
     },
     Exit,
     Whoami,
+    InitialSync,
     Receive,
     Send {
         recipient: Recipient,

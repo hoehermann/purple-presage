@@ -1,31 +1,35 @@
 /*
 Look at these error levels from Purple:
- 
+
 typedef enum
 {
-	PURPLE_CONNECTION_ERROR_NETWORK_ERROR = 0,
-	PURPLE_CONNECTION_ERROR_INVALID_USERNAME = 1,
-	PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED = 2,
-	PURPLE_CONNECTION_ERROR_AUTHENTICATION_IMPOSSIBLE = 3,
-	PURPLE_CONNECTION_ERROR_NO_SSL_SUPPORT = 4,
-	PURPLE_CONNECTION_ERROR_ENCRYPTION_ERROR = 5,
-	PURPLE_CONNECTION_ERROR_NAME_IN_USE = 6,
-	PURPLE_CONNECTION_ERROR_INVALID_SETTINGS = 7,
-	PURPLE_CONNECTION_ERROR_CERT_NOT_PROVIDED = 8,
-	PURPLE_CONNECTION_ERROR_CERT_UNTRUSTED = 9,
-	PURPLE_CONNECTION_ERROR_CERT_EXPIRED = 10,
-	PURPLE_CONNECTION_ERROR_CERT_NOT_ACTIVATED = 11,
-	PURPLE_CONNECTION_ERROR_CERT_HOSTNAME_MISMATCH = 12,
-	PURPLE_CONNECTION_ERROR_CERT_FINGERPRINT_MISMATCH = 13,
-	PURPLE_CONNECTION_ERROR_CERT_SELF_SIGNED = 14,
-	PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR = 15,
-	PURPLE_CONNECTION_ERROR_OTHER_ERROR = 16
+    PURPLE_CONNECTION_ERROR_NETWORK_ERROR = 0,
+    PURPLE_CONNECTION_ERROR_INVALID_USERNAME = 1,
+    PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED = 2,
+    PURPLE_CONNECTION_ERROR_AUTHENTICATION_IMPOSSIBLE = 3,
+    PURPLE_CONNECTION_ERROR_NO_SSL_SUPPORT = 4,
+    PURPLE_CONNECTION_ERROR_ENCRYPTION_ERROR = 5,
+    PURPLE_CONNECTION_ERROR_NAME_IN_USE = 6,
+    PURPLE_CONNECTION_ERROR_INVALID_SETTINGS = 7,
+    PURPLE_CONNECTION_ERROR_CERT_NOT_PROVIDED = 8,
+    PURPLE_CONNECTION_ERROR_CERT_UNTRUSTED = 9,
+    PURPLE_CONNECTION_ERROR_CERT_EXPIRED = 10,
+    PURPLE_CONNECTION_ERROR_CERT_NOT_ACTIVATED = 11,
+    PURPLE_CONNECTION_ERROR_CERT_HOSTNAME_MISMATCH = 12,
+    PURPLE_CONNECTION_ERROR_CERT_FINGERPRINT_MISMATCH = 13,
+    PURPLE_CONNECTION_ERROR_CERT_SELF_SIGNED = 14,
+    PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR = 15,
+    PURPLE_CONNECTION_ERROR_OTHER_ERROR = 16
 } PurpleConnectionError;
 
 TODO: Automatically convert from libpurple/connection.h.
 */
 
-pub fn purple_error(account: *const std::os::raw::c_void, level:i32, msg: String) {
+pub fn purple_error(
+    account: *const std::os::raw::c_void,
+    level: i32,
+    msg: String,
+) {
     let mut message = crate::bridge::Presage::from_account(account);
     message.error = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
@@ -34,20 +38,24 @@ pub fn purple_error(account: *const std::os::raw::c_void, level:i32, msg: String
 
 /*
 Look at these debug levels from Purple:
- 
+
 typedef enum
 {
-	PURPLE_DEBUG_ALL = 0,  /**< All debug levels.              */
-	PURPLE_DEBUG_MISC,     /**< General chatter.               */
-	PURPLE_DEBUG_INFO,     /**< General operation Information. */
-	PURPLE_DEBUG_WARNING,  /**< Warnings.                      */
-	PURPLE_DEBUG_ERROR,    /**< Errors.                        */
-	PURPLE_DEBUG_FATAL     /**< Fatal errors.                  */
+    PURPLE_DEBUG_ALL = 0,  /**< All debug levels.              */
+    PURPLE_DEBUG_MISC,     /**< General chatter.               */
+    PURPLE_DEBUG_INFO,     /**< General operation Information. */
+    PURPLE_DEBUG_WARNING,  /**< Warnings.                      */
+    PURPLE_DEBUG_ERROR,    /**< Errors.                        */
+    PURPLE_DEBUG_FATAL     /**< Fatal errors.                  */
 } PurpleDebugLevel;
 
 TODO: Automatically convert from libpurple/debug.h.
 */
-pub fn purple_debug(account: *const std::os::raw::c_void, level:i32, msg: String) {
+pub fn purple_debug(
+    account: *const std::os::raw::c_void,
+    level: i32,
+    msg: String,
+) {
     let mut message = crate::bridge::Presage::from_account(account);
     message.debug = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
@@ -100,6 +108,26 @@ async fn run<C: presage::store::Store + 'static>(
             let mut message = crate::bridge::Presage::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             crate::bridge::append_message(&message);
+            Ok(manager)
+        }
+
+        crate::structs::Cmd::InitialSync => {
+            let mut manager = manager.unwrap();
+            let messages = manager.receive_messages(presage::manager::ReceivingMode::InitialSync).await;
+            match messages {
+                Ok(_) => {
+                    // TODO: handle the messages. there might be something useful in there
+                    crate::core::purple_debug(account, 2, format!("InitialSync completed.\n"));
+                    // now that the initial sync has completed,
+                    // the connection can be regarded as "connected" and ready to send messages
+                    let mut message = crate::bridge::Presage::from_account(account);
+                    message.connected = 1;
+                    crate::bridge::append_message(&message);
+                }
+                Err(err) => {
+                    crate::core::purple_error(account, 16, format!("InitialSync error {err:?}"));
+                }
+            }
             Ok(manager)
         }
 
