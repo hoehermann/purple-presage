@@ -101,19 +101,20 @@ fn print_message<C: presage::store::Store>(
         let mut message = crate::bridge::Presage::from_account(account);
         message.timestamp = content.metadata.timestamp;
         match msg {
+            // NOTE: for Spectrum, synced messages sent from other own device must set flags PURPLE_MESSAGE_SEND and PURPLE_MESSAGE_REMOTE_SEND
             Msg::Received(presage::store::Thread::Contact(sender), body) => {
-                message.sent = 0;
+                message.flags = 0x0002; // PURPLE_MESSAGE_RECV
                 message.who = std::ffi::CString::new(sender.to_string()).unwrap().into_raw();
                 message.name = std::ffi::CString::new(format_contact(sender)).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
             Msg::Sent(presage::store::Thread::Contact(recipient), body) => {
-                message.sent = 1;
+                message.flags = 0x0001 | 0x10000; // PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND
                 message.who = std::ffi::CString::new(recipient.to_string()).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
             Msg::Received(presage::store::Thread::Group(key), body) => {
-                message.sent = 0;
+                message.flags = 0x0002; // PURPLE_MESSAGE_RECV
                 message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
                 message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.uuid)).unwrap().into_raw();
                 message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
@@ -121,7 +122,7 @@ fn print_message<C: presage::store::Store>(
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
             Msg::Sent(presage::store::Thread::Group(key), body) => {
-                message.sent = 1;
+                message.flags = 0x0001 | 0x10000; // PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND
                 message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
                 message.title = std::ffi::CString::new(group_get_title(*key)).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();

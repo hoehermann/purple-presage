@@ -1,21 +1,11 @@
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, uint64_t sent, uint64_t timestamp, const char *body) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, PurpleMessageFlags flags, uint64_t timestamp, const char *body) {
     PurpleAccount *account = purple_connection_get_account(connection);
 
     // Signal is a plain-text protocol, but Pidgin expects HTML
     // NOTE: This turns newlines into br-tags which may mess up textual representation of QR-codes
     gchar *text = purple_markup_escape_text(body, -1);
-
-    PurpleMessageFlags flags = 0;
-    if (sent) {
-        // special handling of messages sent by self incoming from remote for Spectrum
-        // send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
-        // for details, look into purple-whatsmeow
-        flags |= PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND;
-    } else {
-        flags |= PURPLE_MESSAGE_RECV;
-    }
     
     if (group == NULL) {
         // direct message

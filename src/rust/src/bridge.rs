@@ -11,7 +11,7 @@ pub struct Presage {
     pub padding: std::os::raw::c_int,
     // TODO: find out how to use stdint on Windows
     pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
-    pub sent: std::os::raw::c_ulonglong,      //stdint::uint64_t,
+    pub flags: std::os::raw::c_ulonglong,      //stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
     pub name: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
@@ -31,7 +31,7 @@ impl Presage {
             connected: -1,
             padding: -1,
             timestamp: 0,
-            sent: 0,
+            flags: 0,
             who: std::ptr::null(),
             name: std::ptr::null(),
             group: std::ptr::null(),

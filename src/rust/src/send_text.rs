@@ -8,7 +8,6 @@ pub async fn send<C: presage::store::Store + 'static>(
     recipient: crate::structs::Recipient,
     message: &str,
 ) -> Result<(), presage::Error<<C>::Error>> {
-    println!("rust: send has been called!");
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
     // TODO: reduce redunancy be moving setting timestamp and body outside of recipient type switch
     match recipient {
@@ -31,7 +30,6 @@ pub async fn send<C: presage::store::Store + 'static>(
                 timestamp: Some(timestamp),
                 ..Default::default()
             });
-            println!("rust: now calling manager.send_message_to_group…");
             manager.send_message_to_group(&master_key, data_message, timestamp).await?;
         }
     }

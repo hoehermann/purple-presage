@@ -80,7 +80,7 @@ static void handle_message(Presage * message) {
     } else if (message->error >= 0) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->body != NULL) {
-        presage_handle_text(connection, message->who, message->name, message->group, message->title, message->sent, message->timestamp, message->body);
+        presage_handle_text(connection, message->who, message->name, message->group, message->title, message->flags, message->timestamp, message->body);
     }
     free_message(message);
 }

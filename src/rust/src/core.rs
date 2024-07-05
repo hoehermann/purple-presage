@@ -82,13 +82,14 @@ async fn run<C: presage::store::Store + 'static>(
             let join_handle = futures::future::join(presage::Manager::link_secondary_device(config_store, servers, device_name.clone(), provisioning_link_tx), async move {
                 match provisioning_link_rx.await {
                     Ok(url) => {
-                        println!("rust: qr code ok.");
-                        println!("rust: now calling presage_append_message…");
+                        purple_debug(account, 2, String::from("got URL for QR code\n"));
                         let mut message = crate::bridge::Presage::from_account(account);
                         message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
                         crate::bridge::append_message(&message);
                     }
-                    Err(e) => println!("Error linking device: {e}"),
+                    Err(err) => {
+                        purple_error(account, 16, format!("Error linking device: {err:?}"));
+                    },
                 }
             })
             .await;
@@ -112,7 +113,7 @@ async fn run<C: presage::store::Store + 'static>(
         }
 
         crate::structs::Cmd::InitialSync => {
-            let mut manager = manager.unwrap();
+            let mut manager = manager.expect("manager must be loaded");
             let messages = manager.receive_messages(presage::manager::ReceivingMode::InitialSync).await;
             match messages {
                 Ok(_) => {
@@ -132,19 +133,43 @@ async fn run<C: presage::store::Store + 'static>(
         }
 
         crate::structs::Cmd::Receive => {
-            let manager = manager.unwrap();
+            let manager = manager.expect("manager must be loaded");
             let mut receiving_manager = manager.clone();
             tokio::task::spawn_local(async move { crate::receive_text::receive(&mut receiving_manager, account).await });
             Ok(manager)
         }
 
         crate::structs::Cmd::Send { recipient, message } => {
-            let mut manager = manager.unwrap();
-            crate::send_text::send(&mut manager, recipient, &message).await?;
+            let mut manager = manager.expect("manager must be loaded");
+            let mut msg = crate::bridge::Presage::from_account(account);
+            msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+            match recipient {
+                crate::structs::Recipient::Contact(uuid) => {
+                    msg.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                }
+                crate::structs::Recipient::Group(master_key) => {
+                    msg.group = std::ffi::CString::new(hex::encode(master_key)).unwrap().into_raw();
+                }
+            }
+            match crate::send_text::send(&mut manager, recipient, &message).await {
+                Ok(_) => {
+                    // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
+                    msg.flags = 0x0001; // PURPLE_MESSAGE_SEND
+                    msg.body = std::ffi::CString::new(message).unwrap().into_raw();
+                }
+                Err(err) => {
+                    // TODO: remove purple_debug once it is reasonably well tested
+                    purple_debug(account, 4, format!("{err} occurred while sending a message. The error message should appear in the conversation window.\n"));
+                    msg.flags = 0x0200; // PURPLE_MESSAGE_ERROR
+                    msg.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();
+                }
+            }
+            crate::bridge::append_message(&msg);
             Ok(manager)
         }
 
         crate::structs::Cmd::Exit {} => {
+            purple_error(account, 16, String::from("Exit command reached inner loop."));
             panic!("Exit command reached inner loop.");
         }
     }
@@ -196,16 +221,16 @@ pub async fn mainloop(
                                 crate::bridge::append_message(&message);
                             }
                             _ => {
-                                println!("rust: run ServiceError {err:?}");
+                                purple_error(account, 16, format!("run unhandled ServiceError {err:?}"));
                             }
                         }
                     }
                     Err(err) => {
                         manager = None;
-                        println!("rust: run Err {err:?}");
+                        purple_error(account, 16, format!("run Err {err:?}"));
                     }
                 }
-                purple_debug(account, 2, String::from("run finished.\n"));
+                purple_debug(account, 2, format!("run finished.\n"));
             }
         }
     }
@@ -222,7 +247,7 @@ pub async fn main(
     rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *const std::os::raw::c_void,
 ) {
-    //println!("rust: opening config database from {store_path}");
+    purple_debug(account, 2, String::from("opening config database from {store_path}\n"));
     let config_store =
         presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
     match config_store {
