@@ -25,7 +25,11 @@ fn print_message<C: presage::store::Store>(
                 }),
                 body: Some(body),
                 ..
-            } => Some(format!("Answer to message \"{quoted_text}\": {body}")),
+            } => {
+                let firstline = quoted_text.split("\n").next().unwrap_or("<message body missing>");
+                // TODO: add ellipsis if quoted_text contains more than one line
+                Some(format!("> {firstline}\n\n{body}"))
+            },
             presage::libsignal_service::content::DataMessage {
                 reaction:
                     Some(presage::proto::data_message::Reaction {
