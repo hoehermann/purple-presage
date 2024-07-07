@@ -14,25 +14,31 @@ A proof of concept using [presage](https://github.com/whisperfish/presage) in li
 #### Present
 
 * Can link against a master device via QR-Code.
-* Can receive a simple text message from a contact or a group.
+* Receives a simple text message from a contact or a group.
 * Can reply with a simple text message.
 * Can add contacts to buddy list manually.
+* Will add buddies to contact list unconditionally.
+* Receives attachments (only pictures tested for now).
 
 #### Missing
 
 Everything else, most notably:
 
 * Error handling
-* Contact management
-* Attachments, stickers, mentions, replies, quotes, styles,…
-* Support for phone numbers
+* Reasonable contact and group management (list of participants,…)
+* Stickers, mentions, replies, quotes, styles,…
+* Mark messages as "read"
+* Reply to a specific message
+* Display typing… notifications
+* Display receipts
 * Support for alternative UIs
+* Support for phone numbers
 
 This list is not exhaustive.
 
 ### Known Issues
 
-* Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is no error handling, the user cannot to know for sure.
+* Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is almost no error handling, the user cannot to know for sure.
 
 ### Building
 
