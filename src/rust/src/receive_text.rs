@@ -170,7 +170,9 @@ async fn process_incoming_message<C: presage::store::Store>(
                     .as_deref()
                     .unwrap_or("application/octet-stream"),
             );
-            let extension = extensions.and_then(|e| e.first()).unwrap_or(&"bin"); // TODO: prefer jpg over jfif
+            let extension = extensions.and_then(|e| {
+                e.last() // using e.last here yields jpg instead of jfif, but it feels arbitrary
+            }).unwrap_or(&"bin");
             /*
             let filename = attachment_pointer
                 .file_name
