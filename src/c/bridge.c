@@ -39,6 +39,7 @@ void free_message(Presage * message) {
     presage_rust_free(message->group);
     presage_rust_free(message->title);
     presage_rust_free(message->body);
+    //presage_rust_free(message->blob); // TODO: tell rust to drop the Vec ptr
 }
 
 /*
@@ -79,6 +80,8 @@ static void handle_message(Presage * message) {
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
     } else if (message->error >= 0) {
         purple_connection_error(connection, message->error, message->body);
+    } else if (message->blob != NULL) {
+        presage_handle_attachment(connection, message->who, message->timestamp, message->blob, message->blobsize, message->name);
     } else if (message->body != NULL) {
         presage_handle_text(connection, message->who, message->name, message->group, message->title, message->flags, message->timestamp, message->body);
     }

@@ -158,7 +158,7 @@ async fn run<C: presage::store::Store + 'static>(
                     msg.body = std::ffi::CString::new(message).unwrap().into_raw();
                 }
                 Err(err) => {
-                    // TODO: remove purple_debug once it is reasonably well tested
+                    // TODO: remove purple_debug once handling errors is reasonably well tested
                     purple_debug(account, 4, format!("{err} occurred while sending a message. The error message should appear in the conversation window.\n"));
                     msg.flags = 0x0200; // PURPLE_MESSAGE_ERROR
                     msg.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();

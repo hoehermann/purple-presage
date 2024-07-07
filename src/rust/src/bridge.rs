@@ -17,6 +17,8 @@ pub struct Presage {
     pub group: *const std::os::raw::c_char,
     pub title: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
+    pub blob: *const std::os::raw::c_uchar,
+    pub blobsize: std::os::raw::c_ulonglong, //stdint::uint64_t,
 }
 
 impl Presage {
@@ -37,6 +39,8 @@ impl Presage {
             group: std::ptr::null(),
             title: std::ptr::null(),
             body: std::ptr::null(),
+            blob: std::ptr::null(),
+            blobsize: 0,
         }
     }
 }
@@ -79,7 +83,7 @@ pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
         return;
     }
     unsafe {
-        drop(Box::from_raw(c_str));
+        drop(Box::from_raw(c_str)); // TODO: find out why this works at all
     }
 }
 

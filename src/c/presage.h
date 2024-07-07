@@ -42,6 +42,8 @@ typedef struct {
     char *group;
     char *title;
     char *body;
+    void *blob;
+    uint64_t blobsize;
 } Presage;
 
 // procotol properties
@@ -73,3 +75,6 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);
 GList * presage_chat_info(PurpleConnection *connection);
 void presage_join_chat(PurpleConnection *connection, GHashTable *data);
+
+// attachments
+void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename);

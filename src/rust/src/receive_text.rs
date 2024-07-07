@@ -1,3 +1,5 @@
+// TODO: rename to receive since it does also receive attachments
+
 use futures::StreamExt; // for Stream.next()
 
 /*
@@ -150,17 +152,15 @@ async fn process_incoming_message<C: presage::store::Store>(
     print_message(manager, content, account);
 
     if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { attachments, .. }) = &content.body {
-        if !attachments.is_empty() {
+        for attachment_pointer in attachments {
             let mut message = crate::bridge::Presage::from_account(account);
             message.timestamp = content.metadata.timestamp;
             message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
-            message.body = std::ffi::CString::new(String::from("[Message with attachment detected. This plug-in currently does not handle attachments.]")).unwrap().into_raw();
-            crate::bridge::append_message(&message);
-        }
-    /*
-        for attachment_pointer in attachments {
+
             let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
-                log::warn!("failed to fetch attachment");
+                message.flags = 0x0200; // PURPLE_MESSAGE_ERROR
+                message.body = std::ffi::CString::new(String::from("Failed to fetch attachment.")).unwrap().into_raw();
+                crate::bridge::append_message(&message);
                 continue;
             };
 
@@ -171,20 +171,22 @@ async fn process_incoming_message<C: presage::store::Store>(
                     .unwrap_or("application/octet-stream"),
             );
             let extension = extensions.and_then(|e| e.first()).unwrap_or(&"bin");
+            /*
             let filename = attachment_pointer
                 .file_name
                 .clone()
                 .unwrap_or_else(|| Local::now().format("%Y-%m-%d-%H-%M-%s").to_string());
-            let file_path = attachments_tmp_dir.join(format!("presage-{filename}.{extension}",));
-            match fs::write(&file_path, &attachment_data).await {
-                Ok(_) => info!("saved attachment from {sender} to {}", file_path.display()),
-                Err(error) => error!(
-                    "failed to write attachment from {sender} to {}: {error}",
-                    file_path.display()
-                ),
-            }
+             */
+            let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key
+            };
+            message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
+            message.blobsize = attachment_data.len() as u64; // TODO: blobsize should be a C type compatible with usize 
+            let boxed_slice = attachment_data.into_boxed_slice(); // move data to heap
+            message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar; // forward data. The pointer is also a handle for releasing the memory later.
+            crate::bridge::append_message(&message);
         }
-    */
     }
 }
 

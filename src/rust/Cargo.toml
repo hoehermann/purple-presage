@@ -18,6 +18,7 @@ presage = { git = "https://github.com/whisperfish/presage", rev = "f93f2dee5b9f0
 presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "f93f2dee5b9f0ca3b30b545143194431d9136549" }
 
 hex = "*"
+mime_guess = "2.0"
 #stdint = "0.2"
 futures = "0.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }

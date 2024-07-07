@@ -1,3 +1,5 @@
+// TODO: rename to receive so it is analogous to send.c
+
 #include "presage.h"
 
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, PurpleMessageFlags flags, uint64_t timestamp, const char *body) {
