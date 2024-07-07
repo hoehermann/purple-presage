@@ -55,5 +55,31 @@ GList * presage_chat_info(PurpleConnection *connection) {
  * does not actually send any requests to the server.
  */
 void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
-    purple_notify_message(NULL, PURPLE_NOTIFY_MSG_INFO, "Not implemented", "Opening group chat not implemented.", NULL, NULL, NULL);
+    const char *identifier = g_hash_table_lookup(data, "name");
+    const char *topic = g_hash_table_lookup(data, "topic");
+    if (identifier != NULL) {
+        PurpleAccount *account = purple_connection_get_account(connection);
+        presage_blist_update_chat(account, identifier, topic); // add to blist first for aliasing
+        PurpleConversation *conv = purple_find_chat(connection, g_str_hash(identifier));
+        if (conv == NULL || (conv != NULL && purple_conversation_get_data(conv, "want-to-rejoin"))) {
+            /*
+            identifier is passed to purple_conversation_new as name which usually is the identifying aspect of a
+            conversation (regardless if direct or chat). purple_conversation_autoset_title uses purple_chat_get_name 
+            wich actually returns the alias for the title
+            */
+            conv = serv_got_joined_chat(connection, g_str_hash(identifier), identifier);
+            if (purple_conversation_get_data(conv, "want-to-rejoin")) {
+                // now that we did rejoin, remove the flag
+                // directly accessing conv->data feels wrong, but there is no interface to do it another way
+                g_hash_table_remove(conv->data, "want-to-rejoin");
+            }
+            if (conv != NULL) {
+                // store the indentifer so it can be retrieved by get_chat_name
+                purple_conversation_set_data(conv, "name", g_strdup(identifier)); // MEMCHECK: this leaks, but there is no mechanism to stop it
+                // set our user's chat nick here as purple_conversation_new prefers the local alias over the username
+                PurpleConvChat *conv_chat = purple_conversation_get_chat_data(conv);
+                purple_conv_chat_set_nick(conv_chat, purple_account_get_username(account));
+            }
+        }
+    }
 }

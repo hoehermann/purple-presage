@@ -55,7 +55,7 @@ This list is not exhaustive.
 
 #### Windows
 
-purple-presage is known to compile with MSVC 19.30 and rust 1.71. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+purple-presage is known to compile with MSVC 19.30 and rust 1.75. You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
 
 ##### Dependencies
 
@@ -69,13 +69,13 @@ protoc needs to be in your PATH. You can install it with any method you like, in
 
 ##### Build
 
-Same as Linux build instructions, but may need to modify:
+Same as Linux build instructions, but may need to modify the configuration:
 
 1. Generate project:
 
         cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
 
-    You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
+    If necessary, the rust toolchain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
