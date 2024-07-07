@@ -11,7 +11,7 @@ pub struct Presage {
     pub padding: std::os::raw::c_int,
     // TODO: find out how to use stdint on Windows
     pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
-    pub flags: std::os::raw::c_ulonglong,      //stdint::uint64_t,
+    pub flags: std::os::raw::c_ulonglong,     //stdint::uint64_t,
     pub who: *const std::os::raw::c_char,
     pub name: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
@@ -88,9 +88,12 @@ pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
 
 // TODO: types should be aligned with Presage::blob and Presage::blobsize respectively
 #[no_mangle]
-pub extern "C" fn presage_rust_free_buffer(c_buf: *mut std::os::raw::c_uchar, len: std::os::raw::c_ulonglong) {
+pub extern "C" fn presage_rust_free_buffer(
+    c_buf: *mut std::os::raw::c_uchar,
+    len: std::os::raw::c_ulonglong,
+) {
     if !c_buf.is_null() {
-        unsafe { 
+        unsafe {
             drop(Box::from_raw(std::slice::from_raw_parts_mut(c_buf, len as usize)));
         };
     }

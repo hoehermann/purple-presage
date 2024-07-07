@@ -31,7 +31,7 @@ fn print_message<C: presage::store::Store>(
                 let firstline = quoted_text.split("\n").next().unwrap_or("<message body missing>");
                 // TODO: add ellipsis if quoted_text contains more than one line
                 Some(format!("> {firstline}\n\n{body}"))
-            },
+            }
             presage::libsignal_service::content::DataMessage {
                 reaction:
                     Some(presage::proto::data_message::Reaction {
@@ -164,15 +164,12 @@ async fn process_incoming_message<C: presage::store::Store>(
                 continue;
             };
 
-            let extensions = mime_guess::get_mime_extensions_str(
-                attachment_pointer
-                    .content_type
-                    .as_deref()
-                    .unwrap_or("application/octet-stream"),
-            );
-            let extension = extensions.and_then(|e| {
-                e.last() // using e.last here yields jpg instead of jfif, but it feels arbitrary
-            }).unwrap_or(&"bin");
+            let extensions = mime_guess::get_mime_extensions_str(attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream"));
+            let extension = extensions
+                .and_then(|e| {
+                    e.last() // using e.last here yields jpg instead of jfif, but it feels arbitrary
+                })
+                .unwrap_or(&"bin");
             /*
             let filename = attachment_pointer
                 .file_name
@@ -181,11 +178,11 @@ async fn process_incoming_message<C: presage::store::Store>(
              */
             let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
                 presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key
+                presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
             };
             message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
             let boxed_slice = attachment_data.into_boxed_slice();
-            message.blobsize = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize 
+            message.blobsize = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
             message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
             crate::bridge::append_message(&message);
         }
