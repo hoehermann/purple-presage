@@ -32,14 +32,14 @@ static int account_exists(PurpleAccount *account)
 
 void free_message(Presage * message) {
     // release all the memory
-    presage_rust_free(message->qrcode);
-    presage_rust_free(message->uuid);
-    presage_rust_free(message->who);
-    presage_rust_free(message->name);
-    presage_rust_free(message->group);
-    presage_rust_free(message->title);
-    presage_rust_free(message->body);
-    //presage_rust_free(message->blob); // TODO: tell rust to drop the Vec ptr
+    presage_rust_free_string(message->qrcode);
+    presage_rust_free_string(message->uuid);
+    presage_rust_free_string(message->who);
+    presage_rust_free_string(message->name);
+    presage_rust_free_string(message->group);
+    presage_rust_free_string(message->title);
+    presage_rust_free_string(message->body);
+    // message->blob is not released here – it must be released by the xfer callback
 }
 
 /*

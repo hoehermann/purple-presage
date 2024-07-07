@@ -21,7 +21,8 @@ void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *);
 void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *);
-void presage_rust_free(char *);
+void presage_rust_free_string(char *);
+void presage_rust_free_buffer(char *, uint64_t);
 
 extern RustRuntimePtr rust_runtime;
 

@@ -18,7 +18,7 @@ pub struct Presage {
     pub title: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
     pub blob: *const std::os::raw::c_uchar,
-    pub blobsize: std::os::raw::c_ulonglong, //stdint::uint64_t,
+    pub blobsize: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
 }
 
 impl Presage {
@@ -78,12 +78,21 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
 }
 
 #[no_mangle]
-pub extern "C" fn presage_rust_free(c_str: *mut std::os::raw::c_char) {
-    if c_str == std::ptr::null_mut() {
-        return;
+pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
+    if !c_str.is_null() {
+        unsafe {
+            drop(Box::from_raw(c_str)); // TODO: find out why this works at all. At which point has c_str been boxed?
+        }
     }
-    unsafe {
-        drop(Box::from_raw(c_str)); // TODO: find out why this works at all
+}
+
+// TODO: types should be aligned with Presage::blob and Presage::blobsize respectively
+#[no_mangle]
+pub extern "C" fn presage_rust_free_buffer(c_buf: *mut std::os::raw::c_uchar, len: std::os::raw::c_ulonglong) {
+    if !c_buf.is_null() {
+        unsafe { 
+            drop(Box::from_raw(std::slice::from_raw_parts_mut(c_buf, len as usize)));
+        };
     }
 }
 
