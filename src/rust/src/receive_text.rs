@@ -12,9 +12,9 @@ fn print_message<C: presage::store::Store>(
     content: &presage::libsignal_service::content::Content,
     account: *const std::os::raw::c_void,
 ) {
-    println!("rust: print_message called…");
+    crate::core::purple_debug(account, 2, String::from("print_message called…\n"));
     let Ok(thread) = presage::store::Thread::try_from(content) else {
-        println!("rust: failed to derive thread from content");
+        crate::core::purple_error(account, 16, String::from("failed to derive thread from content"));
         return;
     };
 
@@ -42,7 +42,7 @@ fn print_message<C: presage::store::Store>(
                 ..
             } => {
                 let Ok(Some(message)) = manager.store().message(thread, *timestamp) else {
-                    println!("rust: no message in {thread} sent at {timestamp}");
+                    crate::core::purple_error(account, 16, format!("no message in {thread} sent at {timestamp}"));
                     return None;
                 };
 
@@ -50,7 +50,7 @@ fn print_message<C: presage::store::Store>(
                     body: Some(body), ..
                 }) = message.body
                 else {
-                    println!("rust: message reacted to has no body");
+                    crate::core::purple_debug(account, 2, String::from("message reacted to has no body\n"));
                     return None;
                 };
 
@@ -60,7 +60,7 @@ fn print_message<C: presage::store::Store>(
                 body: Some(body), ..
             } => Some(body.to_string()),
             c => {
-                println!("rust: Empty data message {c:?}");
+                crate::core::purple_debug(account, 2, format!("Empty data message {c:?}\n"));
                 // Note: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
                 // Some("message has been sent".to_string())
                 None
@@ -167,7 +167,7 @@ async fn process_incoming_message<C: presage::store::Store>(
             let extensions = mime_guess::get_mime_extensions_str(attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream"));
             let extension = extensions
                 .and_then(|e| {
-                    e.last() // using e.last here yields jpg instead of jfif, but it feels arbitrary
+                    e.last() // using e.last here yields jpg instead of jfif, but also pnz instead of png 😬
                 })
                 .unwrap_or(&"bin");
             /*
@@ -182,7 +182,7 @@ async fn process_incoming_message<C: presage::store::Store>(
             };
             message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
             let boxed_slice = attachment_data.into_boxed_slice();
-            message.blobsize = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
+            message.size = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
             message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
             crate::bridge::append_message(&message);
         }
@@ -200,15 +200,15 @@ pub async fn receive<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    println!("rust: receive on separate thread begins…");
+    crate::core::purple_debug(account, 2, String::from("receive on separate thread begins…\n"));
     let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
     match messages {
         Ok(messages) => {
-            println!("rust: receive got a message");
+            crate::core::purple_debug(account, 2, String::from("receive got messages\n"));
             futures::pin_mut!(messages);
             while let Some(content) = messages.next().await {
                 // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
-                println!("rust: receive got a message's content");
+                crate::core::purple_debug(account, 2, String::from("receive got a message's content\n"));
                 process_incoming_message(manager, &content, account).await;
             }
         }
@@ -216,5 +216,5 @@ pub async fn receive<C: presage::store::Store>(
             crate::core::purple_error(account, 16, err.to_string());
         }
     }
-    println!("rust: receive on separate thread finished.");
+    crate::core::purple_debug(account, 2, String::from("receive on separate thread finished\n"));
 }

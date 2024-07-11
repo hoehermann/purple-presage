@@ -18,7 +18,8 @@ pub struct Presage {
     pub title: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
     pub blob: *const std::os::raw::c_uchar,
-    pub blobsize: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
+    pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
+    pub members: *const *const std::os::raw::c_char,
 }
 
 impl Presage {
@@ -40,7 +41,8 @@ impl Presage {
             title: std::ptr::null(),
             body: std::ptr::null(),
             blob: std::ptr::null(),
-            blobsize: 0,
+            size: 0,
+            members: std::ptr::null(),
         }
     }
 }
@@ -90,11 +92,27 @@ pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
 #[no_mangle]
 pub extern "C" fn presage_rust_free_buffer(
     c_buf: *mut std::os::raw::c_uchar,
-    len: std::os::raw::c_ulonglong,
+    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
 ) {
     if !c_buf.is_null() {
         unsafe {
             drop(Box::from_raw(std::slice::from_raw_parts_mut(c_buf, len as usize)));
+        };
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn presage_rust_strfreev(
+    c_arr_of_str: *mut *mut std::os::raw::c_char,
+    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
+) {
+    if !c_arr_of_str.is_null() {
+        unsafe {
+            let slice = std::slice::from_raw_parts_mut(c_arr_of_str, len as usize);
+            for c_str in &mut *slice {
+                presage_rust_free_string(*c_str);
+            }
+            drop(Box::from_raw(slice));
         };
     }
 }
@@ -126,5 +144,5 @@ pub unsafe extern "C" fn presage_rust_main(
         let local = tokio::task::LocalSet::new();
         local.run_until(crate::core::main(store_path, None, rx, account)).await;
     });
-    println!("rust: main finished.");
+    crate::core::purple_debug(account, 2, String::from("runtime finished.\n"));
 }

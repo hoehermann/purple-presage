@@ -1,3 +1,4 @@
+// TODO: purple_error and purple_debug should probably be in the bridge module
 /*
 Look at these error levels from Purple:
 
@@ -141,6 +142,7 @@ async fn run<C: presage::store::Store + 'static>(
 
         crate::structs::Cmd::Send { recipient, message } => {
             let mut manager = manager.expect("manager must be loaded");
+            // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge::Presage::from_account(account);
             msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
             match recipient {
@@ -151,6 +153,7 @@ async fn run<C: presage::store::Store + 'static>(
                     msg.group = std::ffi::CString::new(hex::encode(master_key)).unwrap().into_raw();
                 }
             }
+            // now do the actual sending and error-handling
             match crate::send_text::send(&mut manager, recipient, &message).await {
                 Ok(_) => {
                     // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
@@ -158,7 +161,7 @@ async fn run<C: presage::store::Store + 'static>(
                     msg.body = std::ffi::CString::new(message).unwrap().into_raw();
                 }
                 Err(err) => {
-                    // TODO: remove purple_debug once handling errors is reasonably well tested
+                    // TODO: remove this purple_debug once handling errors is reasonably well tested
                     purple_debug(
                         account,
                         4,
@@ -168,7 +171,53 @@ async fn run<C: presage::store::Store + 'static>(
                     msg.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();
                 }
             }
+            // feed the feed-back back into purple
             crate::bridge::append_message(&msg);
+            Ok(manager)
+        }
+
+        crate::structs::Cmd::ListGroups => {
+            let manager = manager.expect("manager must be loaded");
+            for group in manager.store().groups()? {
+                match group {
+                    Ok((
+                        group_master_key,
+                        presage::libsignal_service::groups_v2::Group {
+                            title,
+                            description,
+                            revision,
+                            ..
+                        },
+                        // `members`, `avatar`, `disappearing_messages_timer`, `access_control`, `pending_members`, `requesting_members`, `invite_link_password`
+                    )) => {
+                        let key = hex::encode(group_master_key);
+                        println!("{key} {title}: {description:?} / revision {revision}");
+                    }
+                    Err(err) => {
+                        crate::core::purple_error(account, 16, format!("Error: failed to deserialize group, {err}"));
+                    }
+                };
+            }
+            Ok(manager)
+        }
+
+        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => {
+            let manager = manager.expect("manager must be loaded");
+            match manager.store().group(master_key_bytes)? {
+                Some(group) => {
+                    let mut message = crate::bridge::Presage::from_account(account);
+                    message.group = std::ffi::CString::new(hex::encode(master_key_bytes)).unwrap().into_raw();
+                    let uuid_strings = group.members.into_iter().map(|member| member.uuid.to_string());
+                    let uuid_c_strings: Vec<*mut std::os::raw::c_char> = uuid_strings.map(|u| std::ffi::CString::new(u).unwrap().into_raw()).collect();
+                    let boxed_slice = uuid_c_strings.into_boxed_slice();
+                    message.size = boxed_slice.len() as u64;
+                    message.members = Box::into_raw(boxed_slice) as *const *const std::os::raw::c_char;
+                    crate::bridge::append_message(&message);
+                }
+                None => {
+                    // TODO
+                }
+            }
             Ok(manager)
         }
 
@@ -200,7 +249,7 @@ pub async fn mainloop(
             _ => {
                 purple_debug(account, 2, format!("run {:?} begins…\n", cmd));
                 // TODO: find out if config_store.clone() is the correct thing to do here
-                match run(cmd, config_store.clone(), manager, account).await {
+                match run(cmd.clone(), config_store.clone(), manager, account).await {
                     Ok(m) => {
                         manager = Some(m);
                     }
@@ -234,7 +283,7 @@ pub async fn mainloop(
                         purple_error(account, 16, format!("run Err {err:?}"));
                     }
                 }
-                purple_debug(account, 2, format!("run finished.\n"));
+                purple_debug(account, 2, format!("run {:?} finished.\n", cmd));
             }
         }
     }

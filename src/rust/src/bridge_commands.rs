@@ -79,6 +79,30 @@ pub unsafe extern "C" fn presage_rust_receive(
     send_cmd(rt, tx, cmd);
 }
 
+// TODO: wire this up completely
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_list_groups(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+) {
+    let cmd = crate::structs::Cmd::ListGroups {};
+    send_cmd(rt, tx, cmd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_get_group_members(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+    c_group: *const std::os::raw::c_char,
+) {
+    // TODO: add error handling instead of unwrap()
+    let master_key_bytes = parse_group_master_key(std::ffi::CStr::from_ptr(c_group).to_str().unwrap());
+    let cmd = crate::structs::Cmd::GetGroupMembers {
+        master_key_bytes: master_key_bytes,
+    };
+    send_cmd(rt, tx, cmd);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_send_contact(
     rt: *mut tokio::runtime::Runtime,
@@ -111,7 +135,6 @@ pub unsafe extern "C" fn presage_rust_send_group(
     c_group: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
 ) {
-    println!("rust: presage_rust_send_group has been called!");
     // TODO: add error handling instead of using unwrap()
     let master_key_bytes = parse_group_master_key(std::ffi::CStr::from_ptr(c_group).to_str().unwrap());
     let cmd = crate::structs::Cmd::Send {

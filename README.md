@@ -25,9 +25,9 @@ A proof of concept using [presage](https://github.com/whisperfish/presage) in li
 Everything else, most notably:
 
 * Error handling
-* Reasonable contact and group management (list of participants,…)
+* Reasonable contact and group management (get all contacts, query roomlist)
 * Stickers, mentions, replies, quotes, styles,…
-* Mark messages as "read"
+* Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141)
 * Reply to a specific message
 * Display typing… notifications
 * Display receipts
@@ -38,7 +38,7 @@ This list is not exhaustive.
 
 ### Known Issues
 
-* Sometimes, when sending a message to initiate a conversation, it never reaches destination. Since there is almost no error handling, the user cannot to know for sure.
+* Handling errors when sending messages is barely tested.
 
 ### Building
 

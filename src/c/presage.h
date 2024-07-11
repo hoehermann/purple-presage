@@ -21,8 +21,10 @@ void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *);
 void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *);
+void presage_rust_get_group_members(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_free_string(char *);
 void presage_rust_free_buffer(char *, uint64_t);
+void presage_rust_strfreev(char **, uint64_t);
 
 extern RustRuntimePtr rust_runtime;
 
@@ -44,7 +46,8 @@ typedef struct {
     char *title;
     char *body;
     void *blob;
-    uint64_t blobsize;
+    uint64_t size;
+    char **members;
 } Presage;
 
 // procotol properties
@@ -76,6 +79,7 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);
 GList * presage_chat_info(PurpleConnection *connection);
 void presage_join_chat(PurpleConnection *connection, GHashTable *data);
+void presage_handle_members(PurpleConnection *connection, const char *group, char **members, uint64_t length);
 
 // attachments
 void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename);

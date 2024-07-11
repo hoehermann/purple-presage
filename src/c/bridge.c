@@ -40,6 +40,7 @@ void free_message(Presage * message) {
     presage_rust_free_string(message->title);
     presage_rust_free_string(message->body);
     // message->blob is not released here – it must be released by the xfer callback
+    presage_rust_strfreev(message->members, message->size);
 }
 
 /*
@@ -81,9 +82,11 @@ static void handle_message(Presage * message) {
     } else if (message->error >= 0) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->blob != NULL) {
-        presage_handle_attachment(connection, message->who, message->timestamp, message->blob, message->blobsize, message->name);
+        presage_handle_attachment(connection, message->who, message->timestamp, message->blob, message->size, message->name);
     } else if (message->body != NULL) {
         presage_handle_text(connection, message->who, message->name, message->group, message->title, message->flags, message->timestamp, message->body);
+    } else if (message->members != NULL) {
+        presage_handle_members(connection, message->group, message->members, message->size);
     }
     free_message(message);
 }
