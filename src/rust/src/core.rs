@@ -206,12 +206,19 @@ async fn run<C: presage::store::Store + 'static>(
             match manager.store().group(master_key_bytes)? {
                 Some(group) => {
                     let mut message = crate::bridge::Presage::from_account(account);
-                    message.group = std::ffi::CString::new(hex::encode(master_key_bytes)).unwrap().into_raw();
                     let uuid_strings = group.members.into_iter().map(|member| member.uuid.to_string());
                     let uuid_c_strings: Vec<*mut std::os::raw::c_char> = uuid_strings.map(|u| std::ffi::CString::new(u).unwrap().into_raw()).collect();
-                    let boxed_slice = uuid_c_strings.into_boxed_slice();
-                    message.size = boxed_slice.len() as u64;
-                    message.members = Box::into_raw(boxed_slice) as *const *const std::os::raw::c_char;
+                    let boxed_uuid_c_strings = uuid_c_strings.into_boxed_slice();
+                    let groups = vec![crate::bridge::Group {
+                        key: std::ffi::CString::new(hex::encode(master_key_bytes)).unwrap().into_raw(),
+                        title: std::ffi::CString::new(group.title).unwrap().into_raw(),
+                        description: std::ffi::CString::new(group.description.unwrap_or("".to_string())).unwrap().into_raw(),
+                        revision: group.revision,
+                        population: boxed_uuid_c_strings.len() as u64,
+                        members: Box::into_raw(boxed_uuid_c_strings) as *const *const std::os::raw::c_char,
+                    }];
+                    message.size = 1;
+                    message.groups = Box::into_raw(groups.into_boxed_slice()) as *const crate::bridge::Group;
                     crate::bridge::append_message(&message);
                 }
                 None => {

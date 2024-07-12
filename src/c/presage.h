@@ -30,6 +30,14 @@ extern RustRuntimePtr rust_runtime;
 
 // TODO: generate this struct declaration automatically from rust declaration
 typedef struct {
+    char *key;
+    char *title;
+    char *description;
+    uint32_t revision;
+    char **members;
+    uint64_t population;
+} Group;
+typedef struct {
     PurpleAccount *account;
     RustChannelPtr tx_ptr;
     char *qrcode;
@@ -47,7 +55,7 @@ typedef struct {
     char *body;
     void *blob;
     uint64_t size;
-    char **members;
+    Group *groups;
 } Presage;
 
 // procotol properties
@@ -79,7 +87,8 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);
 GList * presage_chat_info(PurpleConnection *connection);
 void presage_join_chat(PurpleConnection *connection, GHashTable *data);
-void presage_handle_members(PurpleConnection *connection, const char *group, char **members, uint64_t length);
+void presage_handle_groups(PurpleConnection *connection, const Group *groups, uint64_t length);
+//void presage_handle_members(PurpleConnection *connection, const char *group, char **members, uint64_t length);
 
 // attachments
 void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename);

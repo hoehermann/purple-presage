@@ -1,5 +1,14 @@
 // TODO: automatically create C header from this declaration
 #[repr(C)]
+pub struct Group {
+    pub key: *const std::os::raw::c_char,
+    pub title: *const std::os::raw::c_char,
+    pub description: *const std::os::raw::c_char,
+    pub revision: std::os::raw::c_uint, //stdint::uint32_t,
+    pub members: *const *const std::os::raw::c_char,
+    pub population: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
+}
+#[repr(C)]
 pub struct Presage {
     pub account: *const std::os::raw::c_void,
     pub tx_ptr: *mut std::os::raw::c_void,
@@ -19,7 +28,7 @@ pub struct Presage {
     pub body: *const std::os::raw::c_char,
     pub blob: *const std::os::raw::c_uchar,
     pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
-    pub members: *const *const std::os::raw::c_char,
+    pub groups: *const Group,
 }
 
 impl Presage {
@@ -42,7 +51,7 @@ impl Presage {
             body: std::ptr::null(),
             blob: std::ptr::null(),
             size: 0,
-            members: std::ptr::null(),
+            groups: std::ptr::null(),
         }
     }
 }

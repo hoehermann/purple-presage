@@ -104,7 +104,14 @@ void presage_handle_members(PurpleConnection *connection, const char *group, cha
             PurpleConvChatBuddyFlags flags = 0;
             purple_conv_chat_add_user(conv_chat, members[i], NULL, flags, FALSE);
         }
-    } else {
-        purple_debug_warning(PLUGIN_NAME, "got list of participants for a non-existent chat %s\n", group);
+    }
+}
+
+void presage_handle_groups(PurpleConnection *connection, const Group *groups, uint64_t length) {
+    // TODO: add group to blist
+    // TODO: populate roomlist
+    for (uint64_t i = 0; i < length; i++) {
+        purple_debug_warning(PLUGIN_NAME, "got group %s „%s“ with %ld members\n", groups[i].key, groups[i].title, groups[i].population);
+        presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
     }
 }
