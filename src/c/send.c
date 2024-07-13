@@ -17,7 +17,7 @@ int presage_send_chat(PurpleConnection *connection, int id, const gchar *message
         if (group != NULL) {
             // strip HTML similar to these reasons: https://github.com/majn/telegram-purple/issues/12 and https://github.com/majn/telegram-purple/commit/fffe751
             char *msg = purple_markup_strip_html(message); // NOTE: This turns newlines into spaces and <br> tags into newlines
-            presage_rust_send_group(rust_runtime, presage->tx_ptr, group, message);
+            presage_rust_send_group(rust_runtime, presage->tx_ptr, group, msg);
             g_free(msg);
         }
     }
