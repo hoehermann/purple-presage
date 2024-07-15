@@ -15,7 +15,7 @@ PurpleGroup * presage_blist_get_group() {
  * Ensure buddy in the buddy list.
  * Updates alias non-destructively.
  */
-void presage_blist_update_buddy(PurpleAccount *account, const char *who, const char *name) {
+PurpleBuddy * presage_blist_update_buddy(PurpleAccount *account, const char *who, const char *name) {
     PurpleBuddy *buddy = purple_blist_find_buddy(account, who);
 
     if (!buddy) {
@@ -39,6 +39,8 @@ void presage_blist_update_buddy(PurpleAccount *account, const char *who, const c
             purple_blist_node_set_string(&buddy->node, "server_alias", name); // explicitly persist the new name so there is no name-change reported after a restart
         }
     }
+
+    return buddy;
 }
 
 void presage_blist_set_online(PurpleAccount *account, PurpleBuddy *buddy) {
@@ -84,5 +86,21 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
     if (topic != NULL) {
         purple_blist_alias_chat(chat, topic);
         // NOTE: purple_conv_chat_set_topic(conv_chat, NULL, title); does not seem to do anything useful
+    }
+}
+
+void presage_handle_contact(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number) {
+    PurpleBuddy *buddy = presage_blist_update_buddy(purple_connection_get_account(connection), uuid, name);
+    purple_blist_node_set_string(&buddy->node, "phone_number", phone_number);
+}
+
+void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full) {
+    const char *server_alias = purple_blist_node_get_string(&buddy->node, "server_alias");
+    if (server_alias != NULL) {
+        purple_notify_user_info_add_pair(info, "Name", server_alias);
+    }
+    const char *phone_number = purple_blist_node_get_string(&buddy->node, "phone_number");
+    if (phone_number != NULL) {
+        purple_notify_user_info_add_pair(info, "Number", phone_number);
     }
 }
