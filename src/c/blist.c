@@ -26,12 +26,18 @@ void presage_blist_update_buddy(PurpleAccount *account, const char *who, const c
 
     presage_blist_set_online(account, buddy);
 
-    // update name after checking against local alias and persisted name
-    const char *local_alias = purple_buddy_get_alias(buddy);
-    const char *server_alias = purple_blist_node_get_string(&buddy->node, "server_alias");
-    if (name != NULL && *name && !purple_strequal(local_alias, name) && !purple_strequal(server_alias, name)) {
-        purple_serv_got_alias(purple_account_get_connection(account), who, name); // it seems buddy->server_alias is not persisted
-        purple_blist_node_set_string(&buddy->node, "server_alias", name); // explicitly persisting the new name
+    // update name after checking against local alias
+    if (name != NULL && *name) {
+        const char *local_alias = purple_buddy_get_local_buddy_alias(buddy);
+        const char *server_alias = purple_blist_node_get_string(&buddy->node, "server_alias");
+        if (local_alias == NULL) {
+            // if no local alias exists, use the provided one
+            purple_blist_alias_buddy(buddy, name);
+        }
+        if (!purple_strequal(local_alias, name) && !purple_strequal(server_alias, name)) {
+            purple_serv_got_alias(purple_account_get_connection(account), who, name); // it seems buddy->server_alias is not persisted
+            purple_blist_node_set_string(&buddy->node, "server_alias", name); // explicitly persist the new name so there is no name-change reported after a restart
+        }
     }
 }
 
