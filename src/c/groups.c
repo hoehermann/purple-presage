@@ -112,6 +112,12 @@ void presage_handle_groups(PurpleConnection *connection, const Group *groups, ui
     // TODO: populate roomlist
     for (uint64_t i = 0; i < length; i++) {
         purple_debug_warning(PLUGIN_NAME, "got group %s „%s“ with %ld members\n", groups[i].key, groups[i].title, groups[i].population);
-        presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
+        if (groups[i].population == 0) {
+            // An empty group. This is not a group, but rather a contact.
+            // TODO: Declare an addtional type for more clarity. Use separate code-paths.
+            presage_handle_contact(connection, groups[i].key, groups[i].title, groups[i].description);
+        } else {
+            presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
+        }
     }
 }

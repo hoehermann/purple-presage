@@ -120,6 +120,11 @@ async fn run<C: presage::store::Store + 'static>(
                 Ok(_) => {
                     // TODO: handle the messages. there might be something useful in there
                     crate::core::purple_debug(account, 2, format!("InitialSync completed.\n"));
+
+                    // also, fetch contacts and groups now
+                    manager = crate::contacts::get_contacts(account, Some(manager))?;
+                    manager = crate::contacts::get_groups(account, Some(manager))?;
+
                     // now that the initial sync has completed,
                     // the connection can be regarded as "connected" and ready to send messages
                     let mut message = crate::bridge::Presage::from_account(account);
@@ -176,57 +181,9 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::structs::Cmd::ListGroups => {
-            let manager = manager.expect("manager must be loaded");
-            for group in manager.store().groups()? {
-                match group {
-                    Ok((
-                        group_master_key,
-                        presage::libsignal_service::groups_v2::Group {
-                            title,
-                            description,
-                            revision,
-                            ..
-                        },
-                        // `members`, `avatar`, `disappearing_messages_timer`, `access_control`, `pending_members`, `requesting_members`, `invite_link_password`
-                    )) => {
-                        let key = hex::encode(group_master_key);
-                        println!("{key} {title}: {description:?} / revision {revision}");
-                    }
-                    Err(err) => {
-                        crate::core::purple_error(account, 16, format!("Error: failed to deserialize group, {err}"));
-                    }
-                };
-            }
-            Ok(manager)
-        }
+        crate::structs::Cmd::ListGroups => crate::contacts::get_groups(account, manager),
 
-        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => {
-            let manager = manager.expect("manager must be loaded");
-            match manager.store().group(master_key_bytes)? {
-                Some(group) => {
-                    let mut message = crate::bridge::Presage::from_account(account);
-                    let uuid_strings = group.members.into_iter().map(|member| member.uuid.to_string());
-                    let uuid_c_strings: Vec<*mut std::os::raw::c_char> = uuid_strings.map(|u| std::ffi::CString::new(u).unwrap().into_raw()).collect();
-                    let boxed_uuid_c_strings = uuid_c_strings.into_boxed_slice();
-                    let groups = vec![crate::bridge::Group {
-                        key: std::ffi::CString::new(hex::encode(master_key_bytes)).unwrap().into_raw(),
-                        title: std::ffi::CString::new(group.title).unwrap().into_raw(),
-                        description: std::ffi::CString::new(group.description.unwrap_or("".to_string())).unwrap().into_raw(),
-                        revision: group.revision,
-                        population: boxed_uuid_c_strings.len() as u64,
-                        members: Box::into_raw(boxed_uuid_c_strings) as *const *const std::os::raw::c_char,
-                    }];
-                    message.size = 1;
-                    message.groups = Box::into_raw(groups.into_boxed_slice()) as *const crate::bridge::Group;
-                    crate::bridge::append_message(&message);
-                }
-                None => {
-                    // TODO
-                }
-            }
-            Ok(manager)
-        }
+        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes),
 
         crate::structs::Cmd::Exit {} => {
             purple_error(account, 16, String::from("Exit command reached inner loop."));

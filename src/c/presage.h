@@ -78,10 +78,12 @@ int presage_send_chat(PurpleConnection *connection, int id, const gchar *message
 // contact management
 void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleGroup *group);
 void presage_blist_buddies_all_set_online(PurpleAccount *account);
-void presage_blist_update_buddy(PurpleAccount *account, const char *uuid, const char *name);
+PurpleBuddy *presage_blist_update_buddy(PurpleAccount *account, const char *uuid, const char *name);
 void presage_blist_set_online(PurpleAccount *account, PurpleBuddy *buddy);
 void presage_blist_buddies_all_set_online(PurpleAccount *account);
 void presage_blist_update_chat(PurpleAccount *account, const char *identifier, const char *topic);
+void presage_handle_contact(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
+void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full);
 
 // group management
 void presage_set_chat_topic(PurpleConnection *pc, int id, const char *topic);
