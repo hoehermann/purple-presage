@@ -164,10 +164,11 @@ async fn process_incoming_message<C: presage::store::Store>(
                 continue;
             };
 
+            // TODO: have an explicit mapping of mime-type to extension
             let extensions = mime_guess::get_mime_extensions_str(attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream"));
             let extension = extensions
                 .and_then(|e| {
-                    e.last() // using e.last here yields jpg instead of jfif, but also pnz instead of png 😬
+                    e.last() // using e.last here yields jpg instead of jfif, but also pnz instead of png and mpeg4 instead of mp4 😬
                 })
                 .unwrap_or(&"bin");
             /*
