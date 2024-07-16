@@ -74,25 +74,37 @@ pub fn get_groups<C: presage::store::Store + 'static>(
     manager: Option<presage::Manager<C, presage::manager::Registered>>,
 ) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
     let manager = manager.expect("manager must be loaded");
-    for group in manager.store().groups()? {
-        match group {
-            Ok((
+    let mut message = crate::bridge::Presage::from_account(account);
+    let groups: Vec<crate::bridge::Group> = manager
+        .store()
+        .groups()?
+        .flatten()
+        .map(
+            |(
                 group_master_key,
                 presage::libsignal_service::groups_v2::Group {
                     title,
                     description,
                     revision,
+                    members,
                     ..
                 },
-                // `members`, `avatar`, `disappearing_messages_timer`, `access_control`, `pending_members`, `requesting_members`, `invite_link_password`
-            )) => {
+                // `avatar`, `disappearing_messages_timer`, `access_control`, `pending_members`, `requesting_members`, `invite_link_password`
+            )| {
                 let key = hex::encode(group_master_key);
-                println!("{key} {title}: {description:?} / revision {revision}");
-            }
-            Err(err) => {
-                crate::core::purple_error(account, 16, format!("Error: failed to deserialize group, {err}"));
-            }
-        };
-    }
+                crate::bridge::Group {
+                    key: std::ffi::CString::new(key).unwrap().into_raw(),
+                    title: std::ffi::CString::new(title).unwrap().into_raw(),
+                    description: std::ffi::CString::new(description.unwrap_or("".to_string())).unwrap().into_raw(),
+                    revision: revision,
+                    population: members.len() as u64,
+                    members: std::ptr::null(),
+                }
+            },
+        )
+        .collect();
+    message.size = groups.len() as u64;
+    message.groups = Box::into_raw(groups.into_boxed_slice()) as *const crate::bridge::Group;
+    crate::bridge::append_message(&message);
     Ok(manager)
 }

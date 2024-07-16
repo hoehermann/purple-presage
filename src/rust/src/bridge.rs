@@ -29,6 +29,7 @@ pub struct Presage {
     pub blob: *const std::os::raw::c_uchar,
     pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
     pub groups: *const Group,
+    pub roomlist: *const std::os::raw::c_void, // not relevant to rust
 }
 
 impl Presage {
@@ -52,6 +53,7 @@ impl Presage {
             blob: std::ptr::null(),
             size: 0,
             groups: std::ptr::null(),
+            roomlist: std::ptr::null(),
         }
     }
 }

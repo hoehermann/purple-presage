@@ -107,17 +107,69 @@ void presage_handle_members(PurpleConnection *connection, const char *group, cha
     }
 }
 
+void presage_roomlist_populate(PurpleConnection *connection, const Group *groups, uint64_t length) {
+    g_return_if_fail(groups != NULL || length == 0);
+
+    Presage *presage = purple_connection_get_protocol_data(connection);
+    PurpleRoomlist *roomlist = presage->roomlist;
+    if (roomlist != NULL) {
+        for (uint64_t i = 0; i < length; i++) {
+            PurpleRoomlistRoom *room = purple_roomlist_room_new(PURPLE_ROOMLIST_ROOMTYPE_ROOM, groups[i].key, NULL); // MEMCHECK: roomlist will take ownership 
+            // purple_roomlist_room_new sets the room's identifier
+            purple_roomlist_room_add_field(roomlist, room, groups[i].title); // MEMCHECK: value is strdup'ed in callee
+            purple_roomlist_room_add_field(roomlist, room, groups[i].description); // MEMCHECK: value is strdup'ed in callee
+            purple_roomlist_room_add(roomlist, room);
+        }
+        purple_roomlist_set_in_progress(roomlist, FALSE);
+        purple_roomlist_unref(roomlist); // unref here, roomlist may remain in ui
+        presage->roomlist = NULL;
+    }
+}
+
 void presage_handle_groups(PurpleConnection *connection, const Group *groups, uint64_t length) {
+    g_return_if_fail(groups != NULL || length == 0);
+
+    presage_roomlist_populate(connection, groups, length);
+
     // TODO: add group to blist
-    // TODO: populate roomlist
     for (uint64_t i = 0; i < length; i++) {
         purple_debug_warning(PLUGIN_NAME, "got group %s „%s“ with %ld members\n", groups[i].key, groups[i].title, groups[i].population);
         if (groups[i].population == 0) {
             // An empty group. This is not a group, but rather a contact.
             // TODO: Declare an addtional type for more clarity. Use separate code-paths.
             presage_handle_contact(connection, groups[i].key, groups[i].title, groups[i].description);
-        } else {
+        } else if (groups[i].members != NULL) {
             presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
         }
     }
+}
+
+/*
+ * This requests a list of rooms representing the Signal group chats.
+ * The request is asynchronous. Response is handled by presage_handle_groups.
+ * 
+ * A purple room has an identifying name – for Singal that is the Group Master Key.
+ * A purple room has a list of fields – in our case the Signal group title and description 
+ * (could also be revision, number of participants).
+ * 
+ * Some services like spectrum expect the human readable group name field key to be "topic", 
+ * see RoomlistProgress in https://github.com/SpectrumIM/spectrum2/blob/518ba5a/backends/libpurple/main.cpp#L1997
+ * In purple, the roomlist field "name" gets overwritten in purple_roomlist_room_join, see libpurple/roomlist.c.
+ */
+PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection) {
+    PurpleAccount *account = purple_connection_get_account(connection);
+    PurpleRoomlist *roomlist = purple_roomlist_new(account); // MEMCHECK: caller takes ownership
+    purple_roomlist_set_in_progress(roomlist, TRUE);
+    GList *fields = NULL;
+    fields = g_list_append(fields, purple_roomlist_field_new( // MEMCHECK: fields takes ownership
+        PURPLE_ROOMLIST_FIELD_STRING, "Name", "topic", FALSE
+    ));
+    fields = g_list_append(fields, purple_roomlist_field_new( // MEMCHECK: fields takes ownership
+        PURPLE_ROOMLIST_FIELD_STRING, "Description", "description", FALSE
+    ));
+    purple_roomlist_set_fields(roomlist, fields);
+    Presage *presage = purple_connection_get_protocol_data(connection);
+    presage->roomlist = roomlist; // store the pointer to the roomlist so presage_handle_groups can write to it
+    presage_rust_list_groups(rust_runtime, presage->tx_ptr);
+    return roomlist;
 }
