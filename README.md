@@ -1,4 +1,4 @@
-A proof of concept using [presage](https://github.com/whisperfish/presage) in libpurple.
+A libpurple/Pidgin protocol plugin for Signal (formerly textsecure) using [presage](https://github.com/whisperfish/presage).
 
 ### Download
 
@@ -13,30 +13,38 @@ A proof of concept using [presage](https://github.com/whisperfish/presage) in li
 
 #### Present
 
-* Can link against a master device via QR-Code.
+* Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
-* Can reply with a simple text message.
-* Can add contacts to buddy list manually.
-* Will add buddies to contact list unconditionally.
 * Receives attachments (only pictures tested for now).
+* Can reply with a simple text message.
+* Will add buddies to contact list unconditionally.
+* Can list groups as rooms and open the chat.
 
 #### Missing
 
-Everything else, most notably:
+These lists are not exhaustive.
 
-* Error handling
-* Reasonable contact and group management (get all contacts, query roomlist)
-* Stickers, mentions, replies, quotes, styles,…
+##### To Be Done Soon™
+
+* Add chats to contact list unconditionally.
+* Forward all errors to front-end properly.
+
+##### On Hold
+
 * Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141)
-* Reply to a specific message
-* Display typing… notifications
-* Display receipts
-* Support for alternative UIs
-* Support for phone numbers
+* Reply to a specific message (no example exists in back-end)
 
-This list is not exhaustive.
+##### "Contributions Welcome"
 
-### Known Issues
+* Configuration option whether to add contacts to buddy list or not
+* Reasonable generation of type declarations
+* Stickers, mentions, replies, quotes, styles,…
+* Display typing notifications
+* Display receipts (not important)
+* Support for alternative UIs (Spectrum, Bitlbee)
+* Support for adding contacts via phone number (rarely used)
+
+#### Known Issues
 
 * Handling errors when sending messages is barely tested.
 * Attachment sent to group from main device is not handled.
