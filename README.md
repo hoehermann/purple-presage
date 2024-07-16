@@ -39,6 +39,7 @@ This list is not exhaustive.
 ### Known Issues
 
 * Handling errors when sending messages is barely tested.
+* Attachment sent to group from main device is not handled.
 
 ### Building
 

@@ -63,7 +63,8 @@ static PurplePluginProtocolInfo prpl_info = {
     .set_chat_topic = presage_set_chat_topic,
     .chat_send = presage_send_chat,
     .chat_info = presage_chat_info,
-    .join_chat = presage_join_chat
+    .join_chat = presage_join_chat,
+    .roomlist_get_list = presage_roomlist_get_list
 };
 
 static PurplePluginInfo info = {
