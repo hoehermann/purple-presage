@@ -20,6 +20,7 @@ fn print_message<C: presage::store::Store>(
 
     let format_data_message = |thread: &presage::store::Thread, data_message: &presage::libsignal_service::content::DataMessage| {
         match data_message {
+            // Quote
             presage::libsignal_service::content::DataMessage {
                 quote: Some(presage::proto::data_message::Quote {
                     text: Some(quoted_text),
@@ -32,6 +33,7 @@ fn print_message<C: presage::store::Store>(
                 // TODO: add ellipsis if quoted_text contains more than one line
                 Some(format!("> {firstline}\n\n{body}"))
             }
+            // Reaction
             presage::libsignal_service::content::DataMessage {
                 reaction:
                     Some(presage::proto::data_message::Reaction {
@@ -53,15 +55,19 @@ fn print_message<C: presage::store::Store>(
                     crate::core::purple_debug(account, 2, String::from("message reacted to has no body\n"));
                     return None;
                 };
-
-                Some(format!("Reacted with {emoji} to message: \"{body}\""))
+                let firstline = body.split("\n").next().unwrap_or("<message body missing>");
+                // TODO: add ellipsis if body contains more than one line
+                Some(format!("Reacted with {emoji} to message „{firstline}“."))
             }
+            // Plan text message
+            // TODO: resolve mentions
             presage::libsignal_service::content::DataMessage {
                 body: Some(body), ..
             } => Some(body.to_string()),
             c => {
-                crate::core::purple_debug(account, 2, format!("Empty data message {c:?}\n"));
-                // Note: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
+                crate::core::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
+                // NOTE: This happens when receiving a file, but not providing a text
+                // NOTE: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
                 // Some("message has been sent".to_string())
                 None
             }
@@ -134,7 +140,6 @@ fn print_message<C: presage::store::Store>(
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
             }
         };
-        //println!("{who} in {group} wrote {body}");
         crate::bridge::append_message(&message);
     }
 }
@@ -151,10 +156,21 @@ async fn process_incoming_message<C: presage::store::Store>(
 ) {
     print_message(manager, content, account);
 
-    if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { attachments, .. }) = &content.body {
+    if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { attachments, .. })
+    | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
+        sent: Some(presage::proto::sync_message::Sent {
+            message: Some(presage::libsignal_service::content::DataMessage { attachments, .. }),
+            ..
+        }),
+        ..
+    }) = &content.body
+    {
         for attachment_pointer in attachments {
             let mut message = crate::bridge::Presage::from_account(account);
             message.timestamp = content.metadata.timestamp;
+            // TODO: `who` and `group` should be filled with the Receiver (group or contact) information
+            // so they end up in the correct conversation
+            // relevant for sync messages in particular
             message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
 
             let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
@@ -164,19 +180,17 @@ async fn process_incoming_message<C: presage::store::Store>(
                 continue;
             };
 
-            // TODO: have an explicit mapping of mime-type to extension
-            let extensions = mime_guess::get_mime_extensions_str(attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream"));
-            let extension = extensions
-                .and_then(|e| {
-                    e.last() // using e.last here yields jpg instead of jfif, but also pnz instead of png and mpeg4 instead of mp4 😬
-                })
-                .unwrap_or(&"bin");
-            /*
-            let filename = attachment_pointer
-                .file_name
-                .clone()
-                .unwrap_or_else(|| Local::now().format("%Y-%m-%d-%H-%M-%s").to_string());
-             */
+            let mimetype = attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream");
+            let extension = match mimetype {
+                "image/jpeg" => "jpg",
+                "image/png" => "png",
+                "video/mp4" => "mp4",
+                mimetype => {
+                    let extensions = mime_guess::get_mime_extensions_str(mimetype);
+                    extensions.and_then(|e| e.first()).unwrap_or(&"bin")
+                }
+            };
+
             let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
                 presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                 presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,

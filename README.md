@@ -15,7 +15,8 @@ A libpurple/Pidgin protocol plugin for Signal (formerly textsecure) using [presa
 
 * Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
-* Receives attachments (only pictures tested for now).
+* Displays quotes, reactions and incoming calls.
+* Receives attachments (see caveats below).
 * Can reply with a simple text message.
 * Will add buddies to contact list unconditionally.
 * Can list groups as rooms and open the chat.
@@ -28,26 +29,27 @@ These lists are not exhaustive.
 
 * Add chats to contact list unconditionally.
 * Forward all errors to front-end properly.
+* Send an attachment (example exists in flare).
 
 ##### On Hold
 
-* Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141)
-* Reply to a specific message (no example exists in back-end)
+* Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
+* Reply to a specific message (no example exists in back-end).
 
 ##### "Contributions Welcome"
 
 * Configuration option whether to add contacts to buddy list or not
-* Reasonable generation of type declarations
-* Stickers, mentions, replies, quotes, styles,…
+* Reasonable generation of C headers and rust constants
+* Stickers, mentions, replies, styles,…
 * Display typing notifications
 * Display receipts (not important)
 * Support for alternative UIs (Spectrum, Bitlbee)
-* Support for adding contacts via phone number (rarely used)
+* Support for adding contacts via phone number
 
 #### Known Issues
 
 * Handling errors when sending messages is barely tested.
-* Attachment sent to group from main device is not handled.
+* Attachments end up in the conversation of the sender, not the destination (espeically confusing when a group chat is involved).
 
 ### Building
 

@@ -45,7 +45,7 @@ static void presage_xfer_announce(PurpleConnection *connection, const char *who,
 void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename) {
     g_return_if_fail(connection != NULL);
     PurpleAccount *account = purple_connection_get_account(connection);
-    
+
     presage_xfer_announce(connection, who, filename);
     
     PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, who);
