@@ -71,6 +71,14 @@ static void generate_and_show_qrcode(PurpleConnection *connection, const char *d
     }
 }
 
+static void write_qrcode_as_conversation(PurpleConnection *connection, const char *data) {
+    const gchar *who = "Logon QR Code";
+    PurpleMessageFlags flags = PURPLE_MESSAGE_RECV;
+    gchar *msg = g_strdup_printf("Convert the next line into a QR code and scan it with your main device:<br>%s", data);
+    purple_serv_got_im(connection, who, msg, flags, time(NULL));
+    g_free(msg);
+}
+
 void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
     g_return_if_fail(data != NULL);
     if (data[0] == 0) {
@@ -79,7 +87,14 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
         Presage *presage = purple_connection_get_protocol_data(connection);
         presage_rust_whoami(rust_runtime, presage->tx_ptr); // now that linking is done, get own uuid
     } else {
-        generate_and_show_qrcode(connection, data);
+        PurpleRequestUiOps *ui_ops = purple_request_get_ui_ops();
+        if (ui_ops && ui_ops->request_fields) {
+            // UI supports request fields (e.g. Pidgin)
+            generate_and_show_qrcode(connection, data);
+        } else {
+            // UI does not implement request fields (e.g. bitlbee)
+            write_qrcode_as_conversation(connection, data);
+        }
     }
 }
 
