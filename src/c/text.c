@@ -2,8 +2,11 @@
 
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, PurpleMessageFlags flags, uint64_t timestamp, const char *body) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
     PurpleAccount *account = purple_connection_get_account(connection);
+
+    // in Signal, timestamps are milliseconds, but purple wants seconds
+    time_t timestamp_seconds = timestamp_ms/1000;
 
     // Signal is a plain-text protocol, but Pidgin expects HTML
     // NOTE: This turns newlines into br-tags which may mess up textual representation of QR-codes
@@ -19,9 +22,9 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
             if (conv == NULL) {
                 conv = purple_im_conversation_new(account, who); // MEMCHECK: caller takes ownership
             }
-            purple_conv_im_write(purple_conversation_get_im_data(conv), who, text, flags, timestamp/1000);
+            purple_conv_im_write(purple_conversation_get_im_data(conv), who, text, flags, timestamp_seconds);
         } else {
-            purple_serv_got_im(connection, who, text, flags, timestamp/1000);
+            purple_serv_got_im(connection, who, text, flags, timestamp_seconds);
         }
     } else {
         // group message
@@ -39,7 +42,7 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
             // the backend does not include the username for sync messages
             who = purple_account_get_username(account);
         }
-        purple_serv_got_chat_in(connection, g_str_hash(group), who, flags, text, timestamp);
+        purple_serv_got_chat_in(connection, g_str_hash(group), who, flags, text, timestamp_seconds);
     }
 
     g_free(text);
