@@ -106,7 +106,7 @@ fn print_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, //Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
         presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, //Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
         c => {
-            println!("rust: unsupported message {c:?}");
+            crate::core::purple_debug(account, 2, format!("Unsupported message {c:?}\n"));
             None
         }
     } {
@@ -215,15 +215,15 @@ pub async fn receive<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    crate::core::purple_debug(account, 2, String::from("receive on separate thread begins…\n"));
+    //crate::core::purple_debug(account, 2, String::from("receive on separate thread begins…\n"));
     let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
     match messages {
         Ok(messages) => {
-            crate::core::purple_debug(account, 2, String::from("receive got messages\n"));
+            //crate::core::purple_debug(account, 2, String::from("receive got messages\n"));
             futures::pin_mut!(messages);
             while let Some(content) = messages.next().await {
                 // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
-                crate::core::purple_debug(account, 2, String::from("receive got a message's content\n"));
+                //crate::core::purple_debug(account, 2, String::from("receive got a message's content\n"));
                 process_incoming_message(manager, &content, account).await;
             }
         }
@@ -231,5 +231,5 @@ pub async fn receive<C: presage::store::Store>(
             crate::core::purple_error(account, 16, err.to_string());
         }
     }
-    crate::core::purple_debug(account, 2, String::from("receive on separate thread finished\n"));
+    crate::core::purple_error(account, 0, String::from("Receiver has finished. Disconnected?"));
 }

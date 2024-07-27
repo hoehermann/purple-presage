@@ -211,7 +211,7 @@ pub async fn mainloop(
                 break;
             }
             _ => {
-                purple_debug(account, 2, format!("run {:?} begins…\n", cmd));
+                //purple_debug(account, 2, format!("run {:?} begins…\n", cmd));
                 // TODO: find out if config_store.clone() is the correct thing to do here
                 match run(cmd.clone(), config_store.clone(), manager, account).await {
                     Ok(m) => {
@@ -247,7 +247,7 @@ pub async fn mainloop(
                         purple_error(account, 16, format!("run Err {err:?}"));
                     }
                 }
-                purple_debug(account, 2, format!("run {:?} finished.\n", cmd));
+                //purple_debug(account, 2, format!("run {:?} finished.\n", cmd));
             }
         }
     }
@@ -264,7 +264,7 @@ pub async fn main(
     rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *const std::os::raw::c_void,
 ) {
-    purple_debug(account, 2, String::from("opening config database from {store_path}\n"));
+    purple_debug(account, 2, format!("opening config database from {store_path}\n"));
     let config_store =
         presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
     match config_store {
