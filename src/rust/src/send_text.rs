@@ -17,7 +17,7 @@ pub async fn send<C: presage::store::Store + 'static>(
                 timestamp: Some(timestamp),
                 ..Default::default()
             });
-            manager.send_message(uuid, data_message, timestamp).await?;
+            manager.send_message(presage::libsignal_service::ServiceAddress::new_aci(uuid), data_message, timestamp).await?;
         }
         crate::structs::Recipient::Group(master_key) => {
             let data_message = presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
