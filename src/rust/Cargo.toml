@@ -18,6 +18,7 @@ presage = { git = "https://github.com/whisperfish/presage", rev = "e2392c42a0392
 presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "e2392c42a0392397b9db782607fdd7ab2ea91b5f" }
 
 hex = "*"
+chrono = "*"
 mime_guess = "2.0"
 #stdint = "0.2"
 futures = "0.3"

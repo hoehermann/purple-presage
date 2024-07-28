@@ -44,26 +44,30 @@ fn print_message<C: presage::store::Store>(
                 ..
             } => {
                 let Ok(Some(message)) = manager.store().message(thread, *timestamp) else {
-                    crate::core::purple_error(account, 16, format!("no message in {thread} sent at {timestamp}"));
-                    return None;
+                    // Original message could not be found. As a best effort, give some reference by displaying the timestamp.
+                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH+std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    return Some(format!("Reacted with {emoji} to message from {sent_at}."));
                 };
 
                 let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
                     body: Some(body), ..
                 }) = message.body
                 else {
-                    crate::core::purple_debug(account, 2, String::from("message reacted to has no body\n"));
-                    return None;
+                    // Synced messages are not resolved here and reactions to them end up in this arm.
+                    // TODO: try to access the SynchronizeMessage/SyncMessage
+                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH+std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    return Some(format!("Reacted with {emoji} to message from {sent_at}."));
                 };
                 let firstline = body.split("\n").next().unwrap_or("<message body missing>");
                 // TODO: add ellipsis if body contains more than one line
                 Some(format!("Reacted with {emoji} to message „{firstline}“."))
             }
-            // Plan text message
+            // Plain text message
             // TODO: resolve mentions
             presage::libsignal_service::content::DataMessage {
                 body: Some(body), ..
             } => Some(body.to_string()),
+            // Default (catch all other cases)
             c => {
                 crate::core::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
                 // NOTE: This happens when receiving a file, but not providing a text

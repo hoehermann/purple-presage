@@ -48,6 +48,8 @@ void free_message(Presage * message) {
  * Handle a message according to its content.
  */
 static void handle_message(Presage * message) {
+    //purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .title=„%s“, .body=„%s“})\n", message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->title, message->body);
+
     if (message->debug >= 0) {
         // log messages do not need an active connection
         purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
