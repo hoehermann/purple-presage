@@ -45,17 +45,28 @@ fn print_message<C: presage::store::Store>(
             } => {
                 let Ok(Some(message)) = manager.store().message(thread, *timestamp) else {
                     // Original message could not be found. As a best effort, give some reference by displaying the timestamp.
-                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH+std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    let sent_at =
+                        chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
                     return Some(format!("Reacted with {emoji} to message from {sent_at}."));
                 };
 
-                let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
+                let (presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
                     body: Some(body), ..
-                }) = message.body
+                })
+                | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
+                    sent:
+                        Some(presage::proto::sync_message::Sent {
+                            message: Some(presage::libsignal_service::content::DataMessage {
+                                body: Some(body), ..
+                            }),
+                            ..
+                        }),
+                    ..
+                })) = message.body
                 else {
-                    // Synced messages are not resolved here and reactions to them end up in this arm.
-                    // TODO: try to access the SynchronizeMessage/SyncMessage
-                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH+std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    // Sometimes, synced messages are not resolved here and reactions to them end up in this arm.
+                    let sent_at =
+                        chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
                     return Some(format!("Reacted with {emoji} to message from {sent_at}."));
                 };
                 let firstline = body.split("\n").next().unwrap_or("<message body missing>");
