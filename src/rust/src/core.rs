@@ -145,11 +145,16 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::structs::Cmd::Send { recipient, message } => {
+        crate::structs::Cmd::Send {
+            recipient,
+            message,
+            xfer,
+        } => {
             let mut manager = manager.expect("manager must be loaded");
             // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge::Presage::from_account(account);
             msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+            msg.xfer = xfer; // in case of attachments, this is the reference to the respective purple Xfer
             match recipient {
                 crate::structs::Recipient::Contact(uuid) => {
                     msg.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
@@ -159,11 +164,13 @@ async fn run<C: presage::store::Store + 'static>(
                 }
             }
             // now do the actual sending and error-handling
-            match crate::send_text::send(&mut manager, recipient, &message).await {
+            match crate::send_text::send(&mut manager, recipient, message.clone(), xfer).await {
                 Ok(_) => {
                     // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
                     msg.flags = 0x0001; // PURPLE_MESSAGE_SEND
-                    msg.body = std::ffi::CString::new(message).unwrap().into_raw();
+                    if let Some(body) = message {
+                        msg.body = std::ffi::CString::new(body).unwrap().into_raw();
+                    }
                 }
                 Err(err) => {
                     // TODO: remove this purple_debug once handling errors is reasonably well tested

@@ -29,7 +29,8 @@ pub struct Presage {
     pub blob: *const std::os::raw::c_uchar,
     pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
     pub groups: *const Group,
-    pub roomlist: *const std::os::raw::c_void, // not relevant to rust
+    pub roomlist: *const std::os::raw::c_void,
+    pub xfer: *const std::os::raw::c_void,
 }
 
 impl Presage {
@@ -54,6 +55,7 @@ impl Presage {
             size: 0,
             groups: std::ptr::null(),
             roomlist: std::ptr::null(),
+            xfer: std::ptr::null(),
         }
     }
 }
@@ -61,12 +63,23 @@ impl Presage {
 extern "C" {
     // this is implemented by bridge.c
     fn presage_append_message(message: *const Presage);
+
+    // this is implemented by libpurple's ft.c
+    // TODO: automatically generate declaration from ft.h
+    fn purple_xfer_get_local_filename(xfer: *const std::os::raw::c_void) -> *const std::os::raw::c_char;
 }
 
 // wrapper around unsafe presage_append_message
 pub fn append_message(message: *const Presage) {
     unsafe {
         presage_append_message(message);
+    }
+}
+
+// wrapper around unsafe purple_xfer_get_local_filename
+pub fn xfer_get_local_filename(xfer: *const std::os::raw::c_void) -> String {
+    unsafe {
+        return std::ffi::CStr::from_ptr(purple_xfer_get_local_filename(xfer)).to_str().unwrap().to_owned();
     }
 }
 

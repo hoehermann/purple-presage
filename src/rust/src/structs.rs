@@ -13,7 +13,8 @@ pub enum Cmd {
     Receive,
     Send {
         recipient: Recipient,
-        message: String,
+        message: Option<String>,
+        xfer: *const std::os::raw::c_void,
     },
     ListGroups,
     GetGroupMembers {
