@@ -16,7 +16,7 @@ curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag 
 # note: tag = "0.6.1" did not receive any SynchronizeMessage
 presage = { git = "https://github.com/whisperfish/presage", rev = "e2392c42a0392397b9db782607fdd7ab2ea91b5f" }
 presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "e2392c42a0392397b9db782607fdd7ab2ea91b5f" }
-
+mime-sniffer = { git = "https://github.com/kamadorueda/rust-mime-sniffer"}
 hex = "*"
 chrono = "*"
 mime_guess = "2.0"

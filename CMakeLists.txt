@@ -32,6 +32,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/status.c"
     "src/c/groups.c"
     "src/c/attachment.c"
+    "src/c/send_file.c"
     "src/c/presage.h"
     "src/c/hehoe-purple2and3/purple.h"
 )

@@ -10,6 +10,7 @@
 #define _MAKE_STR(x) #x
 
 // these should be supplied by rust in some way
+// TODO: uint64_t should actually correspond to rust's usize
 typedef struct _RustRuntime * RustRuntimePtr;
 typedef struct _RustChannelTx * RustChannelPtr;
 RustRuntimePtr presage_rust_init();
@@ -19,8 +20,8 @@ void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
 void presage_rust_initial_sync(RustRuntimePtr, RustChannelPtr);
 void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
-void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *);
-void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *);
+void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
+void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
 void presage_rust_get_group_members(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_list_groups(RustRuntimePtr, RustChannelPtr);
 void presage_rust_free_string(char *);
@@ -58,6 +59,7 @@ typedef struct {
     uint64_t size;
     Group *groups;
     PurpleRoomlist *roomlist;
+    PurpleXfer *xfer;
 } Presage;
 
 // procotol properties
@@ -97,3 +99,6 @@ PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection);
 
 // attachments
 void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename);
+void presage_send_file(PurpleConnection *connection, const gchar *who, const gchar *filename);
+void presage_chat_send_file(PurpleConnection *connection, int id, const char *filename);
+void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error);

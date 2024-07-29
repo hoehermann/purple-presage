@@ -23,6 +23,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Will add buddies to contact list unconditionally.
 * Can list groups as rooms and open the chat.
 * Special handling of login procedure for bitlbee.
+* Send an attachment.
 
 ### Missing
 
@@ -30,7 +31,6 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 * Add chats to contact list unconditionally.
 * Forward all errors to front-end properly.
-* Send an attachment (example exists in flare).
 
 #### On Hold
 
@@ -53,6 +53,7 @@ These lists are not exhaustive.
 
 * Handling errors when sending messages is barely tested.
 * Attachments end up in the conversation of the sender, not the destination (especially confusing when a group chat is involved).
+* Failing to send an attachment may bring down the entire application.
 
 ## Building
 

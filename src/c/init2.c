@@ -60,11 +60,17 @@ static PurplePluginProtocolInfo prpl_info = {
     .send_im = presage_send_im,
     .add_buddy = presage_add_buddy,
     .tooltip_text = presage_tooltip_text,
+    // group chat related
     .set_chat_topic = presage_set_chat_topic,
     .chat_send = presage_send_chat,
     .chat_info = presage_chat_info,
     .join_chat = presage_join_chat,
-    .roomlist_get_list = presage_roomlist_get_list
+    .roomlist_get_list = presage_roomlist_get_list,
+    // file transfer
+    .send_file = presage_send_file,
+    #if PURPLE_VERSION_CHECK(2,14,0)
+    .chat_send_file = presage_chat_send_file,
+    #endif
 };
 
 static PurplePluginInfo info = {

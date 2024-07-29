@@ -37,3 +37,6 @@
 #define purple_blist_find_group purple_find_group
 #define purple_blist_find_buddy purple_find_buddy
 #define purple_blist_chat_new purple_chat_new
+
+// xfer
+#define PURPLE_XFER_TYPE_SEND PURPLE_XFER_SEND
