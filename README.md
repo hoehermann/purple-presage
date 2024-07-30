@@ -1,5 +1,7 @@
 A libpurple/Pidgin protocol plugin for Signal (formerly textsecure) using [presage](https://github.com/whisperfish/presage).
 
+Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schmiddi](https://github.com/Schmiddiii).
+
 ## Download
 
 * [Latest Build for Windows](https://nightly.link/hoehermann/purple-presage/workflows/build/master/libpresage.dll.zip)
@@ -19,11 +21,10 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Receives a simple text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
 * Receives attachments (see caveats below).
-* Can reply with a simple text message.
+* Can send a simple text message or an attachment.
 * Will add buddies to contact list unconditionally.
 * Can list groups as rooms and open the chat.
-* Special handling of login procedure for bitlbee.
-* Send an attachment.
+* Uses special handling of login procedure for bitlbee.
 
 ### Missing
 
