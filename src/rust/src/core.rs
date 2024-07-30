@@ -141,7 +141,7 @@ async fn run<C: presage::store::Store + 'static>(
         crate::structs::Cmd::Receive => {
             let manager = manager.expect("manager must be loaded");
             let mut receiving_manager = manager.clone();
-            tokio::task::spawn_local(async move { crate::receive_text::receive(&mut receiving_manager, account).await });
+            tokio::task::spawn_local(async move { crate::receive::receive(&mut receiving_manager, account).await });
             Ok(manager)
         }
 
@@ -164,7 +164,7 @@ async fn run<C: presage::store::Store + 'static>(
                 }
             }
             // now do the actual sending and error-handling
-            match crate::send_text::send(&mut manager, recipient, message.clone(), xfer).await {
+            match crate::send::send(&mut manager, recipient, message.clone(), xfer).await {
                 Ok(_) => {
                     // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
                     msg.flags = 0x0001; // PURPLE_MESSAGE_SEND
