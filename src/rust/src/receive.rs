@@ -82,6 +82,7 @@ fn print_message<C: presage::store::Store>(
             c => {
                 crate::core::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
                 // NOTE: This happens when receiving a file, but not providing a text
+                // TODO: suppress this debug message if data message contained an attachment
                 // NOTE: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
                 // Some("message has been sent".to_string())
                 None
