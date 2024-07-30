@@ -4,6 +4,6 @@ mod bridge;
 mod bridge_commands;
 mod contacts;
 mod core;
-mod receive_text;
-mod send_text;
+mod receive;
+mod send;
 mod structs;
