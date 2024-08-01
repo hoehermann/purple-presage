@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.18) # see submodules/purple-cmake
+cmake_minimum_required(VERSION 3.19) # for string(JSON …)
+# 3.18 needed for win32 part of submodules/purple-cmake
 
 project("purple-presage")
 
@@ -19,7 +20,12 @@ FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/co
 FetchContent_MakeAvailable(Corrosion)
 set(Rust_PROFILE "release" CACHE STRING "Rust profile")
 set_property(CACHE Rust_PROFILE PROPERTY STRINGS "dev" "release")
-corrosion_import_crate(MANIFEST_PATH src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
+corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
+
+# obtain version string from back-end metadata
+execute_process(COMMAND ${Rust_CARGO_CACHED} metadata --format-version 1 --no-deps --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml OUTPUT_VARIABLE BACKEND_METADATA)
+string(JSON PLUGIN_VERSION GET ${BACKEND_METADATA} packages 0 version)
+message(STATUS "PLUGIN_VERSION: ${PLUGIN_VERSION}")
 
 set(TARGET_NAME "presage")
 add_library(${TARGET_NAME} SHARED
@@ -62,7 +68,6 @@ else()
 endif()
 set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
 
-file(READ "${CMAKE_SOURCE_DIR}/VERSION" PLUGIN_VERSION)
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
 target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS})
 target_link_libraries(${TARGET_NAME} PRIVATE ${PURPLE_LIBRARIES})
