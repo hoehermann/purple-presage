@@ -93,17 +93,19 @@ protoc needs to be in your PATH. You can install it with any method you like, in
 
 Same as Linux build instructions, but may need to modify the configuration:
 
-1. Generate project:
+1. Generate MSBuild project:
 
-        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
 
     If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
         cmake --build .
-        cmake --install . --config Debug
+        cmake --install . --config Release
         cmake --build . --target run
+
+When using the "Debug" configuration, the linker complains about mismatching configurations. The implications of this are unknown.
 
 #### Notes
 

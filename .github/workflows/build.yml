@@ -27,19 +27,19 @@ jobs:
         triplet: x86-windows-static
         token: ${{ github.token }}
 
-    # NOTE: Ninja does not support specifying an architecture
+    # NOTE: Ninja does not support specifying an architecture, so I am going with the default which seems to be MSBuild
     # NOTE: CMAKE_GENERATOR_PLATFORM must take WIN32, not x86 because consistency (thanks to https://stackoverflow.com/questions/28350214/#comment121308920_52846043 and https://github.com/microsoft/vcpkg/issues/15465)
     - name: Configure
-      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Debug -S . -B build
+      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Release -S . -B build
 
     - name: Build
-      run: cmake --build build
+      run: cmake --build build --config Release
 
     - name: Strip
-      run: strip -s build/Debug/libpresage.dll
+      run: strip -s build/Release/libpresage.dll
 
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        path: build/Debug/libpresage.dll
+        path: build/Release/libpresage.dll
         name: libpresage.dll
