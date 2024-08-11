@@ -21,6 +21,9 @@ FetchContent_MakeAvailable(Corrosion)
 set(Rust_PROFILE "release" CACHE STRING "Rust profile")
 set_property(CACHE Rust_PROFILE PROPERTY STRINGS "dev" "release")
 corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
+corrosion_add_target_rustflags(purple_presage_backend "-C target-feature=+crt-static")
+# https://stackoverflow.com/questions/31770604/how-to-generate-statically-linked-executables
+# maybe also look at https://github.com/chrisdenton/static_vcruntime
 
 # obtain version string from back-end metadata
 execute_process(COMMAND ${Rust_CARGO_CACHED} metadata --format-version 1 --no-deps --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml OUTPUT_VARIABLE BACKEND_METADATA)
@@ -67,6 +70,7 @@ else()
     # gcc_s util rt pthread m dl c
 endif()
 set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
+set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
 
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
 target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS})
