@@ -47,6 +47,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Display receipts (not important)
 * Support for alternative host applications (Spectrum, Bitlbee)
 * Support for adding contacts via phone number
+* Support receiving contacts (seems to be a dedicated message type)
 
 These lists are not exhaustive.
 
@@ -55,6 +56,7 @@ These lists are not exhaustive.
 * Handling errors when sending messages is barely tested.
 * Attachments end up in the conversation of the sender, not the destination (especially confusing when a group chat is involved).
 * Failing to send an attachment may bring down the entire application.
+* Some message features such as displaying edits do not work for sync messages or do not work at all.
 
 ## Building
 
