@@ -134,7 +134,7 @@ void presage_handle_groups(PurpleConnection *connection, const Group *groups, ui
 
     // TODO: add group to blist
     for (uint64_t i = 0; i < length; i++) {
-        purple_debug_warning(PLUGIN_NAME, "got group %s „%s“ with %" PRIu64 " members\n", groups[i].key, groups[i].title, groups[i].population);
+        purple_debug_info(PLUGIN_NAME, "got group %s „%s“ with %" PRIu64 " members\n", groups[i].key, groups[i].title, groups[i].population);
         if (groups[i].population == 0) {
             // An empty group. This is not a group, but rather a contact.
             // TODO: Declare an addtional type for more clarity. Use separate code-paths.
