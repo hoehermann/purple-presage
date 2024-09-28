@@ -1,20 +1,30 @@
 #include "presage.h"
 
+static gboolean rust_main_finished(gpointer account) {
+    PurpleConnection *connection = purple_account_get_connection(account);
+    if (PURPLE_CONNECTION_STATE_DISCONNECTED == purple_connection_get_state(connection)) {
+        purple_debug_info(PLUGIN_NAME, "rust runtime has finished while not connected.\n");
+    } else {
+        purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "rust runtime has finished unexpectedly.");
+    }
+    return FALSE; // tell the gtk event loop not to schedule calling this function again
+}
+
 void presage_rust_main(void *, PurpleAccount *, char *);
 
 #ifdef WIN32
 #include <windows.h>
-DWORD WINAPI
+static DWORD WINAPI
 #else
-void * 
+static void * 
 #endif 
 rust_main(void* account) {
     const char *user_dir = purple_config_dir();
     const char *username = purple_account_get_username(account);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
     presage_rust_main(rust_runtime, account, store_path);
-    printf("presage_rust_main has finished.\n");
     g_free(store_path);
+    purple_timeout_add(500, rust_main_finished, account); // wait half a second before asessing the termination
     return 0;
 }
 

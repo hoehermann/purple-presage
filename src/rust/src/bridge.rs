@@ -168,5 +168,5 @@ pub unsafe extern "C" fn presage_rust_main(
         let local = tokio::task::LocalSet::new();
         local.run_until(crate::core::main(store_path, None, rx, account)).await;
     });
-    crate::core::purple_debug(account, 2, String::from("runtime finished.\n"));
+    crate::core::purple_debug(account, 2, String::from("rust runtime finishes now…\n"));
 }
