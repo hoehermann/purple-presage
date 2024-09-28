@@ -13,6 +13,8 @@ Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schm
 
 Note: bitlbee users will receive the login QR-code in form of a URI from a system contact "Logon QR Code". You may need to allow unsolicited messages from unknown contacts in your client. The URI can be converted using any tools like local [`qrencode`](https://www.shellhacks.com/qr-code-generator-windows-linux-macos/) or [online services](https://www.the-qrcode-generator.com/) (use at your own risk).
 
+**Important Note for bitlbee users:** There have been reports that linking becomes impossible after using the wrong UUID on bitlbee. Please obtain your UUID via Pidgin first.
+
 ## Features
 
 ### Present
