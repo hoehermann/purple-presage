@@ -36,7 +36,7 @@ pub async fn send<C: presage::store::Store + 'static>(
         crate::structs::Recipient::Contact(uuid) => {
             manager
                 .send_message(
-                    presage::libsignal_service::ServiceAddress::new_aci(uuid),
+                    presage::libsignal_service::ServiceAddress::from_aci(uuid),
                     presage::libsignal_service::content::ContentBody::DataMessage(data_message),
                     timestamp,
                 )
