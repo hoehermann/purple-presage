@@ -63,7 +63,7 @@ target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
     add_dependencies(${TARGET_NAME} libpurple_lib)
-    target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib)
+    target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
 else()
     target_link_libraries(purple_presage_backend INTERFACE m ${TARGET_NAME})
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
