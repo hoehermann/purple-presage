@@ -1,4 +1,4 @@
-pub fn get_contacts<C: presage::store::Store + 'static>(
+pub async fn get_contacts<C: presage::store::Store + 'static>(
     account: *const std::os::raw::c_void,
     manager: Option<presage::Manager<C, presage::manager::Registered>>,
 ) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
@@ -6,10 +6,11 @@ pub fn get_contacts<C: presage::store::Store + 'static>(
     let mut message = crate::bridge::Presage::from_account(account);
     let groups: Vec<crate::bridge::Group> = manager
         .store()
-        .contacts()?
+        .contacts()
+        .await?
         .flatten()
         .map(
-            |presage::libsignal_service::models::Contact {
+            |presage::model::contacts::Contact {
                  name,
                  uuid,
                  phone_number,
@@ -38,13 +39,13 @@ pub fn get_contacts<C: presage::store::Store + 'static>(
     Ok(manager)
 }
 
-pub fn get_group_members<C: presage::store::Store + 'static>(
+pub async fn get_group_members<C: presage::store::Store + 'static>(
     account: *const std::os::raw::c_void,
     manager: Option<presage::Manager<C, presage::manager::Registered>>,
     key: [u8; 32],
 ) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
     let manager = manager.expect("manager must be loaded");
-    match manager.store().group(key)? {
+    match manager.store().group(key).await? {
         Some(group) => {
             let mut message = crate::bridge::Presage::from_account(account);
             let uuid_strings = group.members.into_iter().map(|member| member.uuid.to_string());
@@ -69,7 +70,7 @@ pub fn get_group_members<C: presage::store::Store + 'static>(
     Ok(manager)
 }
 
-pub fn get_groups<C: presage::store::Store + 'static>(
+pub async fn get_groups<C: presage::store::Store + 'static>(
     account: *const std::os::raw::c_void,
     manager: Option<presage::Manager<C, presage::manager::Registered>>,
 ) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
@@ -77,12 +78,13 @@ pub fn get_groups<C: presage::store::Store + 'static>(
     let mut message = crate::bridge::Presage::from_account(account);
     let groups: Vec<crate::bridge::Group> = manager
         .store()
-        .groups()?
+        .groups()
+        .await?
         .flatten()
         .map(
             |(
                 group_master_key,
-                presage::libsignal_service::groups_v2::Group {
+                presage::model::groups::Group {
                     title,
                     description,
                     revision,

@@ -122,8 +122,8 @@ async fn run<C: presage::store::Store + 'static>(
                     crate::core::purple_debug(account, 2, format!("InitialSync completed.\n"));
 
                     // also, fetch contacts and groups now
-                    manager = crate::contacts::get_contacts(account, Some(manager))?;
-                    manager = crate::contacts::get_groups(account, Some(manager))?;
+                    manager = crate::contacts::get_contacts(account, Some(manager)).await?;
+                    manager = crate::contacts::get_groups(account, Some(manager)).await?;
 
                     // now that the initial sync has completed,
                     // the connection can be regarded as "connected" and ready to send messages
@@ -188,9 +188,9 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::structs::Cmd::ListGroups => crate::contacts::get_groups(account, manager),
+        crate::structs::Cmd::ListGroups => crate::contacts::get_groups(account, manager).await,
 
-        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes),
+        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes).await,
 
         crate::structs::Cmd::Exit {} => {
             purple_error(account, 16, String::from("Exit command reached inner loop."));
@@ -273,8 +273,8 @@ pub async fn main(
 ) {
     purple_debug(account, 2, format!("opening config database from {store_path}\n"));
     let config_store =
-        presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage_store_sled::OnNewIdentity::Trust);
-    match config_store {
+        presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage::model::identity::OnNewIdentity::Trust);
+    match config_store.await {
         Err(err) => {
             purple_error(account, 16, format!("config_store Err {err:?}"));
         }
