@@ -1,4 +1,4 @@
-use futures::StreamExt; // for Stream.next()
+use futures::StreamExt;
 
 /**
 Looks up the title of a group identified by its group master key.
@@ -173,8 +173,8 @@ async fn print_message<C: presage::store::Store>(
             }
             Msg::Received(presage::store::Thread::Group(key), body) => {
                 message.flags = 0x0002; // PURPLE_MESSAGE_RECV
-                message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
-                message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.uuid, manager).await).unwrap().into_raw();
+                message.who = std::ffi::CString::new(content.metadata.sender.raw_uuid().to_string()).unwrap().into_raw();
+                message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.raw_uuid(), manager).await).unwrap().into_raw();
                 message.group = std::ffi::CString::new(hex::encode(key)).unwrap().into_raw();
                 message.title = std::ffi::CString::new(format_group(*key, manager).await).unwrap().into_raw();
                 message.body = std::ffi::CString::new(body).unwrap().into_raw();
@@ -217,7 +217,7 @@ async fn process_incoming_message<C: presage::store::Store>(
             // TODO: `who` and `group` should be filled with the Receiver (group or contact) information
             // so they end up in the correct conversation
             // relevant for sync messages in particular
-            message.who = std::ffi::CString::new(content.metadata.sender.uuid.to_string()).unwrap().into_raw();
+            message.who = std::ffi::CString::new(content.metadata.sender.raw_uuid().to_string()).unwrap().into_raw();
 
             let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
                 message.flags = 0x0200; // PURPLE_MESSAGE_ERROR
