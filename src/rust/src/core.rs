@@ -106,7 +106,7 @@ async fn run<C: presage::store::Store + 'static>(
         crate::structs::Cmd::Whoami => {
             let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
-            let uuid = whoami.uuid.to_string();
+            let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
             let mut message = crate::bridge::Presage::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             crate::bridge::append_message(&message);
