@@ -14,6 +14,8 @@ unsafe fn send_cmd(
         }
         Err(err) => {
             println!("rust: command_tx.send {err}");
+            //crate::core::purple_error(account, 0 /* PURPLE_CONNECTION_ERROR_NETWORK_ERROR */ , format!("Error sending command to the rust runtime: {err:?}"));
+            // TODO: can we call purple_error directly as this is executed in the main glib thread?
         }
     }
 }
