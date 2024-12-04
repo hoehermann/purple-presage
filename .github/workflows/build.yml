@@ -19,9 +19,11 @@ jobs:
     - name: Install Protoc
       uses: arduino/setup-protoc@v3
     
-    # maybe this helps with build times
-    - run: rustup toolchain install stable --profile minimal
-    - uses: Swatinem/rust-cache@v2
+    - name: Install Rust Toolchain
+      run: rustup toolchain install stable-i686-pc-windows-msvc --profile minimal
+    
+    - name: Enable Rust Cache # maybe this helps with build times
+      uses: Swatinem/rust-cache@v2
       with:
         workspaces: "src/rust"
 
@@ -35,7 +37,7 @@ jobs:
     # NOTE: Ninja does not support specifying an architecture, so I am going with the default which seems to be MSBuild
     # NOTE: CMAKE_GENERATOR_PLATFORM must take WIN32, not x86 because consistency (thanks to https://stackoverflow.com/questions/28350214/#comment121308920_52846043 and https://github.com/microsoft/vcpkg/issues/15465)
     - name: Configure
-      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Release -S . -B build
+      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Release -DRust_CARGO_TARGET="i686-pc-windows-msvc" -DRust_TOOLCHAIN="stable-i686-pc-windows-msvc" -S . -B build
 
     - name: Build
       run: cmake --build build --config Release
