@@ -89,7 +89,7 @@ async fn run<C: presage::store::Store + 'static>(
                         crate::bridge::append_message(&message);
                     }
                     Err(err) => {
-                        purple_error(account, 16, format!("Error linking device: {err:?}"));
+                        crate::core::purple_error(account, 2 /* PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED */, format!("Error linking device: {err:?}"));
                     }
                 }
             })
