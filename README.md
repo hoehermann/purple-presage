@@ -54,10 +54,10 @@ These lists are not exhaustive.
 ### Known Issues
 
 * Handling errors when sending messages is barely tested.
-* Attachments end up in the conversation of the sender, not the destination (especially confusing when a group chat is involved).
+* Attachments end up in the conversation of the sender, not the destination (especially confusing when a group chat is involved). **This also affects long text messages!**
 * Failing to send an attachment may bring down the entire application.
-* Some message features such as displaying edits do not work reliably, especially on sync messages (send from same account, but other device).
-* Sync messages are unreliable, especially in regard to attachments (attachments sent from another device may not be received by the plug-in).
+* Some message features such as displaying edits do not work reliably, especially on sync messages.
+* Sync messages are less well tested an may be unreliable.
 * Some times, the error message `"config_store Err Db(Io(Custom { kind: Other, error: "could not acquire lock on \"…/db\": Os { code: 11, kind: WouldBlock, message: \"Resource temporarily unavailable\" }" }))"` is shown. Just wait a few seconds and try again. Usually, it wors after a couple of retries.
 
 ## Building

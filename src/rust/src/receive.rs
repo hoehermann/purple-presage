@@ -226,26 +226,41 @@ async fn process_incoming_message<C: presage::store::Store>(
                 continue;
             };
 
-            let mimetype = attachment_pointer.content_type.as_deref().unwrap_or("application/octet-stream");
-            let extension = match mimetype {
-                "image/jpeg" => "jpg",
-                "image/png" => "png",
-                "video/mp4" => "mp4",
-                mimetype => {
-                    let extensions = mime_guess::get_mime_extensions_str(mimetype);
-                    extensions.and_then(|e| e.first()).unwrap_or(&"bin")
-                }
-            };
+            match attachment_pointer.content_type.as_deref() {
+                None => {
+                    crate::core::purple_debug(account, 4, format!("Received attachment without content type.\n"));
+                },
+                Some("text/x-signal-plain") => {
+                    // TODO: this should be routed through the function that usually handles the text messages
+                    message.flags = 0x0002; // PURPLE_MESSAGE_RECV // TODO: honor the actual sender
+                    //message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.raw_uuid(), manager).await).unwrap().into_raw();
+                    // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
+                    let body = std::ffi::CStr::from_bytes_until_nul(&attachment_data).unwrap().to_str().unwrap().to_owned();
+                    message.body = std::ffi::CString::new(body).unwrap().into_raw();
+                    crate::bridge::append_message(&message);
+                },
+                Some(mimetype) => {
+                    let extension = match mimetype {
+                        "image/jpeg" => "jpg",
+                        "image/png" => "png",
+                        "video/mp4" => "mp4",
+                        mimetype => {
+                            let extensions = mime_guess::get_mime_extensions_str(mimetype);
+                            extensions.and_then(|e| e.first()).unwrap_or(&"bin")
+                        }
+                    };
 
-            let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
-                presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-            };
-            message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
-            let boxed_slice = attachment_data.into_boxed_slice();
-            message.size = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
-            message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
-            crate::bridge::append_message(&message);
+                    let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
+                    };
+                    message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
+                    let boxed_slice = attachment_data.into_boxed_slice();
+                    message.size = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
+                    message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
+                    crate::bridge::append_message(&message);
+                }
+            }
         }
     }
 }
