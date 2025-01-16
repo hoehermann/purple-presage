@@ -13,6 +13,9 @@ crate-type = ["staticlib"]
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
 reqwest-websocket = { git = 'https://github.com/jgraef/reqwest-websocket ', tag = 'v0.4.4'} # https://github.com/jgraef/reqwest-websocket/issues/32
 
+[patch."https://github.com/whisperfish/libsignal-service-rs"]
+libsignal-service = { git = 'https://www.github.com/whisperfish/libsignal-service-rs', rev = "19c0c78da7a7479954634580a5e5081e7a8f2897" }
+
 [dependencies]
 presage = { git = "https://github.com/whisperfish/presage", rev = "8b9af8e" }
 presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "8b9af8e" }
