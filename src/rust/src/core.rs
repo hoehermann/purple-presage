@@ -113,31 +113,6 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::structs::Cmd::InitialSync => {
-            let mut manager = manager.expect("manager must be loaded");
-            let messages = manager.receive_messages(presage::manager::ReceivingMode::InitialSync).await;
-            match messages {
-                Ok(_) => {
-                    // TODO: handle the messages. there might be something useful in there
-                    crate::core::purple_debug(account, 2, format!("InitialSync completed.\n"));
-
-                    // also, fetch contacts and groups now
-                    manager = crate::contacts::get_contacts(account, Some(manager)).await?;
-                    manager = crate::contacts::get_groups(account, Some(manager)).await?;
-
-                    // now that the initial sync has completed,
-                    // the connection can be regarded as "connected" and ready to send messages
-                    let mut message = crate::bridge::Presage::from_account(account);
-                    message.connected = 1;
-                    crate::bridge::append_message(&message);
-                }
-                Err(err) => {
-                    crate::core::purple_error(account, 16, format!("InitialSync error {err:?}"));
-                }
-            }
-            Ok(manager)
-        }
-
         crate::structs::Cmd::Receive => {
             let manager = manager.expect("manager must be loaded");
             let mut receiving_manager = manager.clone();
@@ -188,7 +163,11 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(manager)
         }
 
-        crate::structs::Cmd::ListGroups => crate::contacts::get_groups(account, manager).await,
+        crate::structs::Cmd::ListGroups => {
+            let mut manager = manager.expect("manager must be loaded");
+            crate::contacts::get_groups(account, &mut manager).await;
+            Ok(manager)
+        }
 
         crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes).await,
 
@@ -272,8 +251,12 @@ pub async fn main(
     account: *const std::os::raw::c_void,
 ) {
     purple_debug(account, 2, format!("opening config database from {store_path}\n"));
-    let config_store =
-        presage_store_sled::SledStore::open_with_passphrase(store_path, passphrase, presage_store_sled::MigrationConflictStrategy::Raise, presage::model::identity::OnNewIdentity::Trust);
+    let config_store = presage_store_sled::SledStore::open_with_passphrase(
+        store_path,
+        passphrase,
+        presage_store_sled::MigrationConflictStrategy::Raise,
+        presage::model::identity::OnNewIdentity::Trust,
+    );
     match config_store.await {
         Err(err) => {
             purple_error(account, 16, format!("config_store Err {err:?}"));
