@@ -1,19 +1,13 @@
-use futures::StreamExt;
-
 /**
 Looks up the title of a group identified by its group master key.
 
 Adapted from presage-cli.
 */
-async fn format_group<S: presage::store::Store>(key: [u8; 32], manager: &presage::Manager<S, presage::manager::Registered>) -> String {
-    manager
-    .store()
-    .group(key)
-    .await
-    .ok()
-    .flatten()
-    .map(|g| g.title)
-    .unwrap_or_else(|| "<missing group>".to_string())
+async fn format_group<S: presage::store::Store>(
+    key: [u8; 32],
+    manager: &presage::Manager<S, presage::manager::Registered>,
+) -> String {
+    manager.store().group(key).await.ok().flatten().map(|g| g.title).unwrap_or_else(|| "<missing group>".to_string())
 }
 
 /**
@@ -21,16 +15,19 @@ Looks up the display name for a contact identified by their uuid.
 
 Adapted from presage-cli.
 */
-async fn format_contact<S: presage::store::Store>(uuid: &presage::libsignal_service::prelude::Uuid, manager: &presage::Manager<S, presage::manager::Registered>) -> String {
+async fn format_contact<S: presage::store::Store>(
+    uuid: &presage::libsignal_service::prelude::Uuid,
+    manager: &presage::Manager<S, presage::manager::Registered>,
+) -> String {
     manager
-    .store()
-    .contact_by_id(uuid)
-    .await
-    .ok()
-    .flatten()
-    .filter(|c| !c.name.is_empty())
-    .map(|c| c.name)
-    .unwrap_or_else(|| uuid.to_string())
+        .store()
+        .contact_by_id(uuid)
+        .await
+        .ok()
+        .flatten()
+        .filter(|c| !c.name.is_empty())
+        .map(|c| c.name)
+        .unwrap_or_else(|| uuid.to_string())
 }
 
 /**
@@ -70,8 +67,7 @@ async fn format_data_message<S: presage::store::Store>(
         } => {
             let Ok(Some(message)) = manager.store().message(thread, *timestamp).await else {
                 // Original message could not be found. As a best effort, give some reference by displaying the timestamp.
-                let sent_at =
-                    chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
                 return Some(format!("Reacted with {emoji} to message from {sent_at}."));
             };
 
@@ -90,8 +86,7 @@ async fn format_data_message<S: presage::store::Store>(
             })) = message.body
             else {
                 // Sometimes, synced messages are not resolved here and reactions to them end up in this arm.
-                let sent_at =
-                    chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
                 return Some(format!("Reacted with {emoji} to message from {sent_at}."));
             };
             let firstline = body.split("\n").next().unwrap_or("<message body missing>");
@@ -138,7 +133,9 @@ async fn print_message<C: presage::store::Store>(
 
     if let Some(msg) = match &content.body {
         presage::libsignal_service::content::ContentBody::NullMessage(_) => Some(Msg::Received(&thread, "Null message (for example deleted)".to_string())),
-        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => format_data_message(&thread, data_message, manager, account).await.map(|body| Msg::Received(&thread, body)),
+        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
+            format_data_message(&thread, data_message, manager, account).await.map(|body| Msg::Received(&thread, body))
+        }
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
             sent: Some(presage::proto::sync_message::Sent {
                 message: Some(data_message),
@@ -229,16 +226,16 @@ async fn process_incoming_message<C: presage::store::Store>(
             match attachment_pointer.content_type.as_deref() {
                 None => {
                     crate::core::purple_debug(account, 4, format!("Received attachment without content type.\n"));
-                },
+                }
                 Some("text/x-signal-plain") => {
                     // TODO: this should be routed through the function that usually handles the text messages
                     message.flags = 0x0002; // PURPLE_MESSAGE_RECV // TODO: honor the actual sender
-                    //message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.raw_uuid(), manager).await).unwrap().into_raw();
-                    // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
+                                            //message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.raw_uuid(), manager).await).unwrap().into_raw();
+                                            // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
                     let body = std::ffi::CStr::from_bytes_until_nul(&attachment_data).unwrap().to_str().unwrap().to_owned();
                     message.body = std::ffi::CString::new(body).unwrap().into_raw();
                     crate::bridge::append_message(&message);
-                },
+                }
                 Some(mimetype) => {
                     let extension = match mimetype {
                         "image/jpeg" => "jpg",
@@ -272,24 +269,40 @@ async fn process_incoming_message<C: presage::store::Store>(
  *
  * Based on presage-cli's `receive`.
  */
-pub async fn receive<C: presage::store::Store>(
-    manager: &mut presage::Manager<C, presage::manager::Registered>,
+pub async fn receive<S: presage::store::Store>(
+    manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *const std::os::raw::c_void,
 ) {
-    //crate::core::purple_debug(account, 2, String::from("receive on separate thread begins…\n"));
-    let messages = manager.receive_messages(presage::manager::ReceivingMode::Forever).await;
-    match messages {
-        Ok(messages) => {
-            //crate::core::purple_debug(account, 2, String::from("receive got messages\n"));
-            futures::pin_mut!(messages);
-            while let Some(content) = messages.next().await {
-                // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
-                //crate::core::purple_debug(account, 2, String::from("receive got a message's content\n"));
-                process_incoming_message(manager, &content, account).await;
-            }
-        }
+    crate::core::purple_debug(account, 2, String::from("receive begins…\n"));
+    match manager.receive_messages().await {
         Err(err) => {
-            crate::core::purple_error(account, 16, err.to_string());
+            crate::core::purple_error(account, 16, format!("failed to receive messaged due to {err:?}"));
+        }
+        Ok(messages) => {
+            futures::pin_mut!(messages);
+            // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
+            while let Some(content) = futures::StreamExt::next(&mut messages).await {
+                match content {
+                    presage::model::messages::Received::QueueEmpty => {
+                        crate::core::purple_debug(account, 2, format!("synchronization completed.\n"));
+                        // TODO: find out if this happens more than once per connection. protect against multiple invocation, if necessary
+
+                        // forward contacts and groups to front-end now
+                        crate::contacts::get_contacts(account, manager).await;
+                        crate::contacts::get_groups(account, manager).await;
+
+                        // now that the initial sync has completed,
+                        // the connection can be regarded as "connected" and ready to send messages
+                        let mut message = crate::bridge::Presage::from_account(account);
+                        message.connected = 1;
+                        crate::bridge::append_message(&message);
+                    }
+                    presage::model::messages::Received::Contacts => {
+                        crate::core::purple_debug(account, 2, format!("got contacts synchronization.\n"));
+                    }
+                    presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
+                }
+            }
         }
     }
     crate::core::purple_error(account, 0, String::from("Receiver has finished. Disconnected?"));
