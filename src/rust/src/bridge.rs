@@ -9,7 +9,7 @@ pub struct Group {
     pub population: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
 }
 #[repr(C)]
-pub struct Presage {
+pub struct Message {
     pub account: *const std::os::raw::c_void,
     pub tx_ptr: *mut std::os::raw::c_void,
     pub qrcode: *const std::os::raw::c_char,
@@ -33,7 +33,7 @@ pub struct Presage {
     pub xfer: *const std::os::raw::c_void,
 }
 
-impl Presage {
+impl Message {
     pub fn from_account(account: *const std::os::raw::c_void) -> Self {
         Self {
             account: account,
@@ -62,7 +62,7 @@ impl Presage {
 
 extern "C" {
     // this is implemented by bridge.c
-    fn presage_append_message(message: *const Presage);
+    fn presage_append_message(message: *const Message);
 
     // this is implemented by libpurple's ft.c
     // TODO: automatically generate declaration from ft.h
@@ -70,7 +70,7 @@ extern "C" {
 }
 
 // wrapper around unsafe presage_append_message
-pub fn append_message(message: *const Presage) {
+pub fn append_message(message: *const Message) {
     unsafe {
         presage_append_message(message);
     }
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn presage_rust_main(
     // create a channel for asynchronous communication of commands c → rust
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
-    let mut message = Presage::from_account(account);
+    let mut message = Message::from_account(account);
     message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
     append_message(&message); // let front-end know how to reach us
 

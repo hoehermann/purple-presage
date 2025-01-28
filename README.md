@@ -58,7 +58,7 @@ These lists are not exhaustive.
 * Failing to send an attachment may bring down the entire application.
 * Some message features such as displaying edits do not work reliably, especially on sync messages.
 * Sync messages are less well tested an may be unreliable.
-* Some times, the error message `"config_store Err Db(Io(Custom { kind: Other, error: "could not acquire lock on \"…/db\": Os { code: 11, kind: WouldBlock, message: \"Resource temporarily unavailable\" }" }))"` is shown. Just wait a few seconds and try again. Usually, it wors after a couple of retries.
+* Some times, the error message `"config_store Err Db(Io(Custom { kind: Other, error: "could not acquire lock on \"…/db\": Os { code: 11, kind: WouldBlock, message: \"Resource temporarily unavailable\" }" }))"` is shown. Just wait a few seconds and try again. Usually, it works after a couple of retries.
 
 ## Building
 
