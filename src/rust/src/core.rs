@@ -31,7 +31,7 @@ pub fn purple_error(
     level: i32,
     msg: String,
 ) {
-    let mut message = crate::bridge::Presage::from_account(account);
+    let mut message = crate::bridge::Message::from_account(account);
     message.error = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
     crate::bridge::append_message(&message);
@@ -57,7 +57,7 @@ pub fn purple_debug(
     level: i32,
     msg: String,
 ) {
-    let mut message = crate::bridge::Presage::from_account(account);
+    let mut message = crate::bridge::Message::from_account(account);
     message.debug = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
     crate::bridge::append_message(&message);
@@ -84,7 +84,7 @@ async fn run<C: presage::store::Store + 'static>(
                 match provisioning_link_rx.await {
                     Ok(url) => {
                         purple_debug(account, 2, String::from("got URL for QR code\n"));
-                        let mut message = crate::bridge::Presage::from_account(account);
+                        let mut message = crate::bridge::Message::from_account(account);
                         message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
                         crate::bridge::append_message(&message);
                     }
@@ -95,7 +95,7 @@ async fn run<C: presage::store::Store + 'static>(
             })
             .await;
 
-            let mut message = crate::bridge::Presage::from_account(account);
+            let mut message = crate::bridge::Message::from_account(account);
             let qrcode_done = String::from("");
             message.qrcode = std::ffi::CString::new(qrcode_done).unwrap().into_raw();
             crate::bridge::append_message(&message);
@@ -107,7 +107,7 @@ async fn run<C: presage::store::Store + 'static>(
             let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
             let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
-            let mut message = crate::bridge::Presage::from_account(account);
+            let mut message = crate::bridge::Message::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             crate::bridge::append_message(&message);
             Ok(manager)
@@ -127,7 +127,7 @@ async fn run<C: presage::store::Store + 'static>(
         } => {
             let mut manager = manager.expect("manager must be loaded");
             // prepare a PurplePresage message for providing feed-back (send success or error)
-            let mut msg = crate::bridge::Presage::from_account(account);
+            let mut msg = crate::bridge::Message::from_account(account);
             msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
             msg.xfer = xfer; // in case of attachments, this is the reference to the respective purple Xfer
             match recipient {
@@ -208,7 +208,7 @@ pub async fn mainloop(
                         manager = None;
                         // tell the front-end we lost authorization
                         let uuid = String::from("");
-                        let mut message = crate::bridge::Presage::from_account(account);
+                        let mut message = crate::bridge::Message::from_account(account);
                         message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                         crate::bridge::append_message(&message);
                     }
@@ -219,7 +219,7 @@ pub async fn mainloop(
                             presage::libsignal_service::push_service::ServiceError::Unauthorized => {
                                 // tell the front-end we lost authorization
                                 let uuid = String::from("");
-                                let mut message = crate::bridge::Presage::from_account(account);
+                                let mut message = crate::bridge::Message::from_account(account);
                                 message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                                 crate::bridge::append_message(&message);
                             }

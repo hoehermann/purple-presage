@@ -2,7 +2,7 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
     account: *const std::os::raw::c_void,
     manager: &mut presage::Manager<C, presage::manager::Registered>,
 ) {
-    let mut message = crate::bridge::Presage::from_account(account);
+    let mut message = crate::bridge::Message::from_account(account);
     match manager.store().contacts().await {
         Err(err) => {
             crate::core::purple_debug(account, 4, format!("Unable to get contacts due to {err:?}\n"));
@@ -49,7 +49,7 @@ pub async fn get_group_members<C: presage::store::Store + 'static>(
     let manager = manager.expect("manager must be loaded");
     match manager.store().group(key).await? {
         Some(group) => {
-            let mut message = crate::bridge::Presage::from_account(account);
+            let mut message = crate::bridge::Message::from_account(account);
             let uuid_strings = group.members.into_iter().map(|member| member.uuid.to_string());
             let uuid_c_strings: Vec<*mut std::os::raw::c_char> = uuid_strings.map(|u| std::ffi::CString::new(u).unwrap().into_raw()).collect();
             let boxed_uuid_c_strings = uuid_c_strings.into_boxed_slice();
@@ -107,7 +107,7 @@ pub async fn get_groups<C: presage::store::Store + 'static>(
                     },
                 )
                 .collect();
-            let mut message = crate::bridge::Presage::from_account(account);
+            let mut message = crate::bridge::Message::from_account(account);
             message.size = groups.len() as u64;
             message.groups = Box::into_raw(groups.into_boxed_slice()) as *const crate::bridge::Group;
             crate::bridge::append_message(&message);
