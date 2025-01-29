@@ -30,7 +30,7 @@ static void xfer_release_blob(PurpleXfer * xfer) {
     xfer->data = NULL;
 }
 
-static void presage_xfer_announce(PurpleConnection *connection, const char *who, const char *filename) {
+static void presage_xfer_announce(PurpleConnection *connection, const char *who, const char *group, const char *filename) {
     // resolve identifier for displaying name
     const char * alias = who; // use the identifier by default
     PurpleBuddy * buddy = purple_find_buddy(purple_connection_get_account(connection), who);
@@ -38,17 +38,22 @@ static void presage_xfer_announce(PurpleConnection *connection, const char *who,
         alias = purple_buddy_get_contact_alias(buddy);
     }
     char * text = g_strdup_printf("Preparing to store \"%s\" sent by %s...", filename, alias); // MEMCHECK: is released here
+    // TODO: Also have human-readable group name here? Theoretically, it should already be in the blist.
+    presage_handle_text(connection, who, NULL, group, PURPLE_MESSAGE_SYSTEM, time(NULL)*1000, text);
     g_free(text);
-    // TODO: actually display message
 }
 
-void presage_handle_attachment(PurpleConnection *connection, const char *who, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename) {
+void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *group, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename) {
     g_return_if_fail(connection != NULL);
     PurpleAccount *account = purple_connection_get_account(connection);
 
-    presage_xfer_announce(connection, who, filename);
+    presage_xfer_announce(connection, who, group, filename);
     
-    PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, who);
+    const char *sender = who;
+    if (group) {
+        sender = group;
+    }
+    PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, sender);
     purple_xfer_set_filename(xfer, filename);
     purple_xfer_set_size(xfer, blobsize);
     xfer->data = blob;
