@@ -3,6 +3,7 @@
  */
 #[derive(Clone)]
 pub struct Message {
+    thread: Option<presage::store::Thread>,
     account: *const std::os::raw::c_void,
     timestamp: Option<u64>,
     flags: u64,
@@ -50,24 +51,34 @@ async fn format_group<S: presage::store::Store>(
     manager.store().group(key).await.ok().flatten().map(|g| g.title).unwrap_or_else(|| "<missing group>".to_string())
 }
 
-/**
-Looks up the display name for a contact identified by their uuid.
-
-Adapted from presage-cli.
-*/
-async fn format_contact<S: presage::store::Store>(
-    uuid: &presage::libsignal_service::prelude::Uuid,
+async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
     manager: &presage::Manager<S, presage::manager::Registered>,
-) -> String {
-    manager
-        .store()
-        .contact_by_id(uuid)
-        .await
-        .ok()
-        .flatten()
-        .filter(|c| !c.name.is_empty())
-        .map(|c| c.name)
-        .unwrap_or_else(|| uuid.to_string())
+    thread: &presage::store::Thread,
+    timestamp: u64
+) -> Option<String> {
+    match manager.store().message(thread, timestamp).await {
+        Err(_) => None,
+        Ok(None) => None,
+        Ok(Some(message)) => {
+            if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
+                body, ..
+            })
+            | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
+                sent:
+                    Some(presage::proto::sync_message::Sent {
+                        message: Some(presage::libsignal_service::content::DataMessage {
+                            body, ..
+                        }),
+                        ..
+                    }),
+                ..
+            }) = message.body {
+                body
+            } else {
+                None
+            }
+        }
+    }
 }
 
 /**
@@ -75,7 +86,8 @@ Turns a DataMessage into a string for presentation via libpurple.
 
 Adapted from presage-cli.
 */
-async fn format_data_message(
+async fn format_data_message<C: presage::store::Store>(
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
     message: Message,
     data_message: &presage::libsignal_service::content::DataMessage,
 ) -> Option<String> {
@@ -103,38 +115,17 @@ async fn format_data_message(
                 }),
             ..
         } => {
-            // TODO: re-implement
-            let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
-            return Some(format!("Reacted with {emoji} to message from {sent_at}."));
-            /*
-            let Ok(Some(message)) = manager.store().message(thread, *timestamp).await else {
-                // Original message could not be found. As a best effort, give some reference by displaying the timestamp.
-                let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
-                return Some(format!("Reacted with {emoji} to message from {sent_at}."));
-            };
-
-            let (presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
-                body: Some(body), ..
-            })
-            | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
-                sent:
-                    Some(presage::proto::sync_message::Sent {
-                        message: Some(presage::libsignal_service::content::DataMessage {
-                            body: Some(body), ..
-                        }),
-                        ..
-                    }),
-                ..
-            })) = message.body
-            else {
-                // Sometimes, synced messages are not resolved here and reactions to them end up in this arm.
-                let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
-                return Some(format!("Reacted with {emoji} to message from {sent_at}."));
-            };
-            let firstline = body.split("\n").next().unwrap_or("<message body missing>");
-            // TODO: add ellipsis if body contains more than one line
-            Some(format!("Reacted with {emoji} to message „{firstline}“."))
-             */
+            match lookup_message_body_by_timestamp(manager, &message.thread.unwrap(), message.timestamp.unwrap()).await {
+                None => {
+                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    Some(format!("Reacted with {emoji} to message from {sent_at}."))
+                }
+                Some(body) => {
+                    let firstline = body.split("\n").next().unwrap_or("<message body missing>");
+                    // TODO: add ellipsis if body contains more than one line
+                    Some(format!("Reacted with {emoji} to message „{firstline}“."))
+                }
+            }
         }
         // Plain text message
         // TODO: resolve mentions
@@ -208,7 +199,7 @@ async fn process_data_message<C: presage::store::Store>(
     message: Message,
     data_message: &presage::proto::DataMessage,
 ) {
-    if let Some(body) = format_data_message(message.clone(), data_message).await {
+    if let Some(body) = format_data_message(manager, message.clone(), data_message).await {
         crate::bridge::append_message(&message.clone().into_bridge(Some(body)));
     }
     process_attachments(manager, message, &data_message.attachments).await
@@ -281,7 +272,8 @@ async fn process_incoming_message<C: presage::store::Store>(
         crate::core::purple_error(account, 16, String::from("failed to find conversation"));
         return;
     };
-    let mut message = Message { account: account, timestamp: None, who: None, group: None, flags: 0, body: None, name: None };
+    let mut message = Message { account: account, timestamp: None, who: None, group: None, flags: 0, body: None, name: None, thread: None };
+    message.thread = Some(thread.clone());
     message.timestamp = Some(content.metadata.timestamp);
     match thread {
         presage::store::Thread::Contact(uuid) => {
@@ -294,10 +286,6 @@ async fn process_incoming_message<C: presage::store::Store>(
             message.name = Some(format_group(key, manager).await);
         }
     }
-    /*
-    TODO: Set these somewhere
-    message.name = std::ffi::CString::new(format_contact(&content.metadata.sender.raw_uuid(), manager).await).unwrap().into_raw();
-     */
     
     match &content.body {
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
