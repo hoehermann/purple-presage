@@ -24,7 +24,6 @@ pub struct Message {
     pub who: *const std::os::raw::c_char,
     pub name: *const std::os::raw::c_char,
     pub group: *const std::os::raw::c_char,
-    pub title: *const std::os::raw::c_char,
     pub body: *const std::os::raw::c_char,
     pub blob: *const std::os::raw::c_uchar,
     pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
@@ -49,7 +48,6 @@ impl Message {
             who: std::ptr::null(),
             name: std::ptr::null(),
             group: std::ptr::null(),
-            title: std::ptr::null(),
             body: std::ptr::null(),
             blob: std::ptr::null(),
             size: 0,

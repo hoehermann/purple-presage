@@ -2,7 +2,7 @@
 
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, const char *title, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
     PurpleAccount *account = purple_connection_get_account(connection);
 
     // in Signal, timestamps are milliseconds, but purple wants seconds
@@ -33,8 +33,10 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
             // no conversation for this group chat
             // prepare a GHashTable with the group identifier because that is how join_chat is supposed to work in purple
             GHashTable * data = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL); // MEMCHECK: structure itself is released below
-            g_hash_table_insert(data, "name", (void *)group); // MEMCHECK: key "name" is static, value group is released by caller
-            g_hash_table_insert(data, "topic", (void *)title); // MEMCHECK: key "topic" is title, value title is released by caller
+            // the constant not-human-readable group identifier is called "name"
+            g_hash_table_insert(data, "name", (void *)group); // MEMCHECK: key "name" is static, value is released by caller
+            // the non-constant human-readable group name is called "topic"
+            g_hash_table_insert(data, "topic", (void *)name); // MEMCHECK: key "topic" is static, value is released by caller
             presage_join_chat(connection, data);
             g_hash_table_destroy(data); // MEMCHECK: g_hash_table_insert above
         }
