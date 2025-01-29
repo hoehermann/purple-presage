@@ -1,3 +1,5 @@
+use presage::proto::EditMessage;
+
 /**
  * A local representation of a message that is probably going to be forwarded to the front-end.
  */
@@ -212,10 +214,17 @@ async fn process_sent_message<C: presage::store::Store>(
 ) {
     let mut message = message;
     message.flags = 0x0001 | 0x10000; // PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND
-    if let Some(data_message) = &sent.message {
-        process_data_message(manager, message, data_message).await;
+    match sent {
+        presage::proto::sync_message::Sent{message: Some(data_message), ..}=> {
+            process_data_message(manager, message, data_message).await
+        },
+        presage::proto::sync_message::Sent{edit_message:Some(EditMessage{data_message: Some(data_message), ..}), ..}=> {
+            process_data_message(manager, message, &data_message).await
+        },
+        c => {
+            crate::core::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
+        }
     }
-    // TODO: also process sent.edit_message
 }
 
 async fn process_sync_message<C: presage::store::Store>(
