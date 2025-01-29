@@ -37,7 +37,6 @@ void free_message(Presage * message) {
     presage_rust_free_string(message->who);
     presage_rust_free_string(message->name);
     presage_rust_free_string(message->group);
-    presage_rust_free_string(message->title);
     presage_rust_free_string(message->body);
     // message->blob is not released here – it must be released by the xfer callback
     // TODO: free message->groups here // presage_rust_strfreev(message->members, message->size);
@@ -87,7 +86,7 @@ static void handle_message(Presage * message) {
     } else if (message->xfer != NULL) {
         presage_handle_xfer(message->xfer, message->flags, message->body);
     } else if (message->body != NULL) {
-        presage_handle_text(connection, message->who, message->name, message->group, message->title, message->flags, message->timestamp, message->body);
+        presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
         presage_handle_groups(connection, message->groups, message->size);
     }

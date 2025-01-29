@@ -7,9 +7,9 @@ pub struct Message {
     timestamp: Option<u64>,
     flags: u64,
     who: Option<String>,
+    name: Option<String>,
     group: Option<String>,
     body: Option<String>,
-    title: Option<String>,
 }
 impl Message {
     fn into_bridge(self, body:Option<String>) -> crate::bridge::Message {
@@ -26,9 +26,8 @@ impl Message {
             timestamp: self.timestamp.unwrap_or_default(),
             flags: self.flags,
             who: self.who.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            name: std::ptr::null(),
+            name: self.name.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
             group: self.group.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            title: self.title.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
             body: body.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
             blob: std::ptr::null(),
             size: 0,
@@ -195,8 +194,8 @@ async fn process_attachments<C: presage::store::Store>(
                 };
                 let boxed_slice = attachment_data.into_boxed_slice();
                 let mut message = message.clone().into_bridge(None);
-                message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
                 message.size = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
+                message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
                 message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
                 crate::bridge::append_message(&message);
             }
@@ -282,7 +281,7 @@ async fn process_incoming_message<C: presage::store::Store>(
         crate::core::purple_error(account, 16, String::from("failed to find conversation"));
         return;
     };
-    let mut message = Message { account: account, timestamp: None, who: None, group: None, flags: 0, body: None, title: None };
+    let mut message = Message { account: account, timestamp: None, who: None, group: None, flags: 0, body: None, name: None };
     message.timestamp = Some(content.metadata.timestamp);
     match thread {
         presage::store::Thread::Contact(uuid) => {
@@ -292,7 +291,7 @@ async fn process_incoming_message<C: presage::store::Store>(
             // TODO: check if this who works for sync messages
             message.who = Some(content.metadata.sender.raw_uuid().to_string());
             message.group = Some(hex::encode(key));
-            message.title = Some(format_group(key, manager).await);
+            message.name = Some(format_group(key, manager).await);
         }
     }
     /*
