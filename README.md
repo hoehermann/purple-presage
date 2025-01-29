@@ -54,7 +54,6 @@ These lists are not exhaustive.
 ### Known Issues
 
 * Handling errors when sending messages is barely tested.
-* Attachments end up in the conversation of the sender, not the destination (especially confusing when a group chat is involved). **This also affects long text messages!**
 * Failing to send an attachment may bring down the entire application.
 * Some message features such as displaying edits do not work reliably, especially on sync messages.
 * Sync messages are less well tested an may be unreliable.

@@ -83,7 +83,7 @@ static void handle_message(Presage * message) {
     } else if (message->error >= 0) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->blob != NULL) {
-        presage_handle_attachment(connection, message->who, message->timestamp, message->blob, message->size, message->name);
+        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->size, message->name);
     } else if (message->xfer != NULL) {
         presage_handle_xfer(message->xfer, message->flags, message->body);
     } else if (message->body != NULL) {
