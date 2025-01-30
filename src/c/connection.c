@@ -22,9 +22,10 @@ rust_main(void* account) {
     const char *user_dir = purple_config_dir();
     const char *username = purple_account_get_username(account);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
+    g_usleep(G_USEC_PER_SEC); // waiting here for a second alleviates database locking issues O_o
     presage_rust_main(rust_runtime, account, store_path);
     g_free(store_path);
-    purple_timeout_add(500, rust_main_finished, account); // wait half a second before asessing the termination
+    purple_timeout_add(500, rust_main_finished, account); // wait half a second before assessing the termination – there might be messages lingering in the rust → C bridge queue
     return 0;
 }
 
