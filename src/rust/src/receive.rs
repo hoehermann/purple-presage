@@ -329,21 +329,24 @@ pub async fn receive<S: presage::store::Store>(
             while let Some(content) = futures::StreamExt::next(&mut messages).await {
                 match content {
                     presage::model::messages::Received::QueueEmpty => {
-                        crate::core::purple_debug(account, 2, format!("synchronization completed.\n"));
                         // TODO: find out if this happens more than once per connection. protect against multiple invocation, if necessary
-
-                        // forward contacts and groups to front-end now
-                        crate::contacts::get_contacts(account, manager).await;
-                        crate::contacts::get_groups(account, manager).await;
+                        crate::core::purple_debug(account, 2, format!("synchronization completed.\n"));
 
                         // now that the initial sync has completed,
-                        // the connection can be regarded as "connected" and ready to send messages
+                        // the account can be regarded as "connected" and ready to send messages
                         let mut message = crate::bridge::Message::from_account(account);
                         message.connected = 1;
                         crate::bridge::append_message(&message);
+
+                        // forward contacts and groups to front-end now
+                        crate::contacts::get_contacts(account, manager).await;
+                        // this needs to happen *after* setting the account to "connected" due to a purple_account_is_connected in purple_blist_find_chat
+                        crate::contacts::get_groups(account, manager).await;
                     }
                     presage::model::messages::Received::Contacts => {
                         crate::core::purple_debug(account, 2, format!("got contacts synchronization.\n"));
+                        // NOTE: I never saw this happening.
+                        // TODO: Check if this happens during linking.
                     }
                     presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
                 }
