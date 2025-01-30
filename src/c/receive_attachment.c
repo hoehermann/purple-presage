@@ -38,7 +38,7 @@ static void presage_xfer_announce(PurpleConnection *connection, const char *who,
         alias = purple_buddy_get_contact_alias(buddy);
     }
     char * text = g_strdup_printf("Preparing to store \"%s\" sent by %s...", filename, alias); // MEMCHECK: is released here
-    // TODO: also have human-readable group name here
+    // TODO: Also have human-readable group name here? Theoretically, it should already be in the blist.
     presage_handle_text(connection, who, NULL, group, PURPLE_MESSAGE_SYSTEM, time(NULL)*1000, text);
     g_free(text);
 }
