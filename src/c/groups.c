@@ -127,19 +127,20 @@ void presage_roomlist_populate(PurpleConnection *connection, const Group *groups
     }
 }
 
+/*
+ * This callback handles information about groups:
+ * * The information might be a list of all known groups (without information about members). Needed for populating the room-list.
+ * * The information might be a list of exactly one group (with information about members). Needed for populating the chat participant list.
+ */
 void presage_handle_groups(PurpleConnection *connection, const Group *groups, uint64_t length) {
-    g_return_if_fail(groups != NULL || length == 0);
+    g_return_if_fail(groups != NULL);
 
     presage_roomlist_populate(connection, groups, length);
 
-    // TODO: add group to blist
     for (uint64_t i = 0; i < length; i++) {
-        purple_debug_info(PLUGIN_NAME, "got group %s „%s“ with %" PRIu64 " members\n", groups[i].key, groups[i].title, groups[i].population);
-        if (groups[i].population == 0) {
-            // An empty group. This is not a group, but rather a contact.
-            // TODO: Declare an addtional type for more clarity. Use separate code-paths.
-            presage_handle_contact(connection, groups[i].key, groups[i].title, groups[i].description);
-        } else if (groups[i].members != NULL) {
+        purple_debug_info(PLUGIN_NAME, "got group %s „%s“ with %" PRIu64 " members at %p\n", groups[i].key, groups[i].title, groups[i].population, groups[i].members);
+        presage_blist_update_chat(purple_connection_get_account(connection), groups[i].key, groups[i].title);
+        if (groups[i].members != NULL) {
             presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
         }
     }

@@ -2,41 +2,32 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
     account: *const std::os::raw::c_void,
     manager: &mut presage::Manager<C, presage::manager::Registered>,
 ) {
-    let mut message = crate::bridge::Message::from_account(account);
     match manager.store().contacts().await {
         Err(err) => {
             crate::core::purple_debug(account, 4, format!("Unable to get contacts due to {err:?}\n"));
         }
         Ok(contacts) => {
-            let groups: Vec<crate::bridge::Group> = contacts
-                .flatten()
-                .map(
-                    |presage::model::contacts::Contact {
-                         name,
-                         uuid,
-                         phone_number,
-                         ..
-                     }| {
-                        // Some(PhoneNumber { code: Code { value: 49, source: Plus }, national: NationalNumber { value: REDACTED }, extension: None, carrier: None })
-                        let c_number = match phone_number {
-                            Some(pn) => std::ffi::CString::new(pn.to_string()).unwrap().into_raw(),
-                            None => std::ptr::null(),
-                        };
-                        let c_alias = if name != "" { std::ffi::CString::new(name).unwrap().into_raw() } else { std::ptr::null() };
-                        crate::bridge::Group {
-                            key: std::ffi::CString::new(uuid.to_string()).unwrap().into_raw(),
-                            title: c_alias,
-                            description: c_number,
-                            revision: 0,
-                            population: 0,
-                            members: std::ptr::null(),
-                        }
-                    },
-                )
-                .collect();
-            message.size = groups.len() as u64;
-            message.groups = Box::into_raw(groups.into_boxed_slice()) as *const crate::bridge::Group;
-            crate::bridge::append_message(&message);
+            for presage::model::contacts::Contact {
+                name,
+                uuid,
+                //phone_number,
+                ..
+            } in contacts.flatten()
+            {
+                // TODO: forward to front-end
+                // Some(PhoneNumber { code: Code { value: 49, source: Plus }, national: NationalNumber { value: REDACTED }, extension: None, carrier: None })
+                /*
+                let c_number = match phone_number {
+                    Some(pn) => std::ffi::CString::new(pn.national().to_string()).unwrap().into_raw(),
+                    None => std::ptr::null(),
+                };
+                */
+
+                let mut message = crate::bridge::Message::from_account(account);
+                message.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                message.name = if name != "" { std::ffi::CString::new(name).unwrap().into_raw() } else { std::ptr::null() };
+                crate::bridge::append_message(&message);
+            }
         }
     }
 }

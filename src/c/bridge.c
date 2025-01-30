@@ -89,6 +89,9 @@ static void handle_message(Presage * message) {
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
         presage_handle_groups(connection, message->groups, message->size);
+    } else if (message->who != NULL && message->name) {
+        // TODO: handle phone number
+        presage_handle_contact(connection, message->who, message->name, NULL);
     }
     free_message(message);
 }
