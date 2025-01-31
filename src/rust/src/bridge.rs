@@ -1,81 +1,73 @@
-// TODO: automatically create C header from this declaration
-#[repr(C)]
-pub struct Group {
-    pub key: *const std::os::raw::c_char,
-    pub title: *const std::os::raw::c_char,
-    pub description: *const std::os::raw::c_char,
-    pub revision: std::os::raw::c_uint, //stdint::uint32_t,
-    pub members: *const *const std::os::raw::c_char,
-    pub population: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
-}
-#[repr(C)]
-pub struct Message {
-    pub account: *const std::os::raw::c_void,
-    pub tx_ptr: *mut std::os::raw::c_void,
-    pub qrcode: *const std::os::raw::c_char,
-    pub uuid: *const std::os::raw::c_char,
-    pub debug: std::os::raw::c_int,
-    pub error: std::os::raw::c_int,
-    pub connected: std::os::raw::c_int,
-    pub padding: std::os::raw::c_int,
-    // TODO: find out how to use stdint on Windows
-    pub timestamp: std::os::raw::c_ulonglong, //stdint::uint64_t,
-    pub flags: std::os::raw::c_ulonglong,     //stdint::uint64_t,
-    pub who: *const std::os::raw::c_char,
-    pub name: *const std::os::raw::c_char,
-    pub group: *const std::os::raw::c_char,
-    pub body: *const std::os::raw::c_char,
-    pub blob: *const std::os::raw::c_uchar,
-    pub size: std::os::raw::c_ulonglong, //stdint::uint64_t, // TODO: chose something guaranteed to be compatible with rust usize
-    pub groups: *const Group,
-    pub roomlist: *const std::os::raw::c_void,
-    pub xfer: *const std::os::raw::c_void,
-}
+use crate::bridge_structs::PurpleMessageFlags;
 
-impl Message {
-    pub fn from_account(account: *const std::os::raw::c_void) -> Self {
+impl crate::bridge_structs::Message {
+    pub fn from_account(account: *mut crate::bridge_structs::PurpleAccount) -> Self {
         Self {
-            account: account,
-            tx_ptr: std::ptr::null_mut(),
-            qrcode: std::ptr::null(),
-            uuid: std::ptr::null(),
-            debug: -1,
-            error: -1,
+            account,
+            tx_ptr: 0,
+            qrcode: std::ptr::null_mut(),
+            uuid: std::ptr::null_mut(),
+            debug: u32::MAX,
+            error: u32::MAX,
             connected: -1,
             padding: -1,
             timestamp: 0,
-            flags: 0,
-            who: std::ptr::null(),
-            name: std::ptr::null(),
-            group: std::ptr::null(),
-            body: std::ptr::null(),
-            blob: std::ptr::null(),
+            flags: PurpleMessageFlags(0),
+            who: std::ptr::null_mut(),
+            name: std::ptr::null_mut(),
+            group: std::ptr::null_mut(),
+            body: std::ptr::null_mut(),
+            blob: std::ptr::null_mut(),
             size: 0,
-            groups: std::ptr::null(),
-            roomlist: std::ptr::null(),
-            xfer: std::ptr::null(),
+            groups: std::ptr::null_mut(),
+            roomlist: std::ptr::null_mut(),
+            xfer: std::ptr::null_mut(),
         }
     }
 }
 
 extern "C" {
     // this is implemented by bridge.c
-    fn presage_append_message(message: *const Message);
+    fn presage_append_message(message: *const crate::bridge_structs::Message);
 
     // this is implemented by libpurple's ft.c
     // TODO: automatically generate declaration from ft.h
-    fn purple_xfer_get_local_filename(xfer: *const std::os::raw::c_void) -> *const std::os::raw::c_char;
+    fn purple_xfer_get_local_filename(xfer: *mut crate::bridge_structs::PurpleXfer) -> *const std::os::raw::c_char;
 }
 
 // wrapper around unsafe presage_append_message
-pub fn append_message(message: *const Message) {
+pub fn append_message(message: *const crate::bridge_structs::Message) {
     unsafe {
         presage_append_message(message);
     }
 }
 
+// convenience function for calling purple_error on the main thread
+pub fn purple_error(
+    account: *mut crate::bridge_structs::PurpleAccount,
+    level: crate::bridge_structs::PurpleConnectionError,
+    msg: String,
+) {
+    let mut message = crate::bridge_structs::Message::from_account(account);
+    message.error = level;
+    message.body = std::ffi::CString::new(msg).unwrap().into_raw();
+    crate::bridge::append_message(&message);
+}
+
+// convenience function for calling purple_debug on the main thread
+pub fn purple_debug(
+    account: *mut crate::bridge_structs::PurpleAccount,
+    level: crate::bridge_structs::PurpleDebugLevel,
+    msg: String,
+) {
+    let mut message = crate::bridge_structs::Message::from_account(account);
+    message.debug = level;
+    message.body = std::ffi::CString::new(msg).unwrap().into_raw();
+    crate::bridge::append_message(&message);
+}
+
 // wrapper around unsafe purple_xfer_get_local_filename
-pub fn xfer_get_local_filename(xfer: *const std::os::raw::c_void) -> String {
+pub fn xfer_get_local_filename(xfer: *mut crate::bridge_structs::PurpleXfer) -> String {
     unsafe {
         return std::ffi::CStr::from_ptr(purple_xfer_get_local_filename(xfer)).to_str().unwrap().to_owned();
     }
@@ -148,7 +140,7 @@ pub extern "C" fn presage_rust_strfreev(
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_main(
     rt: *mut tokio::runtime::Runtime,
-    account: *const std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     c_store_path: *const std::os::raw::c_char,
 ) {
     let store_path = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
@@ -156,8 +148,8 @@ pub unsafe extern "C" fn presage_rust_main(
     // create a channel for asynchronous communication of commands c → rust
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
-    let mut message = Message::from_account(account);
-    message.tx_ptr = tx_ptr as *mut std::os::raw::c_void;
+    let mut message = crate::bridge_structs::Message::from_account(account);
+    message.tx_ptr = tx_ptr as u64;
     append_message(&message); // let front-end know how to reach us
 
     // now execute the actual program
@@ -166,5 +158,5 @@ pub unsafe extern "C" fn presage_rust_main(
         let local = tokio::task::LocalSet::new();
         local.run_until(crate::core::main(store_path, None, rx, account)).await;
     });
-    crate::core::purple_debug(account, 2, String::from("rust runtime finishes now…\n"));
+    purple_debug(account, 2, String::from("rust runtime finishes now…\n"));
 }

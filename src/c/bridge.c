@@ -30,7 +30,7 @@ static int account_exists(PurpleAccount *account)
     return exists;
 }
 
-void free_message(Presage * message) {
+void free_message(Message * message) {
     // release all the memory
     presage_rust_free_string(message->qrcode);
     presage_rust_free_string(message->uuid);
@@ -46,11 +46,11 @@ void free_message(Presage * message) {
 /*
  * Handle a message according to its content.
  */
-static void handle_message(Presage * message) {
+static void handle_message(Message * message) {
     purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .body=„%s“})\n", 
     message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->body);
 
-    if (message->debug >= 0) {
+    if (message->debug != UINT_MAX) {
         // log messages do not need an active connection
         purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
         free_message(message);
@@ -68,7 +68,7 @@ static void handle_message(Presage * message) {
         return;
     }
 
-    Presage *presage = purple_connection_get_protocol_data(connection);
+    Message *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
         presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
         presage_rust_whoami(rust_runtime, presage->tx_ptr);
@@ -80,7 +80,7 @@ static void handle_message(Presage * message) {
         // backend says, connection has been set-up
         purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
-    } else if (message->error >= 0) {
+    } else if (message->error != UINT_MAX) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->blob != NULL) {
         presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->size, message->name);
@@ -106,7 +106,7 @@ static void handle_message(Presage * message) {
  */
 static gboolean process_message(gpointer data) {
     g_return_val_if_fail(data != NULL, FALSE);
-    Presage * message = (Presage *)data;
+    Message * message = (Message *)data;
     handle_message(message);
     g_free(message);
     return FALSE;
@@ -122,8 +122,8 @@ static gboolean process_message(gpointer data) {
  * 
  * Yes, this is indeed neccessary – we checked.
  */
-void presage_append_message(const Presage *message_rust) {
-    Presage *message_heap = g_memdup2(message_rust, sizeof *message_rust);
+void presage_append_message(const Message *message_rust) {
+    Message *message_heap = g_memdup2(message_rust, sizeof *message_rust);
     purple_timeout_add(
         0, // schedule for immediate execution
         process_message, // handle message in main thread

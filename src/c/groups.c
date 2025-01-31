@@ -56,7 +56,7 @@ GList * presage_chat_info(PurpleConnection *connection) {
  * does not actually send any requests to the server.
  */
 void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
-    Presage *presage = purple_connection_get_protocol_data(connection);
+    Message *presage = purple_connection_get_protocol_data(connection);
     const char *identifier = g_hash_table_lookup(data, "name");
     const char *topic = g_hash_table_lookup(data, "topic");
     if (identifier != NULL) {
@@ -111,7 +111,7 @@ void presage_handle_members(PurpleConnection *connection, const char *group, cha
 void presage_roomlist_populate(PurpleConnection *connection, const Group *groups, uint64_t length) {
     g_return_if_fail(groups != NULL || length == 0);
 
-    Presage *presage = purple_connection_get_protocol_data(connection);
+    Message *presage = purple_connection_get_protocol_data(connection);
     PurpleRoomlist *roomlist = presage->roomlist;
     if (roomlist != NULL) {
         for (uint64_t i = 0; i < length; i++) {
@@ -170,7 +170,7 @@ PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection) {
         PURPLE_ROOMLIST_FIELD_STRING, "Description", "description", FALSE
     ));
     purple_roomlist_set_fields(roomlist, fields);
-    Presage *presage = purple_connection_get_protocol_data(connection);
+    Message *presage = purple_connection_get_protocol_data(connection);
     presage->roomlist = roomlist; // store the pointer to the roomlist so presage_handle_groups can write to it
     presage_rust_list_groups(rust_runtime, presage->tx_ptr);
     return roomlist;

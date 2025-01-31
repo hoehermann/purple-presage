@@ -13,7 +13,7 @@ pub enum Cmd {
     Send {
         recipient: Recipient,
         message: Option<String>,
-        xfer: *const std::os::raw::c_void,
+        xfer: *mut crate::bridge_structs::PurpleXfer,
     },
     ListGroups,
     GetGroupMembers {

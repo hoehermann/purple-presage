@@ -1,14 +1,16 @@
 use presage::proto::EditMessage;
 
+use crate::bridge_structs::PurpleMessageFlags;
+
 /**
  * A local representation of a message that is probably going to be forwarded to the front-end.
  */
 #[derive(Clone)]
 pub struct Message {
     thread: Option<presage::store::Thread>,
-    account: *const std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     timestamp: Option<u64>,
-    flags: u64,
+    flags: PurpleMessageFlags,
     who: Option<String>,
     name: Option<String>,
     group: Option<String>,
@@ -18,28 +20,28 @@ impl Message {
     fn into_bridge(
         self,
         body: Option<String>,
-    ) -> crate::bridge::Message {
+    ) -> crate::bridge_structs::Message {
         let body = body.or(self.body);
-        crate::bridge::Message {
+        crate::bridge_structs::Message {
             account: self.account,
-            tx_ptr: std::ptr::null_mut(),
-            qrcode: std::ptr::null(),
-            uuid: std::ptr::null(),
-            debug: -1,
-            error: -1,
+            tx_ptr: 0,
+            qrcode: std::ptr::null_mut(),
+            uuid: std::ptr::null_mut(),
+            debug: u32::MAX,
+            error: u32::MAX,
             connected: -1,
             padding: -1,
-            timestamp: self.timestamp.unwrap_or_default(),
+            timestamp: self.timestamp.unwrap_or_default() as i64,
             flags: self.flags,
-            who: self.who.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            name: self.name.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            group: self.group.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            body: body.map_or(std::ptr::null(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            blob: std::ptr::null(),
+            who: self.who.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
+            name: self.name.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
+            group: self.group.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
+            body: body.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
+            blob: std::ptr::null_mut(),
             size: 0,
-            groups: std::ptr::null(),
-            roomlist: std::ptr::null(),
-            xfer: std::ptr::null(),
+            groups: std::ptr::null_mut(),
+            roomlist: std::ptr::null_mut(),
+            xfer: std::ptr::null_mut(),
         }
     }
 }
@@ -90,7 +92,7 @@ Adapted from presage-cli.
 */
 async fn format_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
-    account: *const std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     thread: &presage::store::Thread,
     data_message: &presage::libsignal_service::content::DataMessage,
 ) -> Option<String> {
@@ -138,7 +140,7 @@ async fn format_data_message<C: presage::store::Store>(
         } => Some(body.to_string()),
         // Default (catch all other cases)
         c => {
-            crate::core::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
+            crate::bridge::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
             // NOTE: This happens when receiving a file, but not providing a text
             // TODO: suppress this debug message if data message contained an attachment
             // NOTE: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
@@ -157,14 +159,14 @@ async fn process_attachments<C: presage::store::Store>(
     for attachment_pointer in attachments {
         let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
             let mut message = message.clone().into_bridge(Some("Failed to fetch attachment.".to_string()));
-            message.flags = 0x0200; // PURPLE_MESSAGE_ERROR
+            message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
             crate::bridge::append_message(&message);
             continue;
         };
 
         match attachment_pointer.content_type.as_deref() {
             None => {
-                crate::core::purple_debug(account, 4, format!("Received attachment without content type.\n"));
+                crate::bridge::purple_debug(account, 4, format!("Received attachment without content type.\n"));
             }
             Some("text/x-signal-plain") => {
                 // TODO: this should be routed through the function that usually handles the text messages
@@ -189,9 +191,9 @@ async fn process_attachments<C: presage::store::Store>(
                 };
                 let boxed_slice = attachment_data.into_boxed_slice();
                 let mut message = message.clone().into_bridge(None);
-                message.size = boxed_slice.len() as u64; // TODO: blobsize should be a C type compatible with usize
+                message.size = boxed_slice.len() as usize;
                 message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
-                message.blob = Box::into_raw(boxed_slice) as *const std::os::raw::c_uchar;
+                message.blob = Box::into_raw(boxed_slice) as *mut std::os::raw::c_void;
                 crate::bridge::append_message(&message);
             }
         }
@@ -213,7 +215,7 @@ async fn process_sent_message<C: presage::store::Store>(
     sent: &presage::proto::sync_message::Sent,
 ) {
     let mut message = message;
-    message.flags = 0x0001 | 0x10000; // PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND
+    message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_SEND | crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_REMOTE_SEND;
     if let Some(body) = match sent {
         presage::proto::sync_message::Sent {
             message: Some(data_message),
@@ -227,7 +229,7 @@ async fn process_sent_message<C: presage::store::Store>(
             ..
         } => process_data_message(manager, message.clone(), &data_message).await,
         c => {
-            crate::core::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
+            crate::bridge::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
             None
         }
     } {
@@ -262,7 +264,7 @@ async fn process_received_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, //Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
         presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, //Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
         c => {
-            crate::core::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
+            crate::bridge::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
             None
         }
     } {
@@ -278,10 +280,10 @@ async fn process_received_message<C: presage::store::Store>(
 async fn process_incoming_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     content: &presage::libsignal_service::content::Content,
-    account: *const std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
 ) {
     let Ok(thread) = presage::store::Thread::try_from(content) else {
-        crate::core::purple_error(account, 16, String::from("failed to find conversation"));
+        crate::bridge::purple_error(account, 16, String::from("failed to find conversation"));
         return;
     };
     let mut message = Message {
@@ -289,7 +291,7 @@ async fn process_incoming_message<C: presage::store::Store>(
         timestamp: None,
         who: None,
         group: None,
-        flags: 0,
+        flags: PurpleMessageFlags(0),
         body: None,
         name: None,
         thread: None,
@@ -311,7 +313,7 @@ async fn process_incoming_message<C: presage::store::Store>(
     match &content.body {
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => process_sync_message(manager, message, sync_message).await,
         _ => {
-            message.flags = 0x0002; // PURPLE_MESSAGE_RECV
+            message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_RECV;
             process_received_message(manager, message, &content.body).await
         }
     }
@@ -326,12 +328,12 @@ async fn process_incoming_message<C: presage::store::Store>(
  */
 pub async fn receive<S: presage::store::Store>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
-    account: *const std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
 ) {
-    crate::core::purple_debug(account, 2, String::from("receive begins…\n"));
+    crate::bridge::purple_debug(account, 2, String::from("receive begins…\n"));
     match manager.receive_messages().await {
         Err(err) => {
-            crate::core::purple_error(account, 16, format!("failed to receive messaged due to {err:?}"));
+            crate::bridge::purple_error(account, 16, format!("failed to receive messaged due to {err:?}"));
         }
         Ok(messages) => {
             futures::pin_mut!(messages);
@@ -340,11 +342,11 @@ pub async fn receive<S: presage::store::Store>(
                 match content {
                     presage::model::messages::Received::QueueEmpty => {
                         // TODO: find out if this happens more than once per connection. protect against multiple invocation, if necessary
-                        crate::core::purple_debug(account, 2, format!("synchronization completed.\n"));
+                        crate::bridge::purple_debug(account, 2, format!("synchronization completed.\n"));
 
                         // now that the initial sync has completed,
                         // the account can be regarded as "connected" and ready to send messages
-                        let mut message = crate::bridge::Message::from_account(account);
+                        let mut message = crate::bridge_structs::Message::from_account(account);
                         message.connected = 1;
                         crate::bridge::append_message(&message);
 
@@ -354,7 +356,7 @@ pub async fn receive<S: presage::store::Store>(
                         crate::contacts::get_groups(account, manager).await;
                     }
                     presage::model::messages::Received::Contacts => {
-                        crate::core::purple_debug(account, 2, format!("got contacts synchronization.\n"));
+                        crate::bridge::purple_debug(account, 2, format!("got contacts synchronization.\n"));
                         // NOTE: I never saw this happening.
                         // TODO: Check if this happens during linking.
                     }
@@ -363,5 +365,9 @@ pub async fn receive<S: presage::store::Store>(
             }
         }
     }
-    crate::core::purple_error(account, 0, String::from("Receiver has finished. Disconnected?"));
+    crate::bridge::purple_error(
+        account,
+        crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR,
+        String::from("Receiver has finished. Disconnected?"),
+    );
 }
