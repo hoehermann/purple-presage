@@ -102,7 +102,7 @@ pub unsafe extern "C" fn presage_rust_send_contact(
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_uuid: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
-    xfer: *const std::os::raw::c_void,
+    xfer: *mut crate::bridge_structs::PurpleXfer,
 ) {
     // TODO: add error handling instead of unwrap()
     let uuid = presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap();
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn presage_rust_send_group(
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_group: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
-    xfer: *const std::os::raw::c_void,
+    xfer: *mut crate::bridge_structs::PurpleXfer,
 ) {
     // TODO: add error handling instead of using unwrap()
     let master_key_bytes = parse_group_master_key(std::ffi::CStr::from_ptr(c_group).to_str().unwrap());

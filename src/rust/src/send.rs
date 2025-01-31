@@ -9,7 +9,7 @@ pub async fn send<C: presage::store::Store + 'static>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     recipient: crate::structs::Recipient,
     body: Option<String>,
-    xfer: *const std::os::raw::c_void,
+    xfer: *mut crate::bridge_structs::PurpleXfer,
 ) -> Result<(), presage::Error<<C>::Error>> {
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
     let mut data_message = presage::libsignal_service::content::DataMessage {
@@ -17,7 +17,7 @@ pub async fn send<C: presage::store::Store + 'static>(
         ..Default::default()
     };
 
-    if xfer != std::ptr::null() {
+    if xfer != std::ptr::null_mut() {
         let path = crate::bridge::xfer_get_local_filename(xfer);
         let blob = std::fs::read(path.clone()).expect("Unable to read file.");
         let content_type = blob.sniff_mime_type().expect("Unable to guess content type.");

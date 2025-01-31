@@ -29,36 +29,35 @@ void presage_rust_strfreev(char **, uint64_t);
 
 extern RustRuntimePtr rust_runtime;
 
-// TODO: generate this struct declaration automatically from rust declaration
 typedef struct {
     char *key;
     char *title;
     char *description;
     uint32_t revision;
     char **members;
-    uint64_t population;
+    size_t population;
 } Group;
 typedef struct {
     PurpleAccount *account;
     RustChannelPtr tx_ptr;
     char *qrcode;
     char *uuid;
-    const int32_t debug;
-    const int32_t error;
+    const PurpleDebugLevel debug;
+    const PurpleConnectionError error;
     const int32_t connected;
     const int32_t padding;
-    const uint64_t timestamp;
-    const uint64_t flags;
+    const time_t timestamp;
+    const PurpleMessageFlags flags;
     char *who;
     char *name;
     char *group;
     char *body;
     void *blob;
-    uint64_t size;
+    size_t size;
     Group *groups;
     PurpleRoomlist *roomlist;
     PurpleXfer *xfer;
-} Presage;
+} Message;
 
 // procotol properties
 GList * presage_status_types(PurpleAccount *account);
