@@ -41,8 +41,7 @@ void presage_login(PurpleAccount *account) {
     pc_flags |= PURPLE_CONNECTION_FLAG_NO_BGCOLOR;
     purple_connection_set_flags(connection, pc_flags);
     purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTING);
-    Message *presage = g_new0(Message, 1);
-    presage->account = account;
+    Presage *presage = g_new0(Presage, 1);
     purple_connection_set_protocol_data(connection, presage);
     #ifdef WIN32
     HANDLE thread = CreateThread(NULL, 0, rust_main, account, 0, NULL);
@@ -62,7 +61,7 @@ void presage_login(PurpleAccount *account) {
 }
 
 void presage_close(PurpleConnection *connection) {
-    Message *presage = purple_connection_get_protocol_data(connection);
+    Presage *presage = purple_connection_get_protocol_data(connection);
     presage_rust_exit(rust_runtime, presage->tx_ptr);
     // TODO: deallocate protocol data (including rust channel)
 }

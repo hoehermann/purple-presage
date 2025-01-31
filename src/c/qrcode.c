@@ -11,8 +11,8 @@ static void qrcode_cancel(PurpleConnection *connection, PurpleRequestFields *fie
 
 static void show_qrcode(PurpleConnection *connection, const char *qrstring, gchar* qrimgdata, gsize qrimglen) {
     // Dispalay qrcode for scanning
-    PurpleRequestFields* fields = purple_request_fields_new();
-    PurpleRequestFieldGroup* group = purple_request_field_group_new(NULL);
+    PurpleRequestFields *fields = purple_request_fields_new();
+    PurpleRequestFieldGroup *group = purple_request_field_group_new(NULL);
 
     purple_request_fields_add_group(fields, group);
     {
@@ -84,7 +84,7 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
     if (data[0] == 0) {
         // empty string means "linking has finished"
         purple_request_close_with_handle(connection); // close request displaying the QR code
-        Message *presage = purple_connection_get_protocol_data(connection);
+        Presage *presage = purple_connection_get_protocol_data(connection);
         presage_rust_whoami(rust_runtime, presage->tx_ptr); // now that linking is done, get own uuid
     } else {
         PurpleRequestUiOps *ui_ops = purple_request_get_ui_ops();
@@ -99,8 +99,9 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
 }
 
 void presage_request_qrcode(PurpleConnection *connection) {
-    Message *presage = purple_connection_get_protocol_data(connection);
-    const char * device_name = purple_account_get_string(presage->account, "device-name", g_get_host_name());
+    Presage *presage = purple_connection_get_protocol_data(connection);
+    PurpleAccount *account = purple_connection_get_account(connection);
+    const char *device_name = purple_account_get_string(account, "device-name", g_get_host_name());
     presage_rust_link(rust_runtime, presage->tx_ptr, device_name);
 }
 
@@ -113,16 +114,15 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
         PurpleAccount *account = purple_connection_get_account(connection);
         const char *username = purple_account_get_username(account);
         if (purple_strequal(username, uuid)) {
-            Message *presage = purple_connection_get_protocol_data(connection);
-            presage->uuid = g_strdup(uuid);
             purple_request_close_with_handle(connection); // close request displaying the QR code
             /* 
             Now that we established correctness of the uuid, start receiving. Bear in mind that the connection is not fully established, yet. The presage docs state: 
             „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
             */
+            Presage *presage = purple_connection_get_protocol_data(connection);
             presage_rust_receive(rust_runtime, presage->tx_ptr);
         } else {
-            char * errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
+            char *errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
             purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
             g_free(errmsg);
         }
