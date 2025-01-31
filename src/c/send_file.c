@@ -1,11 +1,10 @@
 #include "presage.h"
 
-
 static void xfer_start_fnc(PurpleXfer *xfer) {
     intptr_t destination_type = (intptr_t)xfer->data;
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
-    Message *presage = purple_connection_get_protocol_data(connection);
+    Presage *presage = purple_connection_get_protocol_data(connection);
     if (destination_type == PURPLE_CONV_TYPE_IM) {
         presage_rust_send_contact(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
     } else if (destination_type == PURPLE_CONV_TYPE_CHAT) {

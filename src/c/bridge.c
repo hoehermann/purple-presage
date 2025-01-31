@@ -68,7 +68,7 @@ static void handle_message(Message * message) {
         return;
     }
 
-    Message *presage = purple_connection_get_protocol_data(connection);
+    Presage *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
         presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
         presage_rust_whoami(rust_runtime, presage->tx_ptr);

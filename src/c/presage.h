@@ -29,6 +29,7 @@ void presage_rust_strfreev(char **, uint64_t);
 
 extern RustRuntimePtr rust_runtime;
 
+// structures for receiving messages from rust
 typedef struct {
     char *key;
     char *title;
@@ -58,6 +59,12 @@ typedef struct {
     PurpleRoomlist *roomlist;
     PurpleXfer *xfer;
 } Message;
+
+// data regarding this connection
+typedef struct {
+    RustChannelPtr tx_ptr;
+    PurpleRoomlist *roomlist;
+} Presage;
 
 // procotol properties
 GList * presage_status_types(PurpleAccount *account);
