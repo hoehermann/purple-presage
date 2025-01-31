@@ -15,7 +15,10 @@ pub struct Message {
     body: Option<String>,
 }
 impl Message {
-    fn into_bridge(self, body:Option<String>) -> crate::bridge::Message {
+    fn into_bridge(
+        self,
+        body: Option<String>,
+    ) -> crate::bridge::Message {
         let body = body.or(self.body);
         crate::bridge::Message {
             account: self.account,
@@ -56,25 +59,22 @@ async fn format_group<S: presage::store::Store>(
 async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
     manager: &presage::Manager<S, presage::manager::Registered>,
     thread: &presage::store::Thread,
-    timestamp: u64
+    timestamp: u64,
 ) -> Option<String> {
     match manager.store().message(thread, timestamp).await {
         Err(_) => None,
         Ok(None) => None,
         Ok(Some(message)) => {
-            if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage {
-                body, ..
-            })
+            if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { body, .. })
             | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
                 sent:
                     Some(presage::proto::sync_message::Sent {
-                        message: Some(presage::libsignal_service::content::DataMessage {
-                            body, ..
-                        }),
+                        message: Some(presage::libsignal_service::content::DataMessage { body, .. }),
                         ..
                     }),
                 ..
-            }) = message.body {
+            }) = message.body
+            {
                 body
             } else {
                 None
@@ -90,7 +90,8 @@ Adapted from presage-cli.
 */
 async fn format_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
-    message: Message,
+    account: *const std::os::raw::c_void,
+    thread: &presage::store::Thread,
     data_message: &presage::libsignal_service::content::DataMessage,
 ) -> Option<String> {
     match data_message {
@@ -117,9 +118,10 @@ async fn format_data_message<C: presage::store::Store>(
                 }),
             ..
         } => {
-            match lookup_message_body_by_timestamp(manager, &message.thread.unwrap(), message.timestamp.unwrap()).await {
+            match lookup_message_body_by_timestamp(manager, thread, *timestamp).await {
                 None => {
-                    let sent_at = chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                    let sent_at =
+                        chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
                     Some(format!("Reacted with {emoji} to message from {sent_at}."))
                 }
                 Some(body) => {
@@ -136,7 +138,7 @@ async fn format_data_message<C: presage::store::Store>(
         } => Some(body.to_string()),
         // Default (catch all other cases)
         c => {
-            crate::core::purple_debug(message.account, 2, format!("DataMessage without body {c:?}\n"));
+            crate::core::purple_debug(account, 2, format!("DataMessage without body {c:?}\n"));
             // NOTE: This happens when receiving a file, but not providing a text
             // TODO: suppress this debug message if data message contained an attachment
             // NOTE: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"
@@ -200,11 +202,9 @@ async fn process_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     message: Message,
     data_message: &presage::proto::DataMessage,
-) {
-    if let Some(body) = format_data_message(manager, message.clone(), data_message).await {
-        crate::bridge::append_message(&message.clone().into_bridge(Some(body)));
-    }
-    process_attachments(manager, message, &data_message.attachments).await
+) -> Option<String> {
+    process_attachments(manager, message.clone(), &data_message.attachments).await;
+    format_data_message(manager, message.account, &message.thread.unwrap(), data_message).await
 }
 
 async fn process_sent_message<C: presage::store::Store>(
@@ -214,16 +214,24 @@ async fn process_sent_message<C: presage::store::Store>(
 ) {
     let mut message = message;
     message.flags = 0x0001 | 0x10000; // PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND
-    match sent {
-        presage::proto::sync_message::Sent{message: Some(data_message), ..}=> {
-            process_data_message(manager, message, data_message).await
-        },
-        presage::proto::sync_message::Sent{edit_message:Some(EditMessage{data_message: Some(data_message), ..}), ..}=> {
-            process_data_message(manager, message, &data_message).await
-        },
+    if let Some(body) = match sent {
+        presage::proto::sync_message::Sent {
+            message: Some(data_message),
+            ..
+        } => process_data_message(manager, message.clone(), data_message).await,
+        presage::proto::sync_message::Sent {
+            edit_message: Some(EditMessage {
+                data_message: Some(data_message),
+                ..
+            }),
+            ..
+        } => process_data_message(manager, message.clone(), &data_message).await,
         c => {
             crate::core::purple_debug(message.account, 2, format!("Unsupported message {c:?}\n"));
+            None
         }
+    } {
+        crate::bridge::append_message(&message.into_bridge(Some(body)));
     }
 }
 
@@ -244,16 +252,11 @@ async fn process_received_message<C: presage::store::Store>(
     received: &presage::libsignal_service::content::ContentBody,
 ) {
     if let Some(body) = match received {
-        presage::libsignal_service::content::ContentBody::NullMessage(_) => {
-            Some("Null message (for example deleted)".to_string())
-        },
-        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
-            process_data_message(manager, message.clone(), data_message).await;
-            None
-        }
+        presage::libsignal_service::content::ContentBody::NullMessage(_) => Some("Null message (for example deleted)".to_string()),
+        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => process_data_message(manager, message.clone(), data_message).await,
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(_) => {
             panic!("SynchronizeMessage ended up in process_received_message!")
-        },
+        }
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some("is calling!".to_string()),
         // TODO: forward these properly
         presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, //Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
@@ -281,13 +284,22 @@ async fn process_incoming_message<C: presage::store::Store>(
         crate::core::purple_error(account, 16, String::from("failed to find conversation"));
         return;
     };
-    let mut message = Message { account: account, timestamp: None, who: None, group: None, flags: 0, body: None, name: None, thread: None };
+    let mut message = Message {
+        account: account,
+        timestamp: None,
+        who: None,
+        group: None,
+        flags: 0,
+        body: None,
+        name: None,
+        thread: None,
+    };
     message.thread = Some(thread.clone());
     message.timestamp = Some(content.metadata.timestamp);
     match thread {
         presage::store::Thread::Contact(uuid) => {
             message.who = Some(uuid.to_string());
-        },
+        }
         presage::store::Thread::Group(key) => {
             // TODO: check if this who works for sync messages
             message.who = Some(content.metadata.sender.raw_uuid().to_string());
@@ -295,11 +307,9 @@ async fn process_incoming_message<C: presage::store::Store>(
             message.name = Some(format_group(key, manager).await);
         }
     }
-    
+
     match &content.body {
-        presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
-            process_sync_message(manager, message, sync_message).await
-        },
+        presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => process_sync_message(manager, message, sync_message).await,
         _ => {
             message.flags = 0x0002; // PURPLE_MESSAGE_RECV
             process_received_message(manager, message, &content.body).await
