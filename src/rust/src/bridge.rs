@@ -4,13 +4,13 @@ impl crate::bridge_structs::Message {
     pub fn from_account(account: *mut crate::bridge_structs::PurpleAccount) -> Self {
         Self {
             account,
-            tx_ptr: 0,
+            tx_ptr: std::ptr::null_mut(),
             qrcode: std::ptr::null_mut(),
             uuid: std::ptr::null_mut(),
-            debug: u32::MAX,
-            error: u32::MAX,
-            connected: -1,
-            padding: -1,
+            debug: -1,
+            error: -1,
+            connected: 0,
+            padding: 0,
             timestamp: 0,
             flags: PurpleMessageFlags(0),
             who: std::ptr::null_mut(),
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn presage_rust_main(
     let (tx, rx) = tokio::sync::mpsc::channel(32);
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = crate::bridge_structs::Message::from_account(account);
-    message.tx_ptr = tx_ptr as u64;
+    message.tx_ptr = tx_ptr as crate::bridge_structs::RustChannelPtr;
     append_message(&message); // let front-end know how to reach us
 
     // now execute the actual program
@@ -158,5 +158,5 @@ pub unsafe extern "C" fn presage_rust_main(
         let local = tokio::task::LocalSet::new();
         local.run_until(crate::core::main(store_path, None, rx, account)).await;
     });
-    purple_debug(account, 2, String::from("rust runtime finishes now…\n"));
+    purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("rust runtime finishes now…\n"));
 }

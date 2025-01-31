@@ -47,7 +47,7 @@ typedef struct {
     const PurpleConnectionError error;
     const int32_t connected;
     const int32_t padding;
-    const time_t timestamp;
+    const uint64_t timestamp;
     const PurpleMessageFlags flags;
     char *who;
     char *name;

@@ -18,13 +18,13 @@ async fn run<C: presage::store::Store + 'static>(
             let join_handle = futures::future::join(presage::Manager::link_secondary_device(config_store, servers, device_name.clone(), provisioning_link_tx), async move {
                 match provisioning_link_rx.await {
                     Ok(url) => {
-                        crate::bridge::purple_debug(account, 2, String::from("got URL for QR code\n"));
+                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("got URL for QR code\n"));
                         let mut message = crate::bridge_structs::Message::from_account(account);
                         message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
                         crate::bridge::append_message(&message);
                     }
                     Err(err) => {
-                        crate::bridge::purple_error(account, 2 /* PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED */, format!("Error linking device: {err:?}"));
+                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error linking device: {err:?}"));
                     }
                 }
             })
@@ -63,7 +63,7 @@ async fn run<C: presage::store::Store + 'static>(
             let mut manager = manager.expect("manager must be loaded");
             // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge_structs::Message::from_account(account);
-            msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64;
+            msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
             msg.xfer = xfer; // in case of attachments, this is the reference to the respective purple Xfer
             match recipient {
                 crate::structs::Recipient::Contact(uuid) => {
@@ -86,7 +86,7 @@ async fn run<C: presage::store::Store + 'static>(
                     // TODO: remove this purple_debug once handling errors is reasonably well tested
                     crate::bridge::purple_debug(
                         account,
-                        4,
+                        crate::bridge_structs::PURPLE_DEBUG_ERROR,
                         format!("{err} occurred while sending a message. The error message should appear in the conversation window.\n"),
                     );
                     msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
@@ -107,7 +107,7 @@ async fn run<C: presage::store::Store + 'static>(
         crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes).await,
 
         crate::structs::Cmd::Exit {} => {
-            crate::bridge::purple_error(account, 16, String::from("Exit command reached inner loop."));
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, String::from("Exit command reached inner loop."));
             panic!("Exit command reached inner loop.");
         }
     }
@@ -132,7 +132,7 @@ pub async fn mainloop(
                 break;
             }
             _ => {
-                //purple_debug(account, 2, format!("run {:?} begins…\n", cmd));
+                //purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("run {:?} begins…\n", cmd));
                 // TODO: find out if config_store.clone() is the correct thing to do here
                 match run(cmd.clone(), config_store.clone(), manager, account).await {
                     Ok(m) => {
@@ -159,16 +159,16 @@ pub async fn mainloop(
                                 crate::bridge::append_message(&message);
                             }
                             _ => {
-                                crate::bridge::purple_error(account, 16, format!("run unhandled ServiceError {err:?}"));
+                                crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run unhandled ServiceError {err:?}"));
                             }
                         }
                     }
                     Err(err) => {
                         manager = None;
-                        crate::bridge::purple_error(account, 16, format!("run Err {err:?}"));
+                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
                     }
                 }
-                //purple_debug(account, 2, format!("run {:?} finished.\n", cmd));
+                //purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("run {:?} finished.\n", cmd));
             }
         }
     }
@@ -185,7 +185,7 @@ pub async fn main(
     rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
-    crate::bridge::purple_debug(account, 2, format!("opening config database from {store_path}\n"));
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("opening config database from {store_path}\n"));
     let config_store = presage_store_sled::SledStore::open_with_passphrase(
         store_path,
         passphrase,
@@ -194,10 +194,10 @@ pub async fn main(
     );
     match config_store.await {
         Err(err) => {
-            crate::bridge::purple_error(account, 16, format!("config_store Err {err:?}"));
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config_store Err {err:?}"));
         }
         Ok(config_store) => {
-            crate::bridge::purple_debug(account, 2, String::from("config_store OK\n"));
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config_store OK\n"));
             mainloop(config_store, rx, account).await;
         }
     }

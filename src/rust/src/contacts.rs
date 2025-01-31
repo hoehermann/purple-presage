@@ -69,7 +69,7 @@ pub async fn get_groups<C: presage::store::Store + 'static>(
 ) {
     match manager.store().groups().await {
         Err(err) => {
-            crate::bridge::purple_debug(account, 4, format!("Unable to get groups due to {err:?}\n"));
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Unable to get groups due to {err:?}\n"));
         }
         Ok(groups) => {
             let groups: Vec<crate::bridge_structs::Group> = groups

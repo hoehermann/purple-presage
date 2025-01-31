@@ -50,7 +50,7 @@ static void handle_message(Message * message) {
     purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .body=„%s“})\n", 
     message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->body);
 
-    if (message->debug != UINT_MAX) {
+    if (message->debug != -1) {
         // log messages do not need an active connection
         purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
         free_message(message);
@@ -80,7 +80,7 @@ static void handle_message(Message * message) {
         // backend says, connection has been set-up
         purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
-    } else if (message->error != UINT_MAX) {
+    } else if (message->error != -1) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->blob != NULL) {
         presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->size, message->name);
