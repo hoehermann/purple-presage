@@ -21,6 +21,11 @@ impl Message {
         self,
         body: Option<String>,
     ) -> crate::bridge_structs::Message {
+        // TODO: Do this in append_message, but not with into_raw, but with as_ptr, then g_strdup in presage_append_message.
+        // Then the presage_rust_free_* functions are no longer needed.
+        let to_cstr_or_null = |s:Option<String>|->*mut ::std::os::raw::c_char {
+            s.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw())
+        };
         let body = body.or(self.body);
         crate::bridge_structs::Message {
             account: self.account,
@@ -33,10 +38,10 @@ impl Message {
             padding: -1,
             timestamp: self.timestamp.unwrap_or_default() as u64,
             flags: self.flags,
-            who: self.who.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            name: self.name.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            group: self.group.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
-            body: body.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()),
+            who: to_cstr_or_null(self.who),
+            name: to_cstr_or_null(self.name),
+            group: to_cstr_or_null(self.group),
+            body: to_cstr_or_null(body),
             blob: std::ptr::null_mut(),
             size: 0,
             groups: std::ptr::null_mut(),

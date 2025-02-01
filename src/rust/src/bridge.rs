@@ -97,7 +97,7 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
 pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
     if !c_str.is_null() {
         unsafe {
-            drop(Box::from_raw(c_str)); // TODO: find out why this works at all. At which point has c_str been boxed?
+            drop(Box::from_raw(c_str));
         }
     }
 }
