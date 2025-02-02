@@ -1,5 +1,49 @@
 use mime_sniffer::MimeTypeSniffer;
 
+async fn lookup_message_by_body_contains<S: presage::store::Store>(
+    manager: &presage::Manager<S, presage::manager::Registered>,
+    thread: &presage::store::Thread,
+    pat: String
+) -> Option<presage::libsignal_service::content::Content> {
+    if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        //print!("(xx:xx:xx) presage: now is {now:?}.“\n");
+        match manager.store().messages(thread, 0..now.as_millis() as u64).await {
+            Err(_) => None,
+            Ok(messages) => {
+                //print!("(xx:xx:xx) presage: messages exist for this thread.\n");
+                messages.filter(|result|{result.as_ref().is_ok_and(|content| {
+                    let body = &content.body;
+                    match body {
+                        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
+                            let result = data_message.body().contains(&pat);
+                            //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
+                            result
+                        },
+                        presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
+                            let result = sync_message.sent.as_ref().is_some_and(|sent|{sent.message.as_ref().is_some_and(|data_message|{data_message.body().contains(&pat)})});
+                            //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
+                            result
+                        },
+                        //presage::libsignal_service::content::ContentBody::EditMessage(edit_message) => … TODO
+                        _ => false
+                    }
+                })}).last().and_then(|result |result.ok())
+            }
+        }
+    } else {
+        None
+    }
+}
+
+fn extract_pat(input: &str) -> Option<&str> {
+    if input.starts_with('@') {
+        if let Some(colon_pos) = input.find(':') {
+            return Some(&input[1..colon_pos]);
+        }
+    }
+    None
+}
+
 /*
  * Sends a text message to a contact identified by their uuid or to a group identified by its key.
  *
@@ -16,6 +60,34 @@ pub async fn send<C: presage::store::Store + 'static>(
         timestamp: Some(timestamp),
         ..Default::default()
     };
+
+    if let Some(pat) = body.as_ref().and_then(|s| extract_pat(s.as_str())) {
+        let thread = match recipient {
+            crate::structs::Recipient::Contact(uuid) => presage::store::Thread::Contact(uuid),
+            crate::structs::Recipient::Group(key) => presage::store::Thread::Group(key),
+        };
+        //print!("(xx:xx:xx) presage: Trying to Quote something with {pat:?}. Thread is {thread:?}.“\n");
+        if let Some(quoted_message) = lookup_message_by_body_contains(manager, &thread, pat.to_string()).await {
+            //print!("(xx:xx:xx) presage: Found message to quote: {quoted_message:#?}\n");
+            let body = match &quoted_message.body {
+                presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
+                    data_message.body.clone()
+                },
+                presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
+                    sync_message.sent.as_ref().and_then(|sent|{sent.message.as_ref().and_then(|data_message|{data_message.body.clone()})})
+                },
+                _ => None
+            };
+            data_message.quote = Some(presage::proto::data_message::Quote{
+                id: Some(quoted_message.metadata.timestamp), 
+                author_aci: Some(quoted_message.metadata.sender.raw_uuid().to_string()), 
+                text: body, 
+                attachments: vec![], // TODO
+                body_ranges: vec![], 
+                r#type: Some(0) // type: NORMAL
+            });
+        }
+    }
 
     if xfer != std::ptr::null_mut() {
         let path = crate::bridge::xfer_get_local_filename(xfer);

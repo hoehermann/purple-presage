@@ -47,8 +47,8 @@ void free_message(Message * message) {
  * Handle a message according to its content.
  */
 static void handle_message(Message * message) {
-    purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .body=„%s“})\n", 
-    message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->body);
+    purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
+    message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->flags, message->body);
 
     if (message->debug != -1) {
         // log messages do not need an active connection
@@ -76,7 +76,7 @@ static void handle_message(Message * message) {
         presage_handle_qrcode(connection, message->qrcode);
     } else if (message->uuid != NULL) {
         presage_handle_uuid(connection, message->uuid);
-    } else if (message->connected >= 0) {
+    } else if (message->connected > 0) {
         // backend says, connection has been set-up
         purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
@@ -90,7 +90,7 @@ static void handle_message(Message * message) {
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
         presage_handle_groups(connection, message->groups, message->size);
-    } else if (message->who != NULL && message->name) {
+    } else if (message->who != NULL && message->name != NULL) {
         // TODO: handle phone number
         presage_handle_contact(connection, message->who, message->name, NULL);
     }

@@ -194,7 +194,7 @@ pub async fn main(
     );
     match config_store.await {
         Err(err) => {
-            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config_store Err {err:?}"));
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config_store Err {err:#?}"));
         }
         Ok(config_store) => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config_store OK\n"));

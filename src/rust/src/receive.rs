@@ -1,7 +1,3 @@
-use presage::proto::EditMessage;
-
-use crate::bridge_structs::PurpleMessageFlags;
-
 /**
  * A local representation of a message that is probably going to be forwarded to the front-end.
  */
@@ -10,7 +6,7 @@ pub struct Message {
     thread: Option<presage::store::Thread>,
     account: *mut crate::bridge_structs::PurpleAccount,
     timestamp: Option<u64>,
-    flags: PurpleMessageFlags,
+    flags: crate::bridge_structs::PurpleMessageFlags,
     who: Option<String>,
     name: Option<String>,
     group: Option<String>,
@@ -227,7 +223,7 @@ async fn process_sent_message<C: presage::store::Store>(
             ..
         } => process_data_message(manager, message.clone(), data_message).await,
         presage::proto::sync_message::Sent {
-            edit_message: Some(EditMessage {
+            edit_message: Some(presage::proto::EditMessage {
                 data_message: Some(data_message),
                 ..
             }),
@@ -266,8 +262,9 @@ async fn process_received_message<C: presage::store::Store>(
         }
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some("is calling!".to_string()),
         // TODO: forward these properly
-        presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, //Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
-        presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, //Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
+        presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, // TODO Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
+        presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, // TODO Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
+        presage::libsignal_service::content::ContentBody::EditMessage(_) => None, // TODO
         c => {
             crate::bridge::purple_debug(message.account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("Unsupported message {c:?}\n"));
             None
@@ -296,7 +293,7 @@ async fn process_incoming_message<C: presage::store::Store>(
         timestamp: None,
         who: None,
         group: None,
-        flags: PurpleMessageFlags(0),
+        flags: crate::bridge_structs::PurpleMessageFlags(0),
         body: None,
         name: None,
         thread: None,
