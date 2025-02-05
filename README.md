@@ -25,18 +25,17 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Will add buddies to contact list unconditionally.
 * Can list groups as rooms and open the chat.
 * Uses special handling of login procedure for bitlbee.
+* Can reply to a specific message via "@searchstring:".
 
 ### Missing
 
 #### To Be Done Soon™
 
-* Add chats to contact list unconditionally.
 * Forward all errors to front-end properly.
 
 #### On Hold
 
 * Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
-* Reply to a specific message (no example exists in back-end).
 
 #### "Contributions Welcome"
 
@@ -57,7 +56,7 @@ These lists are not exhaustive.
 * Failing to send an attachment may bring down the entire application.
 * Some message features such as displaying edits do not work reliably, especially on sync messages.
 * Sync messages are less well tested an may be unreliable.
-* Some times, the error message `"config_store Err Db(Io(Custom { kind: Other, error: "could not acquire lock on \"…/db\": Os { code: 11, kind: WouldBlock, message: \"Resource temporarily unavailable\" }" }))"` is shown. Just wait a few seconds and try again. Usually, it works after a couple of retries.
+* Sometimes, the same chat is added to the buddy list more than once.
 
 ## Building
 
