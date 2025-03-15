@@ -342,6 +342,12 @@ pub async fn receive<S: presage::store::Store>(
             );
         }
         Ok(messages) => {
+            // to the front-end, we now claim to be connected since libpurple's blist and aliasing functions do not work on offline accounts at all
+            // technically, this is wrong since the back-end has not completed key synchronization and cannot yet send messages, but here we are
+            let mut message = crate::bridge_structs::Message::from_account(account);
+            message.connected = 1;
+            crate::bridge::append_message(&message);
+
             futures::pin_mut!(messages);
             // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
             while let Some(content) = futures::StreamExt::next(&mut messages).await {
@@ -351,14 +357,14 @@ pub async fn receive<S: presage::store::Store>(
                         crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("synchronization completed.\n"));
 
                         // now that the initial sync has completed,
-                        // the account can be regarded as "connected" and ready to send messages
+                        // the account can be regarded as "connected" since it is ready to send messages
                         let mut message = crate::bridge_structs::Message::from_account(account);
                         message.connected = 1;
                         crate::bridge::append_message(&message);
 
                         // forward contacts and groups to front-end now
+                        // these need to happen *after* setting the account to "connected" due to a purple_account_is_connected in purple_blist_find_chat
                         crate::contacts::get_contacts(account, manager).await;
-                        // this needs to happen *after* setting the account to "connected" due to a purple_account_is_connected in purple_blist_find_chat
                         crate::contacts::get_groups(account, manager).await;
                     }
                     presage::model::messages::Received::Contacts => {

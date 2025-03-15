@@ -47,8 +47,8 @@ void free_message(Message * message) {
  * Handle a message according to its content.
  */
 static void handle_message(Message * message) {
-    purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
-    message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->flags, message->body);
+    //purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
+    //message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->flags, message->body);
 
     if (message->debug != -1) {
         // log messages do not need an active connection

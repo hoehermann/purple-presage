@@ -80,6 +80,11 @@ void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
                 purple_conversation_set_data(conv, "name", g_strdup(identifier)); // MEMCHECK: this leaks, but there is no mechanism to stop it
                 // set our user's chat nick here as purple_conversation_new prefers the local alias over the username
                 PurpleConvChat *conv_chat = purple_conversation_get_chat_data(conv);
+                // let the chat topic be the group name
+                if (topic != NULL) {
+                    purple_conv_chat_set_topic(conv_chat, NULL, topic);
+                }
+                // set own identity in this chat
                 purple_conv_chat_set_nick(conv_chat, purple_account_get_username(account));
                 // request list of participants
                 presage_rust_get_group_members(rust_runtime, presage->tx_ptr, identifier);
