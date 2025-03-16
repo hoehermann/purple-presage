@@ -22,6 +22,7 @@ void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
 void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
 void presage_rust_get_group_members(RustRuntimePtr, RustChannelPtr, const char *);
+void presage_rust_get_profile(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_list_groups(RustRuntimePtr, RustChannelPtr);
 void presage_rust_free_string(char *);
 void presage_rust_free_buffer(char *, uint64_t);
@@ -51,6 +52,7 @@ typedef struct {
     const PurpleMessageFlags flags;
     char *who;
     char *name;
+    char *phone_number;
     char *group;
     char *body;
     void *blob;
@@ -64,6 +66,7 @@ typedef struct {
 typedef struct {
     RustChannelPtr tx_ptr;
     PurpleRoomlist *roomlist;
+    char *profile;
 } Presage;
 
 // procotol properties
@@ -92,6 +95,8 @@ void presage_blist_buddies_all_set_online(PurpleAccount *account);
 void presage_blist_update_chat(PurpleAccount *account, const char *identifier, const char *topic);
 void presage_handle_contact(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
 void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full);
+void presage_get_info(PurpleConnection *connection, const char *who);
+void presage_show_info(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
 
 // group management
 void presage_set_chat_topic(PurpleConnection *connection, int id, const char *topic);

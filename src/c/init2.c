@@ -57,9 +57,11 @@ static PurplePluginProtocolInfo prpl_info = {
     .status_types = presage_status_types, // this actually needs to exist, else the protocol cannot be set to "online"
     .login = presage_login,
     .close = presage_close,
+    // contact related
     .send_im = presage_send_im,
     .add_buddy = presage_add_buddy,
     .tooltip_text = presage_tooltip_text,
+    .get_info = presage_get_info,
     // group chat related
     .set_chat_topic = presage_set_chat_topic,
     .chat_send = presage_send_chat,

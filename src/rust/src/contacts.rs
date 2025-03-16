@@ -10,22 +10,14 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
             for presage::model::contacts::Contact {
                 name,
                 uuid,
-                //phone_number,
+                phone_number,
                 ..
             } in contacts.flatten()
             {
-                // TODO: forward to front-end
-                // Some(PhoneNumber { code: Code { value: 49, source: Plus }, national: NationalNumber { value: REDACTED }, extension: None, carrier: None })
-                /*
-                let c_number = match phone_number {
-                    Some(pn) => std::ffi::CString::new(pn.national().to_string()).unwrap().into_raw(),
-                    None => std::ptr::null(),
-                };
-                */
-
                 let mut message = crate::bridge_structs::Message::from_account(account);
                 message.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                 message.name = if name != "" { std::ffi::CString::new(name).unwrap().into_raw() } else { std::ptr::null_mut() };
+                message.phone_number = phone_number.map_or(std::ptr::null_mut(), |pn| std::ffi::CString::new(pn.to_string()).unwrap().into_raw());
                 crate::bridge::append_message(&message);
             }
         }

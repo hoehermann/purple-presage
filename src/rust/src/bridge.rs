@@ -15,6 +15,7 @@ impl crate::bridge_structs::Message {
             flags: PurpleMessageFlags(0),
             who: std::ptr::null_mut(),
             name: std::ptr::null_mut(),
+            phone_number: std::ptr::null_mut(),
             group: std::ptr::null_mut(),
             body: std::ptr::null_mut(),
             blob: std::ptr::null_mut(),

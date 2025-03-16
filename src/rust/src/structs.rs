@@ -19,6 +19,9 @@ pub enum Cmd {
     GetGroupMembers {
         master_key_bytes: [u8; 32],
     },
+    GetProfile {
+        uuid: presage::libsignal_service::prelude::Uuid,
+    },
 }
 
 #[derive(Debug, Clone)]

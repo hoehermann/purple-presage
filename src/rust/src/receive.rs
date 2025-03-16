@@ -19,9 +19,7 @@ impl Message {
     ) -> crate::bridge_structs::Message {
         // TODO: Do this in append_message, but not with into_raw, but with as_ptr, then g_strdup in presage_append_message.
         // Then the presage_rust_free_* functions are no longer needed.
-        let to_cstr_or_null = |s:Option<String>|->*mut ::std::os::raw::c_char {
-            s.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw())
-        };
+        let to_cstr_or_null = |s: Option<String>| -> *mut ::std::os::raw::c_char { s.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()) };
         let body = body.or(self.body);
         crate::bridge_structs::Message {
             account: self.account,
@@ -36,6 +34,7 @@ impl Message {
             flags: self.flags,
             who: to_cstr_or_null(self.who),
             name: to_cstr_or_null(self.name),
+            phone_number: std::ptr::null_mut(),
             group: to_cstr_or_null(self.group),
             body: to_cstr_or_null(body),
             blob: std::ptr::null_mut(),
@@ -264,7 +263,7 @@ async fn process_received_message<C: presage::store::Store>(
         // TODO: forward these properly
         presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, // TODO Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
         presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, // TODO Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
-        presage::libsignal_service::content::ContentBody::EditMessage(_) => None, // TODO
+        presage::libsignal_service::content::ContentBody::EditMessage(_) => None,    // TODO
         c => {
             crate::bridge::purple_debug(message.account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("Unsupported message {c:?}\n"));
             None
@@ -353,7 +352,7 @@ pub async fn receive<S: presage::store::Store>(
             while let Some(content) = futures::StreamExt::next(&mut messages).await {
                 match content {
                     presage::model::messages::Received::QueueEmpty => {
-                        // TODO: find out if this happens more than once per connection. protect against multiple invocation, if necessary
+                        // this happens once after all old messages have been received and processed
                         crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("synchronization completed.\n"));
 
                         // now that the initial sync has completed,

@@ -106,6 +106,28 @@ async fn run<C: presage::store::Store + 'static>(
 
         crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes).await,
 
+        crate::structs::Cmd::GetProfile { uuid } => {
+            let manager = manager.expect("manager must be loaded");
+            match manager.store().contact_by_id(&uuid).await {
+                Err(err) => crate::bridge::purple_debug(
+                    account,
+                    crate::bridge_structs::PURPLE_DEBUG_ERROR,
+                    format!("Error while looking up contact information for {uuid}: {err}\n"),
+                ),
+                Ok(contact) => match contact {
+                    None => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("No contact information available for {uuid}.\n")),
+                    Some(contact) => {
+                        let mut message = crate::bridge_structs::Message::from_account(account);
+                        message.who = std::ffi::CString::new(contact.uuid.to_string()).unwrap().into_raw();
+                        message.name = if contact.name != "" { std::ffi::CString::new(contact.name).unwrap().into_raw() } else { std::ptr::null_mut() };
+                        message.phone_number = contact.phone_number.map_or(std::ptr::null_mut(), |pn| std::ffi::CString::new(pn.to_string()).unwrap().into_raw());
+                        crate::bridge::append_message(&message);
+                    }
+                },
+            }
+            Ok(manager)
+        }
+
         crate::structs::Cmd::Exit {} => {
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, String::from("Exit command reached inner loop."));
             panic!("Exit command reached inner loop.");

@@ -47,8 +47,8 @@ void free_message(Message * message) {
  * Handle a message according to its content.
  */
 static void handle_message(Message * message) {
-    //purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
-    //message->account, message->qrcode, message->uuid, message->who, message->name, message->group, message->flags, message->body);
+    //purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .phone_number=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
+    //message->account, message->qrcode, message->uuid, message->who, message->name, message->phone_number, message->group, message->flags, message->body);
 
     if (message->debug != -1) {
         // log messages do not need an active connection
@@ -90,9 +90,9 @@ static void handle_message(Message * message) {
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
         presage_handle_groups(connection, message->groups, message->size);
-    } else if (message->who != NULL && message->name != NULL) {
-        // TODO: handle phone number
-        presage_handle_contact(connection, message->who, message->name, NULL);
+    } else if (message->who) {
+        presage_handle_contact(connection, message->who, message->name, message->phone_number);
+        presage_show_info(connection, message->who, message->name, message->phone_number);
     }
     free_message(message);
 }

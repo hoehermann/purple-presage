@@ -168,6 +168,7 @@ pub struct Message {
     pub flags: PurpleMessageFlags,
     pub who: *mut ::std::os::raw::c_char,
     pub name: *mut ::std::os::raw::c_char,
+    pub phone_number: *mut ::std::os::raw::c_char,
     pub group: *mut ::std::os::raw::c_char,
     pub body: *mut ::std::os::raw::c_char,
     pub blob: *mut ::std::os::raw::c_void,

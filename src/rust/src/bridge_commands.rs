@@ -148,3 +148,15 @@ pub unsafe extern "C" fn presage_rust_send_group(
     };
     send_cmd(rt, tx, cmd_send);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_get_profile(
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+    c_uuid: *const std::os::raw::c_char,
+) {
+    // TODO: add error handling instead of unwrap()
+    let uuid = presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap();
+    let cmd = crate::structs::Cmd::GetProfile { uuid };
+    send_cmd(rt, tx, cmd);
+}
