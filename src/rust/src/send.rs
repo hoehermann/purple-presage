@@ -3,7 +3,7 @@ use mime_sniffer::MimeTypeSniffer;
 async fn lookup_message_by_body_contains<S: presage::store::Store>(
     manager: &presage::Manager<S, presage::manager::Registered>,
     thread: &presage::store::Thread,
-    pat: String
+    pat: String,
 ) -> Option<presage::libsignal_service::content::Content> {
     if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
         //print!("(xx:xx:xx) presage: now is {now:?}.“\n");
@@ -11,23 +11,31 @@ async fn lookup_message_by_body_contains<S: presage::store::Store>(
             Err(_) => None,
             Ok(messages) => {
                 //print!("(xx:xx:xx) presage: messages exist for this thread.\n");
-                messages.filter(|result|{result.as_ref().is_ok_and(|content| {
-                    let body = &content.body;
-                    match body {
-                        presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
-                            let result = data_message.body().contains(&pat);
-                            //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
-                            result
-                        },
-                        presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
-                            let result = sync_message.sent.as_ref().is_some_and(|sent|{sent.message.as_ref().is_some_and(|data_message|{data_message.body().contains(&pat)})});
-                            //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
-                            result
-                        },
-                        //presage::libsignal_service::content::ContentBody::EditMessage(edit_message) => … TODO
-                        _ => false
-                    }
-                })}).last().and_then(|result |result.ok())
+                messages
+                    .filter(|result| {
+                        result.as_ref().is_ok_and(|content| {
+                            let body = &content.body;
+                            match body {
+                                presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
+                                    let result = data_message.body().contains(&pat);
+                                    //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
+                                    result
+                                }
+                                presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
+                                    let result = sync_message
+                                        .sent
+                                        .as_ref()
+                                        .is_some_and(|sent| sent.message.as_ref().is_some_and(|data_message| data_message.body().contains(&pat)));
+                                    //print!("(xx:xx:xx) presage: checking against „{body:?} → {result}“…\n");
+                                    result
+                                }
+                                //presage::libsignal_service::content::ContentBody::EditMessage(edit_message) => … TODO
+                                _ => false,
+                            }
+                        })
+                    })
+                    .last()
+                    .and_then(|result| result.ok())
             }
         }
     } else {
@@ -70,21 +78,19 @@ pub async fn send<C: presage::store::Store + 'static>(
         if let Some(quoted_message) = lookup_message_by_body_contains(manager, &thread, pat.to_string()).await {
             //print!("(xx:xx:xx) presage: Found message to quote: {quoted_message:#?}\n");
             let body = match &quoted_message.body {
-                presage::libsignal_service::content::ContentBody::DataMessage(data_message) => {
-                    data_message.body.clone()
-                },
+                presage::libsignal_service::content::ContentBody::DataMessage(data_message) => data_message.body.clone(),
                 presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
-                    sync_message.sent.as_ref().and_then(|sent|{sent.message.as_ref().and_then(|data_message|{data_message.body.clone()})})
-                },
-                _ => None
+                    sync_message.sent.as_ref().and_then(|sent| sent.message.as_ref().and_then(|data_message| data_message.body.clone()))
+                }
+                _ => None,
             };
-            data_message.quote = Some(presage::proto::data_message::Quote{
-                id: Some(quoted_message.metadata.timestamp), 
-                author_aci: Some(quoted_message.metadata.sender.raw_uuid().to_string()), 
-                text: body, 
+            data_message.quote = Some(presage::proto::data_message::Quote {
+                id: Some(quoted_message.metadata.timestamp),
+                author_aci: Some(quoted_message.metadata.sender.raw_uuid().to_string()),
+                text: body,
                 attachments: vec![], // TODO
-                body_ranges: vec![], 
-                r#type: Some(0) // type: NORMAL
+                body_ranges: vec![],
+                r#type: Some(0), // type: NORMAL
             });
         }
     }
