@@ -347,6 +347,11 @@ pub async fn receive<S: presage::store::Store>(
             message.connected = 1;
             crate::bridge::append_message(&message);
 
+            // forward contacts and groups to front-end
+            // they might not even be complete since synchronization has not completed, but better than nothing
+            crate::contacts::get_contacts(account, manager).await;
+            crate::contacts::get_groups(account, manager).await;
+
             futures::pin_mut!(messages);
             // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
             while let Some(content) = futures::StreamExt::next(&mut messages).await {
@@ -355,14 +360,12 @@ pub async fn receive<S: presage::store::Store>(
                         // this happens once after all old messages have been received and processed
                         crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("synchronization completed.\n"));
 
-                        // now that the initial sync has completed,
-                        // the account can be regarded as "connected" since it is ready to send messages
-                        let mut message = crate::bridge_structs::Message::from_account(account);
-                        message.connected = 1;
-                        crate::bridge::append_message(&message);
+                        // NOTE: now that the initial sync has completed,
+                        // the account can be regarded as "connected" since it is ready to send messages,
+                        // but we did that earlier because libpurple's blist functions do not work on offline accounts
 
-                        // forward contacts and groups to front-end now
-                        // these need to happen *after* setting the account to "connected" due to a purple_account_is_connected in purple_blist_find_chat
+                        // forward contacts and groups to front-end again
+                        // does not hurt, probably
                         crate::contacts::get_contacts(account, manager).await;
                         crate::contacts::get_groups(account, manager).await;
                     }
