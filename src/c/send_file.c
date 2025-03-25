@@ -1,13 +1,14 @@
 #include "presage.h"
 
 static void xfer_start_fnc(PurpleXfer *xfer) {
-    intptr_t destination_type = (intptr_t)xfer->data;
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
     Presage *presage = purple_connection_get_protocol_data(connection);
-    if (destination_type == PURPLE_CONV_TYPE_IM) {
+    const char *who = xfer->who;
+    if (strlen(who) == 36 && who[8] == '-' && who[13] == '-' && who[18] == '-' && who[23] == '-') {
+        // destination looks like a UUID, send to a contact
         presage_rust_send_contact(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
-    } else if (destination_type == PURPLE_CONV_TYPE_CHAT) {
+    } else {
         presage_rust_send_group(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
     }
 }
@@ -20,7 +21,6 @@ static void presage_xfer_send_init(PurpleXfer *xfer) {
 void xfer_new(PurpleConnection *connection, const char *destination, intptr_t destination_type, const char *filename) {
     PurpleAccount *account = purple_connection_get_account(connection);
     PurpleXfer *xfer = purple_xfer_new(account, PURPLE_XFER_TYPE_SEND, destination);
-    xfer->data = (void *)destination_type;
     purple_xfer_set_init_fnc(xfer, presage_xfer_send_init);
     if (filename && *filename) {
         purple_xfer_request_accepted(xfer, filename);
