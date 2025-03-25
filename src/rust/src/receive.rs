@@ -184,7 +184,7 @@ async fn process_attachments<C: presage::store::Store>(
                         extensions.and_then(|e| e.first()).unwrap_or(&"bin")
                     }
                 };
-
+                // TODO: for documents, get actual file name
                 let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
                     presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                     presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
