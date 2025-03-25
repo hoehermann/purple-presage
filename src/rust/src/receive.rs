@@ -176,6 +176,7 @@ async fn process_attachments<C: presage::store::Store>(
             }
             Some(mimetype) => {
                 let extension = match mimetype {
+                    // use the most poplular default for some popular mimetypes
                     "image/jpeg" => "jpg",
                     "image/png" => "png",
                     "video/mp4" => "mp4",

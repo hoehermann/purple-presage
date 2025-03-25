@@ -23,6 +23,7 @@ futures = "0.3"
 mime_guess = "2.0"
 hex = "0.4"
 tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }
+anyhow = "1.0"
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]

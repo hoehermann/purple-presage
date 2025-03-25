@@ -1,5 +1,3 @@
-use mime_sniffer::MimeTypeSniffer;
-
 async fn lookup_message_by_body_contains<S: presage::store::Store>(
     manager: &presage::Manager<S, presage::manager::Registered>,
     thread: &presage::store::Thread,
@@ -53,7 +51,11 @@ fn extract_pat(input: &str) -> Option<&str> {
 }
 
 /*
- * Sends a text message to a contact identified by their uuid or to a group identified by its key.
+ * Sends a text message to a recipient.
+ * 
+ * Recipient may be a contact (identified by their uuid) or to a group (identified by its key).
+ * 
+ * Optionally also sends a file.
  *
  * Taken from presage-cli
  */
@@ -62,7 +64,8 @@ pub async fn send<C: presage::store::Store + 'static>(
     recipient: crate::structs::Recipient,
     body: Option<String>,
     xfer: *mut crate::bridge_structs::PurpleXfer,
-) -> Result<(), presage::Error<<C>::Error>> {
+) -> Result<(), anyhow::Error> {
+    // -> Result<(), presage::Error<<C>::Error>>
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
     let mut data_message = presage::libsignal_service::content::DataMessage {
         timestamp: Some(timestamp),
@@ -97,15 +100,11 @@ pub async fn send<C: presage::store::Store + 'static>(
 
     if xfer != std::ptr::null_mut() {
         let path = crate::bridge::xfer_get_local_filename(xfer);
-        let blob = std::fs::read(path.clone()).expect("Unable to read file.");
-        let content_type = blob.sniff_mime_type().expect("Unable to guess content type.");
+        let blob = std::fs::read(path.clone())?;
+        let content_type = mime_sniffer::MimeTypeSniffer::sniff_mime_type(&blob).unwrap_or("application/octet-stream");
         let attachment = make_attachment(blob.clone(), content_type.to_string(), std::path::PathBuf::from(path));
         let upload_attachments_result = manager.upload_attachments(vec![attachment]).await?;
-        let pointer = upload_attachments_result
-            .first()
-            .expect("At least one attachment pointer should be available")
-            .as_ref()
-            .expect("Failed to upload attachments"); // TODO: fail less hard if this happens
+        let pointer = upload_attachments_result.into_iter().next().ok_or(anyhow::anyhow!("Not a single attachment upload succeeded."))??;
         data_message.attachments.push(pointer.clone());
     }
 
