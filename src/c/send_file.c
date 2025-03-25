@@ -23,8 +23,10 @@ void xfer_new(PurpleConnection *connection, const char *destination, intptr_t de
     PurpleXfer *xfer = purple_xfer_new(account, PURPLE_XFER_TYPE_SEND, destination);
     purple_xfer_set_init_fnc(xfer, presage_xfer_send_init);
     if (filename && *filename) {
+        // this path is taken in drag-and-drop scenarios (filename already given)
         purple_xfer_request_accepted(xfer, filename);
     } else {
+        // this path is taken in "send file…" scenarios (filename is unknown and we need to ask for it)
         purple_xfer_request(xfer);
     }
 }
