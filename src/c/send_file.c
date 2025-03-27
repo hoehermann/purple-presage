@@ -6,11 +6,9 @@ static void xfer_start_fnc(PurpleXfer *xfer) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     const char *who = xfer->who;
     if (strlen(who) == 36 && who[8] == '-' && who[13] == '-' && who[18] == '-' && who[23] == '-') {
-        // destination looks like a contact's UUID
-        purple_debug_info(PLUGIN_NAME, "calling presage_rust_send_contact(…)…\n");
+        // destination looks like a UUID, send to a contact
         presage_rust_send_contact(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
     } else {
-        purple_debug_info(PLUGIN_NAME, "calling presage_rust_send_group(…)…\n");
         presage_rust_send_group(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
     }
 }
