@@ -119,8 +119,7 @@ void presage_handle_uuid(PurpleConnection *connection, const char *uuid) {
             Now that we established correctness of the uuid, start receiving. Bear in mind that the connection is not fully established, yet. The presage docs state: 
             „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
             */
-            Presage *presage = purple_connection_get_protocol_data(connection);
-            presage_rust_receive(rust_runtime, presage->tx_ptr);
+           // TODO: move above comment somewhere else
         } else {
             char *errmsg = g_strdup_printf("Username for this account must be '%s'.", uuid);
             purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
