@@ -185,15 +185,17 @@ async fn process_attachments<C: presage::store::Store>(
                         extensions.and_then(|e| e.first()).unwrap_or(&"bin")
                     }
                 };
-                // TODO: for documents, get actual file name
-                let filename = match attachment_pointer.attachment_identifier.clone().unwrap() {
-                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-                };
+                let filename = attachment_pointer.file_name.clone().unwrap_or_else(|| {
+                    let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
+                    }; 
+                    format!("{hash}.{extension}")
+                });
                 let boxed_slice = attachment_data.into_boxed_slice();
                 let mut message = message.clone().into_bridge(None);
                 message.size = boxed_slice.len() as usize;
-                message.name = std::ffi::CString::new(format!("{filename}.{extension}")).unwrap().into_raw();
+                message.name = std::ffi::CString::new(filename).unwrap().into_raw();
                 message.blob = Box::into_raw(boxed_slice) as *mut std::os::raw::c_void;
                 crate::bridge::append_message(&message);
             }
