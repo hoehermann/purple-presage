@@ -6,9 +6,9 @@
 async fn run<C: presage::store::Store + 'static>(
     subcommand: crate::structs::Cmd,
     config_store: C,
-    manager: Option<presage::Manager<C, presage::manager::Registered>>,
+    mut manager: presage::Manager<C, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
-) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
+) -> Result<(), presage::Error<<C>::Error>> {
     match subcommand {
         crate::structs::Cmd::LinkDevice {
             servers,
@@ -16,43 +16,33 @@ async fn run<C: presage::store::Store + 'static>(
         } => {
             let (provisioning_link_tx, provisioning_link_rx) = futures::channel::oneshot::channel();
             let join_handle = futures::future::join(presage::Manager::link_secondary_device(config_store, servers, device_name.clone(), provisioning_link_tx), async move {
-                match provisioning_link_rx.await {
-                    Ok(url) => {
-                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("got URL for QR code\n"));
-                        let mut message = crate::bridge_structs::Message::from_account(account);
-                        message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
-                        crate::bridge::append_message(&message);
-                    }
-                    Err(err) => {
-                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error linking device: {err:?}"));
-                    }
-                }
+                provisioning_link_rx.await
             })
             .await;
-
-            let mut message = crate::bridge_structs::Message::from_account(account);
-            let qrcode_done = String::from("");
-            message.qrcode = std::ffi::CString::new(qrcode_done).unwrap().into_raw();
-            crate::bridge::append_message(&message);
-            let (manager, _) = join_handle;
-            manager
+            let (_manager, result) = join_handle;
+            match result {
+                Ok(url) => {
+                    //crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("got URL for QR code\n"));
+                    let mut message = crate::bridge_structs::Message::from_account(account);
+                    message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
+                    crate::bridge::append_message(&message);
+                }
+                Err(err) => {
+                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error linking device: {err:?}"));
+                }
+            }
+            // TODO: handle this more gracefully. return the _manager to the main loop so it may be used there
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Linking finished. Reconnect is necessary."));
+            Ok(())
         }
 
         crate::structs::Cmd::Whoami => {
-            let manager = manager.unwrap_or(presage::Manager::load_registered(config_store).await?);
             let whoami = manager.whoami().await?;
             let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
             crate::bridge::append_message(&message);
-            Ok(manager)
-        }
-
-        crate::structs::Cmd::Receive => {
-            let manager = manager.expect("manager must be loaded");
-            let mut receiving_manager = manager.clone();
-            crate::receive::receive(&mut receiving_manager, account).await;
-            Ok(manager)
+            Ok(())
         }
 
         crate::structs::Cmd::Send {
@@ -60,7 +50,6 @@ async fn run<C: presage::store::Store + 'static>(
             message,
             xfer,
         } => {
-            let mut manager = manager.expect("manager must be loaded");
             // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge_structs::Message::from_account(account);
             msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -95,19 +84,17 @@ async fn run<C: presage::store::Store + 'static>(
             }
             // feed the feed-back back into purple
             crate::bridge::append_message(&msg);
-            Ok(manager)
+            Ok(())
         }
 
         crate::structs::Cmd::ListGroups => {
-            let mut manager = manager.expect("manager must be loaded");
             crate::contacts::get_groups(account, &mut manager).await;
-            Ok(manager)
+            Ok(())
         }
 
         crate::structs::Cmd::GetGroupMembers { master_key_bytes } => crate::contacts::get_group_members(account, manager, master_key_bytes).await,
 
         crate::structs::Cmd::GetProfile { uuid } => {
-            let manager = manager.expect("manager must be loaded");
             match manager.store().contact_by_id(&uuid).await {
                 Err(err) => crate::bridge::purple_debug(
                     account,
@@ -125,12 +112,12 @@ async fn run<C: presage::store::Store + 'static>(
                     }
                 },
             }
-            Ok(manager)
+            Ok(())
         }
 
         crate::structs::Cmd::Exit {} => {
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, String::from("Exit command reached inner loop."));
-            panic!("Exit command reached inner loop.");
+            Ok(()) // TODO: do not be Ok here
         }
     }
 }
@@ -147,6 +134,48 @@ pub async fn mainloop(
     mut rx: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("mainloop begins…\n"));
+    let mut manager = presage::Manager::load_registered(config_store.clone()).await.expect("load_registered failed");
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("manager ok\n"));
+    let messages = manager.receive_messages().await.expect("receive_messages failed");
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("messages ok\n"));
+
+    // TODO: explain the situation regarding synchronization and alias lookups
+    // TODO: implement alias lookups, singal "connected" appropriately
+    let mut message = crate::bridge_structs::Message::from_account(account);
+    message.connected = 1;
+    crate::bridge::append_message(&message);
+
+    futures::pin_mut!(messages);
+    loop {
+        tokio::select! {
+            maybe_cmd = rx.recv() => {
+                //print!("cmd: {maybe_cmd:#?}")
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("cmd: {maybe_cmd:?}\n"));
+                if let Some(cmd) = maybe_cmd {
+                    match run(cmd, config_store.clone(), manager.clone(), account).await {
+                        Ok(()) => {
+                            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("cmd ok.\n"));
+                        },
+                        Err(err) => {
+                            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("cmd: err {err:?}\n"));
+                        },
+                    }
+                }
+            },
+            maybe_received = futures::StreamExt::next(&mut messages) => {
+                // TODO: this whole arm should be covered by a function in the receive module
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {maybe_received:?}\n"));
+                if let Some(received) = maybe_received {
+                    if let presage::model::messages::Received::Content(content) = received {
+                        crate::receive::process_incoming_message(&mut manager, &content, account).await;
+                    }
+                }
+            }
+        }
+    }
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("mainloop finishes.\n"));
+    /*
     let mut manager: Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> = None;
     while let Some(cmd) = rx.recv().await {
         match cmd {
@@ -194,6 +223,7 @@ pub async fn mainloop(
             }
         }
     }
+     */
 }
 
 /*

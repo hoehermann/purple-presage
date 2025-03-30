@@ -26,10 +26,9 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
 
 pub async fn get_group_members<C: presage::store::Store + 'static>(
     account: *mut crate::bridge_structs::PurpleAccount,
-    manager: Option<presage::Manager<C, presage::manager::Registered>>,
+    manager: presage::Manager<C, presage::manager::Registered>,
     key: [u8; 32],
-) -> Result<presage::Manager<C, presage::manager::Registered>, presage::Error<<C>::Error>> {
-    let manager = manager.expect("manager must be loaded");
+) -> Result<(), presage::Error<<C>::Error>> {
     match manager.store().group(key).await? {
         Some(group) => {
             let mut message = crate::bridge_structs::Message::from_account(account);
@@ -52,7 +51,7 @@ pub async fn get_group_members<C: presage::store::Store + 'static>(
             // TODO
         }
     }
-    Ok(manager)
+    Ok(())
 }
 
 pub async fn get_groups<C: presage::store::Store + 'static>(

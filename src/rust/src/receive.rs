@@ -281,7 +281,8 @@ async fn process_received_message<C: presage::store::Store>(
  *
  * Based on presage-cli's `process_incoming_message`.
  */
-async fn process_incoming_message<C: presage::store::Store>(
+// TODO: do not be public
+pub async fn process_incoming_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     content: &presage::libsignal_service::content::Content,
     account: *mut crate::bridge_structs::PurpleAccount,
@@ -361,7 +362,7 @@ pub async fn receive<S: presage::store::Store>(
                 match content {
                     presage::model::messages::Received::QueueEmpty => {
                         // this happens once after all old messages have been received and processed
-                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("synchronization completed.\n"));
+                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
 
                         // NOTE: now that the initial sync has completed,
                         // the account can be regarded as "connected" since it is ready to send messages,
