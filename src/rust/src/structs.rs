@@ -9,7 +9,6 @@ pub enum Cmd {
     },
     Exit,
     Whoami,
-    Receive,
     Send {
         recipient: Recipient,
         message: Option<String>,

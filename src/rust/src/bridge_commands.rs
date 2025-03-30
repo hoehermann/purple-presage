@@ -63,15 +63,6 @@ pub unsafe extern "C" fn presage_rust_whoami(
     send_cmd(rt, tx, cmd);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_receive(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
-) {
-    let cmd = crate::structs::Cmd::Receive {};
-    send_cmd(rt, tx, cmd);
-}
-
 // TODO: wire this up completely
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_list_groups(

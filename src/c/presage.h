@@ -17,7 +17,6 @@ RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
-void presage_rust_receive(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
 void presage_rust_send_group(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
