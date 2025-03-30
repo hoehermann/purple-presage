@@ -101,7 +101,7 @@ pub async fn send<C: presage::store::Store + 'static>(
     if xfer != std::ptr::null_mut() {
         let path = crate::bridge::xfer_get_local_filename(xfer);
         let blob = std::fs::read(path.clone())?;
-        let content_type = mime_sniffer::MimeTypeSniffer::sniff_mime_type(&blob).unwrap_or("application/octet-stream");
+        let content_type = mime_sniffer::MimeTypeSniffer::sniff_mime_type(&blob).unwrap_or("*/*"); // NOTE: I saw this being used in Signal over application/octet-stream
         let attachment = make_attachment(blob.clone(), content_type.to_string(), std::path::PathBuf::from(path));
         let upload_attachments_result = manager.upload_attachments(vec![attachment]).await?;
         let pointer = upload_attachments_result.into_iter().next().ok_or(anyhow::anyhow!("Not a single attachment upload succeeded."))??;
