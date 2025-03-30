@@ -51,7 +51,7 @@ async fn run<C: presage::store::Store + 'static>(
         crate::structs::Cmd::Receive => {
             let manager = manager.expect("manager must be loaded");
             let mut receiving_manager = manager.clone();
-            tokio::task::spawn_local(async move { crate::receive::receive(&mut receiving_manager, account).await });
+            crate::receive::receive(&mut receiving_manager, account).await;
             Ok(manager)
         }
 
