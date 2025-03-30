@@ -16,14 +16,14 @@ curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag 
 presage = { git = "https://github.com/whisperfish/presage", rev = "3f55d5f" }
 presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "3f55d5f" }
 mime-sniffer = { git = "https://github.com/kamadorueda/rust-mime-sniffer"}
-anyhow = "1.0"
+mime_guess = "2.0"
+anyhow = "1.0" # TODO: use thiserror = "1.0" instead since presage is depending on it anyway
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 #stdint = "0.2" # TODO: find out how to use this for more reliable type widths
 # these are taken from https://github.com/whisperfish/presage/blob/3f55d5f/presage-cli/Cargo.toml
-chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 futures = "0.3"
-mime_guess = "2.0"
-hex = "0.4"
-tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }
+hex = "0.4.3"
+tokio = { version = "1.35", default-features = false, features = ["sync", "time", "rt-multi-thread"] }
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]

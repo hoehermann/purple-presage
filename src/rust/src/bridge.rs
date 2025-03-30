@@ -78,11 +78,13 @@ pub fn xfer_get_local_filename(xfer: *mut crate::bridge_structs::PurpleXfer) -> 
  * This library has no main function to annotate with `#[tokio::main]`, but needs a run-time.
  * This function creates a tokio runtime and boxes it so the runtime can live in the front-end.
  *
+ * The approach is described at https://tokio.rs/tokio/topics/bridging.
  * https://stackoverflow.com/questions/66196972/ and https://stackoverflow.com/questions/64658556/ are helpful.
  */
 #[no_mangle]
 pub extern "C" fn presage_rust_init() -> *mut tokio::runtime::Runtime {
-    let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").enable_io().enable_time().build().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio")
+    .worker_threads(1).enable_all().build().unwrap();
     let runtime_box = Box::new(runtime);
     Box::into_raw(runtime_box)
 }
@@ -155,9 +157,11 @@ pub unsafe extern "C" fn presage_rust_main(
 
     // now execute the actual program
     let runtime = rt.as_ref().unwrap();
-    runtime.block_on(async {
-        let local = tokio::task::LocalSet::new();
-        local.run_until(crate::core::main(store_path, None, rx, account)).await;
-    });
+    // runtime.block_on(async {
+    //     // without this, we run into this error: `spawn_local` called from outside of a `task::LocalSet`
+    //     let local = tokio::task::LocalSet::new();
+    //     local.run_until(crate::core::main(store_path, None, rx, account)).await;
+    // });
+    runtime.block_on(crate::core::main(store_path, None, rx, account));
     purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("rust runtime finishes now…\n"));
 }
