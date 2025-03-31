@@ -181,7 +181,7 @@ pub async fn login(
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login error {err:?}"));
         },
     }
-    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login finishes.\n"));
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login failed.\n"));
     None
 }
 
@@ -206,7 +206,7 @@ async fn link(config_store: presage_store_sled::SledStore, account: *mut crate::
     let (manager, _) = join_handle;
 
     match manager {
-        Ok(manager) => {
+        Ok(mut manager) => {
             let whoami = manager.whoami().await; // this seems to be necessary for the manager to finish the linking process
             match whoami {
                 Ok(whoami) => {
@@ -214,6 +214,12 @@ async fn link(config_store: presage_store_sled::SledStore, account: *mut crate::
                     let mut message = crate::bridge_structs::Message::from_account(account);
                     message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
                     crate::bridge::append_message(&message);
+
+                    // request contacts now after linking once. requesting again on a subsequent log-in sometimes blocks forever.
+                    if let Err(err) = manager.request_contacts().await {
+                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Error while requesting contacts: {err:?}\n"));
+                    }    
+
                     return Some(manager)
                 },
                 Err(err) => {
@@ -252,10 +258,7 @@ pub async fn main(
         }
         Ok(config_store) => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config store OK\n"));
-            if let Some(mut manager) = login(config_store, account).await {
-                if let Err(err) = manager.request_contacts().await {
-                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Error while requesting contacts: {err:?}\n"));
-                }
+            if let Some(manager) = login(config_store, account).await {
                 mainloop(manager, command_receiver, account).await;
             }
         }
