@@ -4,7 +4,7 @@ Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schm
 
 ## Download
 
-* [Latest Build for Windows](https://nightly.link/hoehermann/purple-presage/workflows/build/master/libpresage.dll.zip)
+See the Releases section on github.
 
 ## Set-up
 
@@ -20,10 +20,10 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
-* Receives attachments (see caveats below).
-* Can send a simple text message or an attachment.
+* Receives attachments.
+* Can send a simple text message. 
+* Can send an attachment.
 * Will add buddies to contact list unconditionally.
-* Can list groups as rooms and open the chat.
 * Uses special handling of login procedure for bitlbee.
 * Can reply to a specific message via "@searchstring:".
 
@@ -35,28 +35,27 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 #### On Hold
 
-* Mark messages as "read" (currently not implemented in back-end, see https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
+* Mark messages as "read". This is currently not implemented in back-end, see [#141](https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
+* A group chat is only added to the buddy list when receiving a message. There seems to be no way to fetch the list of groups from the main device, see [#303](https://github.com/whisperfish/presage/issues/303).
 
 #### "Contributions Welcome"
 
 * Configuration option whether to add contacts to buddy list or not
+* Use the hostname (or a user-defined string) as a device name
 * Reasonable generation of C headers and rust constants
-* Stickers, mentions, replies, styles,…
+* Receive stickers, mentions, styles, contact,…
 * Display typing notifications
 * Display receipts (not important)
 * Support for alternative host applications (Spectrum, Bitlbee)
-* Support for adding contacts via phone number
-* Support receiving contacts (seems to be a dedicated message type)
+* Support for adding contact via phone number
 
 These lists are not exhaustive.
 
 ### Known Issues
 
-* Handling errors when sending messages is barely tested.
-* Failing to send an attachment may bring down the entire application.
-* Some message features such as displaying edits do not work reliably, especially on sync messages.
-* Sync messages are less well tested an may be unreliable.
-* Sometimes, the same chat is added to the buddy list more than once.
+* Contacts are fetched from the main device only once after linking.
+* Own name is not transferred to the buddy list and thererfore not resolved in group chats.
+* Information about contact names arrive after the first messages.
 
 ## Building
 
