@@ -1,4 +1,4 @@
-pub async fn get_contacts<C: presage::store::Store + 'static>(
+pub async fn forward_contacts<C: presage::store::Store + 'static>(
     account: *mut crate::bridge_structs::PurpleAccount,
     manager: &mut presage::Manager<C, presage::manager::Registered>,
 ) {
@@ -7,15 +7,12 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Unable to get contacts due to {err:?}\n"));
         }
         Ok(contacts) => {
-            let mut flat_contatcts = contacts.flatten();
-            let contact_count = flat_contatcts.by_ref().count();
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("number of contacts: {contact_count}\n"));
             for presage::model::contacts::Contact {
                 name,
                 uuid,
                 phone_number,
                 ..
-            } in flat_contatcts
+            } in contacts.flatten()
             {
                 let mut message = crate::bridge_structs::Message::from_account(account);
                 message.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
@@ -51,13 +48,14 @@ pub async fn get_group_members<C: presage::store::Store + 'static>(
             crate::bridge::append_message(&message);
         }
         None => {
-            // TODO
+            let key = hex::encode(key);
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("The group with key „{key}“ seems to be empty.\n"));
         }
     }
     Ok(())
 }
 
-pub async fn get_groups<C: presage::store::Store + 'static>(
+pub async fn forward_groups<C: presage::store::Store + 'static>(
     account: *mut crate::bridge_structs::PurpleAccount,
     manager: &mut presage::Manager<C, presage::manager::Registered>,
 ) {

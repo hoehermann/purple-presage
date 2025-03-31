@@ -61,7 +61,7 @@ async fn run<C: presage::store::Store + 'static>(
         }
 
         crate::structs::Cmd::ListGroups => {
-            crate::contacts::get_groups(account, &mut manager).await;
+            crate::contacts::forward_groups(account, &mut manager).await;
             Ok(true)
         }
 
@@ -248,11 +248,14 @@ pub async fn main(
     );
     match config_store.await {
         Err(err) => {
-            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config_store Err {err:#?}"));
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config store error {err:#?}"));
         }
         Ok(config_store) => {
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config_store OK\n"));
-            if let Some(manager) = login(config_store, account).await {
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config store OK\n"));
+            if let Some(mut manager) = login(config_store, account).await {
+                if let Err(err) = manager.request_contacts().await {
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Error while requesting contacts: {err:?}\n"));
+                }
                 mainloop(manager, command_receiver, account).await;
             }
         }
