@@ -15,7 +15,6 @@ typedef struct _RustRuntime * RustRuntimePtr;
 typedef struct _RustChannelTx * RustChannelPtr;
 RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
-void presage_rust_link(RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_whoami(RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(RustRuntimePtr, RustChannelPtr);
 void presage_rust_send_contact(RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);

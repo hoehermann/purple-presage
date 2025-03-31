@@ -3,10 +3,6 @@
  */
 #[derive(Debug, Clone)]
 pub enum Cmd {
-    LinkDevice {
-        servers: presage::libsignal_service::configuration::SignalServers,
-        device_name: String,
-    },
     Exit,
     Whoami,
     Send {
