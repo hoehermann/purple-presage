@@ -339,14 +339,12 @@ pub async fn handle_received<S: presage::store::Store>(
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.connected = 1;
             crate::bridge::append_message(&message);
-
-            // forward contacts and groups to front-end
-            crate::contacts::get_contacts(account, manager).await;
-            crate::contacts::get_groups(account, manager).await;
         }
         presage::model::messages::Received::Contacts => {
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("got contacts synchronization.\n"));
-            // NOTE: I never saw this happening, not even during linking.
+            // this happens in response to manager.request_contacts()
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received contacts\n"));
+            crate::contacts::forward_contacts(account, manager).await;
+            crate::contacts::forward_groups(account, manager).await;
         }
         presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
     }
