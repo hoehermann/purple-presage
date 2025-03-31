@@ -4,7 +4,7 @@ Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schm
 
 ## Download
 
-* [Latest Build for Windows](https://nightly.link/hoehermann/purple-presage/workflows/build/master/libpresage.dll.zip)
+See the Releases section on github.
 
 ## Set-up
 
@@ -20,10 +20,10 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
-* Receives attachments (see caveats below).
-* Can send a simple text message or an attachment.
+* Receives attachments.
+* Can send a simple text message. 
+* Can send an attachment.
 * Will add buddies to contact list unconditionally.
-* Can list groups as rooms and open the chat.
 * Uses special handling of login procedure for bitlbee.
 * Can reply to a specific message via "@searchstring:".
 
@@ -40,23 +40,20 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 #### "Contributions Welcome"
 
 * Configuration option whether to add contacts to buddy list or not
+* Use the hostname (or a user-defined string) as a device name
 * Reasonable generation of C headers and rust constants
-* Stickers, mentions, replies, styles,…
+* Receive stickers, mentions, styles, contact,…
 * Display typing notifications
 * Display receipts (not important)
 * Support for alternative host applications (Spectrum, Bitlbee)
-* Support for adding contacts via phone number
-* Support receiving contacts (seems to be a dedicated message type)
+* Support for adding contact via phone number
 
 These lists are not exhaustive.
 
 ### Known Issues
 
-* Handling errors when sending messages is barely tested.
-* Failing to send an attachment may bring down the entire application.
-* Some message features such as displaying edits do not work reliably, especially on sync messages.
-* Sync messages are less well tested an may be unreliable.
-* Sometimes, the same chat is added to the buddy list more than once.
+* A group chat is only added to the buddy list when receiving a message.
+* Information about contact names arrive after the first messages.
 
 ## Building
 
