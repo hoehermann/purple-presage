@@ -53,6 +53,8 @@ These lists are not exhaustive.
 ### Known Issues
 
 * A group chat is only added to the buddy list when receiving a message.
+* Contacts are fetched from the main device only once after linking.
+* Own name is not transferred to the buddy list and thererfore not resolved in group chats.
 * Information about contact names arrive after the first messages.
 
 ## Building
