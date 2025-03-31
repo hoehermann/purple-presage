@@ -91,14 +91,12 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(true)
         }
 
-        crate::structs::Cmd::Exit {} => {
-            Ok(false)
-        }
+        crate::structs::Cmd::Exit {} => Ok(false),
     }
 }
 
 /*
- * Retrieves commands from the channel.
+ * Retrieves both: Commands from the command channel and messages from the receiver.
  *
  * Delegates work to `run`, but catches the errors for forwarding to the front-end.
  *
@@ -153,12 +151,12 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
 pub async fn login(
     config_store: presage_store_sled::SledStore,
     account: *mut crate::bridge_structs::PurpleAccount,
-) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>>{
+) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> {
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login begins…\n"));
     match presage::Manager::load_registered(config_store.clone()).await {
         Ok(manager) => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("manager ok\n"));
-            return Some(manager)
+            return Some(manager);
         }
         Err(presage::Error::NotYetRegisteredError) => {
             // happens on pristine set-ups
@@ -179,13 +177,16 @@ pub async fn login(
         }
         Err(err) => {
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login error {err:?}"));
-        },
+        }
     }
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login failed.\n"));
     None
 }
 
-async fn link(config_store: presage_store_sled::SledStore, account: *mut crate::bridge_structs::PurpleAccount) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> {
+async fn link(
+    config_store: presage_store_sled::SledStore,
+    account: *mut crate::bridge_structs::PurpleAccount,
+) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> {
     let device_name = "purple-presage".to_string(); // TODO: use hostname or make user-configurable
     let server = presage::libsignal_service::configuration::SignalServers::Production;
     let (provisioning_link_tx, provisioning_link_rx) = futures::channel::oneshot::channel();
@@ -218,24 +219,32 @@ async fn link(config_store: presage_store_sled::SledStore, account: *mut crate::
                     // request contacts now after linking once. requesting again on a subsequent log-in sometimes blocks forever.
                     if let Err(err) = manager.request_contacts().await {
                         crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Error while requesting contacts: {err:?}\n"));
-                    }    
+                    }
 
-                    return Some(manager)
-                },
+                    return Some(manager);
+                }
                 Err(err) => {
-                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error checking identity: {err:?}"));
-                },
+                    crate::bridge::purple_error(
+                        account,
+                        crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED,
+                        format!("Error checking identity: {err:?}"),
+                    );
+                }
             }
-        },
+        }
         Err(err) => {
-            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error after linking device: {err:?}"));
-        },
+            crate::bridge::purple_error(
+                account,
+                crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED,
+                format!("Error after linking device: {err:?}"),
+            );
+        }
     }
-    return None
+    return None;
 }
 
 /*
- * Opens the store and runs commands forever.
+ * Opens the store, does the log-in, then runs forever.
  *
  * Based on presage-cli's main loop.
  */

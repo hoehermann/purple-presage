@@ -1,4 +1,4 @@
-/**
+/*
  * A local representation of a message that is probably going to be forwarded to the front-end.
  */
 #[derive(Clone)]
@@ -46,11 +46,11 @@ impl Message {
     }
 }
 
-/**
-Looks up the title of a group identified by its group master key.
-
-Adapted from presage-cli.
-*/
+/*
+ * Looks up the title of a group identified by its group master key.
+ *
+ * Adapted from presage-cli.
+ */
 async fn format_group<S: presage::store::Store>(
     key: [u8; 32],
     manager: &presage::Manager<S, presage::manager::Registered>,
@@ -85,11 +85,11 @@ async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
     }
 }
 
-/**
-Turns a DataMessage into a string for presentation via libpurple.
-
-Adapted from presage-cli.
-*/
+/*
+ * Turns a DataMessage into a string for presentation via libpurple.
+ *
+ * Adapted from presage-cli.
+ */
 async fn format_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
@@ -176,7 +176,7 @@ async fn process_attachments<C: presage::store::Store>(
             }
             Some(mimetype) => {
                 let extension = match mimetype {
-                    // use the most poplular default for some popular mimetypes
+                    // use the most poplular default for some common mimetypes
                     "image/jpeg" => "jpg",
                     "image/png" => "png",
                     "video/mp4" => "mp4",
@@ -189,7 +189,7 @@ async fn process_attachments<C: presage::store::Store>(
                     let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-                    }; 
+                    };
                     format!("{hash}.{extension}")
                 });
                 let boxed_slice = attachment_data.into_boxed_slice();
@@ -281,8 +281,7 @@ async fn process_received_message<C: presage::store::Store>(
  *
  * Based on presage-cli's `process_incoming_message`.
  */
-// TODO: do not be public
-pub async fn process_incoming_message<C: presage::store::Store>(
+async fn process_incoming_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     content: &presage::libsignal_service::content::Content,
     account: *mut crate::bridge_structs::PurpleAccount,
@@ -327,7 +326,7 @@ pub async fn process_incoming_message<C: presage::store::Store>(
 pub async fn handle_received<S: presage::store::Store>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
-    received: presage::model::messages::Received 
+    received: presage::model::messages::Received,
 ) {
     match received {
         presage::model::messages::Received::QueueEmpty => {

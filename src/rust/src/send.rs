@@ -52,9 +52,9 @@ fn extract_pat(input: &str) -> Option<&str> {
 
 /*
  * Sends a text message to a recipient.
- * 
+ *
  * Recipient may be a contact (identified by their uuid) or to a group (identified by its key).
- * 
+ *
  * Optionally also sends a file.
  *
  * Taken from presage-cli

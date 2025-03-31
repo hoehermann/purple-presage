@@ -1,3 +1,8 @@
+/*
+ * Reads all the contacts from the local store and forwards them to purple.
+ *
+ * The store is populated once during linking. Entries may be added and updated when receiving messages.
+ */
 pub async fn forward_contacts<C: presage::store::Store + 'static>(
     account: *mut crate::bridge_structs::PurpleAccount,
     manager: &mut presage::Manager<C, presage::manager::Registered>,
