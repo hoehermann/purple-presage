@@ -324,68 +324,30 @@ pub async fn process_incoming_message<C: presage::store::Store>(
     }
 }
 
-/*
- * Receives messages from Signal servers.
- *
- * Blocks forever.
- *
- * Based on presage-cli's `receive`.
- */
-pub async fn receive<S: presage::store::Store>(
+pub async fn handle_received<S: presage::store::Store>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
+    received: presage::model::messages::Received 
 ) {
-    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("receive begins…\n"));
-    match manager.receive_messages().await {
-        Err(err) => {
-            crate::bridge::purple_error(
-                account,
-                crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
-                format!("failed to receive messaged due to {err:?}"),
-            );
-        }
-        Ok(messages) => {
-            // to the front-end, we now claim to be connected since libpurple's blist and aliasing functions do not work on offline accounts at all
-            // technically, this is wrong since the back-end has not completed key synchronization and cannot yet send messages, but here we are
+    match received {
+        presage::model::messages::Received::QueueEmpty => {
+            // this happens once after all old messages have been received and processed
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
+
+            // now that the initial sync has completed, the account can be regarded as "connected" since it is ready to send messages
+            // NOTE: the C part assumes the account is "connected" instantly because libpurple's blist functions do not work on offline accounts
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.connected = 1;
             crate::bridge::append_message(&message);
 
             // forward contacts and groups to front-end
-            // they might not even be complete since synchronization has not completed, but better than nothing
             crate::contacts::get_contacts(account, manager).await;
             crate::contacts::get_groups(account, manager).await;
-
-            futures::pin_mut!(messages);
-            // NOTE: This blocks until there is a message to be handled. Blocking forever seems to be by design.
-            while let Some(content) = futures::StreamExt::next(&mut messages).await {
-                match content {
-                    presage::model::messages::Received::QueueEmpty => {
-                        // this happens once after all old messages have been received and processed
-                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
-
-                        // NOTE: now that the initial sync has completed,
-                        // the account can be regarded as "connected" since it is ready to send messages,
-                        // but we did that earlier because libpurple's blist functions do not work on offline accounts
-
-                        // forward contacts and groups to front-end again
-                        // does not hurt, probably
-                        crate::contacts::get_contacts(account, manager).await;
-                        crate::contacts::get_groups(account, manager).await;
-                    }
-                    presage::model::messages::Received::Contacts => {
-                        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("got contacts synchronization.\n"));
-                        // NOTE: I never saw this happening.
-                        // TODO: Check if this happens during linking.
-                    }
-                    presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
-                }
-            }
         }
+        presage::model::messages::Received::Contacts => {
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("got contacts synchronization.\n"));
+            // NOTE: I never saw this happening, not even during linking.
+        }
+        presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
     }
-    crate::bridge::purple_error(
-        account,
-        crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR,
-        String::from("Receiver has finished. Disconnected?"),
-    );
 }

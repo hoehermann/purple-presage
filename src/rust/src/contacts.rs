@@ -4,15 +4,18 @@ pub async fn get_contacts<C: presage::store::Store + 'static>(
 ) {
     match manager.store().contacts().await {
         Err(err) => {
-            crate::bridge::purple_debug(account, 4, format!("Unable to get contacts due to {err:?}\n"));
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Unable to get contacts due to {err:?}\n"));
         }
         Ok(contacts) => {
+            let mut flat_contatcts = contacts.flatten();
+            let contact_count = flat_contatcts.by_ref().count();
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("number of contacts: {contact_count}\n"));
             for presage::model::contacts::Contact {
                 name,
                 uuid,
                 phone_number,
                 ..
-            } in contacts.flatten()
+            } in flat_contatcts
             {
                 let mut message = crate::bridge_structs::Message::from_account(account);
                 message.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();

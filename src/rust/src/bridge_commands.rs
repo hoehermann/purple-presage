@@ -13,27 +13,11 @@ unsafe fn send_cmd(
             //println!("rust: command_tx.send OK");
         }
         Err(err) => {
-            println!("rust: command_tx.send {err}");
-            //crate::core::purple_error(account, 0 /* PURPLE_CONNECTION_ERROR_NETWORK_ERROR */ , format!("Error sending command to the rust runtime: {err:?}"));
+            println!("presage: rust: command_tx.send {err}");
+            // NOTE: this happens whenever the rust mainloop terminates earlier than the purple connection is destroyed
             // TODO: can we call purple_error directly as this is executed in the main glib thread?
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_link(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
-    c_device_name: *const std::os::raw::c_char,
-) {
-    let device_name: String = std::ffi::CStr::from_ptr(c_device_name).to_str().unwrap().to_owned();
-    let server = presage::libsignal_service::configuration::SignalServers::Production;
-    //let server = presage::libsignal_service::configuration::SignalServers::Staging;
-    let cmd = crate::structs::Cmd::LinkDevice {
-        device_name: device_name,
-        servers: server,
-    };
-    send_cmd(rt, tx, cmd);
 }
 
 #[no_mangle]
