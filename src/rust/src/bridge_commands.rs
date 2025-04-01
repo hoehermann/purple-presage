@@ -72,17 +72,26 @@ pub unsafe extern "C" fn presage_rust_get_group_members(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn presage_rust_send_contact(
+pub unsafe extern "C" fn presage_rust_send(
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
-    c_uuid: *const std::os::raw::c_char,
+    c_destination: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
     xfer: *mut crate::bridge_structs::PurpleXfer,
 ) {
-    // TODO: add error handling instead of unwrap()
-    let uuid = presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()).unwrap();
+    // TODO: add error handling instead of blind unwrap()
+    let destination= std::ffi::CStr::from_ptr(c_destination).to_str().unwrap();
+    let d = destination.as_bytes();
+    let recipient = if d.len() == 36 && d[8] == b'-' && d[13] == b'-' && d[18] == b'-' && d[23] == b'-' {
+        // destination looks like a UUID, assume it is a contact
+        let uuid = presage::libsignal_service::prelude::Uuid::parse_str(destination).unwrap();
+        crate::structs::Recipient::Contact(uuid)
+    } else {
+        let master_key_bytes = parse_group_master_key(destination);
+        crate::structs::Recipient::Group(master_key_bytes)
+    };
     let cmd = crate::structs::Cmd::Send {
-        recipient: crate::structs::Recipient::Contact(uuid),
+        recipient: recipient,
         message: if c_message != std::ptr::null() {
             Some(std::ffi::CStr::from_ptr(c_message).to_str().unwrap().to_owned())
         } else {
@@ -100,28 +109,6 @@ fn parse_group_master_key(value: &str) -> presage::libsignal_service::zkgroup::G
     // TODO: forward error to front-end
     let master_key_bytes = hex::decode(value).expect("unable to decode hex string");
     master_key_bytes.try_into().expect("master key should be 32 bytes long")
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn presage_rust_send_group(
-    rt: *mut tokio::runtime::Runtime,
-    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
-    c_group: *const std::os::raw::c_char,
-    c_message: *const std::os::raw::c_char,
-    xfer: *mut crate::bridge_structs::PurpleXfer,
-) {
-    // TODO: add error handling instead of using unwrap()
-    let master_key_bytes = parse_group_master_key(std::ffi::CStr::from_ptr(c_group).to_str().unwrap());
-    let cmd_send = crate::structs::Cmd::Send {
-        recipient: crate::structs::Recipient::Group(master_key_bytes),
-        message: if c_message != std::ptr::null() {
-            Some(std::ffi::CStr::from_ptr(c_message).to_str().unwrap().to_owned())
-        } else {
-            None
-        },
-        xfer: xfer,
-    };
-    send_cmd(rt, tx, cmd_send);
 }
 
 #[no_mangle]
