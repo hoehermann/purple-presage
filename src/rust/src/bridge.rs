@@ -95,44 +95,6 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
-    if !c_str.is_null() {
-        unsafe {
-            drop(Box::from_raw(c_str));
-        }
-    }
-}
-
-// TODO: types should be aligned with Presage::blob and Presage::blobsize respectively
-#[no_mangle]
-pub extern "C" fn presage_rust_free_buffer(
-    c_buf: *mut std::os::raw::c_uchar,
-    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
-) {
-    if !c_buf.is_null() {
-        unsafe {
-            drop(Box::from_raw(std::slice::from_raw_parts_mut(c_buf, len as usize)));
-        };
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn presage_rust_strfreev(
-    c_arr_of_str: *mut *mut std::os::raw::c_char,
-    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
-) {
-    if !c_arr_of_str.is_null() {
-        unsafe {
-            let slice = std::slice::from_raw_parts_mut(c_arr_of_str, len as usize);
-            for c_str in &mut *slice {
-                presage_rust_free_string(*c_str);
-            }
-            drop(Box::from_raw(slice));
-        };
-    }
-}
-
 /*
  * Around the core's main function.
  *
