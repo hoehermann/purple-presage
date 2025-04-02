@@ -140,6 +140,9 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
                     Some(received) => crate::receive::handle_received(&mut manager, account, received).await,
                     None => {
                         // this happens when the main device unlinks this device
+                        // this also happens spuriously, perhaps due to network issues
+                        // re-connecting is a good idea in either case, so we forward a network error to purple
+                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
                         keep_running = false;
                     }
                 }
