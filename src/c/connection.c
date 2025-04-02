@@ -3,7 +3,7 @@
 static gboolean rust_main_finished(gpointer account) {
     PurpleConnection *connection = purple_account_get_connection(account);
     if (PURPLE_CONNECTION_STATE_DISCONNECTED == purple_connection_get_state(connection)) {
-        purple_debug_info(PLUGIN_NAME, "rust runtime has finished while not connected.\n");
+        purple_debug_info(PLUGIN_NAME, "rust runtime has finished as expected.\n");
     } else {
         purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "rust runtime has finished unexpectedly.");
     }
@@ -65,7 +65,6 @@ void presage_login(PurpleAccount *account) {
 void presage_close(PurpleConnection *connection) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     presage_rust_exit(connection, rust_runtime, presage->tx_ptr);
-    // TODO: deallocate protocol data (including rust channel)
 }
 
 /*

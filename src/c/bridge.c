@@ -32,15 +32,25 @@ static int account_exists(PurpleAccount *account)
 
 void free_message(Message * message) {
     // release all the memory
-    presage_rust_free_string(message->qrcode);
-    presage_rust_free_string(message->uuid);
-    presage_rust_free_string(message->who);
-    presage_rust_free_string(message->name);
-    presage_rust_free_string(message->group);
-    presage_rust_free_string(message->body);
+    g_free(message->qrcode);
+    g_free(message->uuid);
+    g_free(message->who);
+    g_free(message->name);
+    g_free(message->phone_number);
+    g_free(message->group);
+    g_free(message->body);
     // message->blob is not released here – it must be released by the xfer callback
-    // TODO: free message->groups here // presage_rust_strfreev(message->members, message->size);
-
+    if (message->groups) {
+        for (int gi = 0; gi < message->groups_length; gi++) {
+            g_free(message->groups[gi].key);
+            g_free(message->groups[gi].title);
+            g_free(message->groups[gi].description);
+            for (int mi = 0; mi < message->groups[gi].population; mi++) {
+                g_free(message->groups[gi].members[mi]);
+            }
+        }
+    }
+    g_free(message->groups);
 }
 
 /*
@@ -83,13 +93,13 @@ static void handle_message(Message * message) {
     } else if (message->error != -1) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->blob != NULL) {
-        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->size, message->name);
+        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->blob_length, message->name);
     } else if (message->xfer != NULL) {
         presage_handle_xfer(message->xfer, message->flags, message->body);
     } else if (message->body != NULL) {
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
-        presage_handle_groups(connection, message->groups, message->size);
+        presage_handle_groups(connection, message->groups, message->groups_length);
     } else if (message->who) {
         presage_handle_contact(connection, message->who, message->name, message->phone_number);
         presage_show_info(connection, message->who, message->name, message->phone_number);
@@ -118,12 +128,33 @@ static gboolean process_message(gpointer data) {
 
 /*
  * Handler for a message received by rust.
- * Called by go-whatsapp (outside of the GTK eventloop).
+ * Called asynchronously by the rust runtime (outside of the GTK eventloop).
  * 
  * Yes, this is indeed neccessary – we checked.
  */
 void presage_append_message(const Message *message_rust) {
-    Message *message_heap = g_memdup2(message_rust, sizeof *message_rust);
+    // create a copy of the message struct on the heap so we can pass it into the main thread
+    Message *message_heap = g_memdup2(message_rust, sizeof *message_rust); // this also copies all plain typed data
+    // copy all strings to the heap
+    message_heap->qrcode = g_strdup(message_rust->qrcode);
+    message_heap->uuid = g_strdup(message_rust->uuid);
+    message_heap->who = g_strdup(message_rust->who);
+    message_heap->name = g_strdup(message_rust->name);
+    message_heap->phone_number = g_strdup(message_rust->phone_number);
+    message_heap->group = g_strdup(message_rust->group);
+    message_heap->body = g_strdup(message_rust->body);
+    message_heap->blob = g_memdup2(message_rust->blob, message_rust->blob_length);
+    // copy all groups to the heap
+    message_heap->groups = g_memdup2(message_rust->groups, message_rust->groups_length);
+    for (int gi = 0; gi < message_heap->groups_length; gi++) {
+        message_heap->groups[gi].key = g_strdup(message_rust->groups[gi].key);
+        message_heap->groups[gi].title = g_strdup(message_rust->groups[gi].key);
+        message_heap->groups[gi].description = g_strdup(message_rust->groups[gi].key);
+        message_heap->groups[gi].population = message_rust->groups[gi].population;
+        for (int mi = 0; mi < message_heap->groups[gi].population; mi++) {
+            message_heap->groups[gi].members[mi] = g_strdup(message_rust->groups[gi].members[mi]);
+        }
+    }
     purple_timeout_add(
         0, // schedule for immediate execution
         process_message, // handle message in main thread
