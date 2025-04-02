@@ -19,11 +19,14 @@ pub async fn forward_contacts<C: presage::store::Store + 'static>(
                 ..
             } in contacts.flatten()
             {
-                let mut message = crate::bridge_structs::Message::from_account(account);
-                message.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                message.name = if name != "" { std::ffi::CString::new(name).unwrap().into_raw() } else { std::ptr::null_mut() };
-                message.phone_number = phone_number.map_or(std::ptr::null_mut(), |pn| std::ffi::CString::new(pn.to_string()).unwrap().into_raw());
-                crate::bridge::append_message(&message);
+                let message = crate::receive::Message {
+                    account: account,
+                    who: Some(uuid.to_string()),
+                    name: if name != "" { Some(name) } else { None },
+                    phone_number: phone_number.map(|pn|pn.to_string()),
+                    ..Default::default()
+                };
+                crate::bridge::append_receive_message(message);
             }
         }
     }

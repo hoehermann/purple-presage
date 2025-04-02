@@ -35,9 +35,16 @@ extern "C" {
 }
 
 // wrapper around unsafe presage_append_message
-pub fn append_message(message: *const crate::bridge_structs::Message) {
+pub fn append_message(message: crate::bridge_structs::Message) {
     unsafe {
-        presage_append_message(message);
+        presage_append_message(&message);
+    }
+}
+
+pub fn append_receive_message(receive_message: crate::receive::Message) {
+    let message = Message::from_account(receive_message.account);
+    unsafe {
+        presage_append_message(&message);
     }
 }
 
@@ -50,7 +57,7 @@ pub fn purple_error(
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.error = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
-    crate::bridge::append_message(&message);
+    crate::bridge::append_message(message);
 }
 
 // convenience function for calling purple_debug on the main thread
@@ -62,7 +69,7 @@ pub fn purple_debug(
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.debug = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
-    crate::bridge::append_message(&message);
+    crate::bridge::append_message(message);
 }
 
 // wrapper around unsafe purple_xfer_get_local_filename
@@ -93,44 +100,6 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn presage_rust_free_string(c_str: *mut std::os::raw::c_char) {
-    if !c_str.is_null() {
-        unsafe {
-            drop(Box::from_raw(c_str));
-        }
-    }
-}
-
-// TODO: types should be aligned with Presage::blob and Presage::blobsize respectively
-#[no_mangle]
-pub extern "C" fn presage_rust_free_buffer(
-    c_buf: *mut std::os::raw::c_uchar,
-    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
-) {
-    if !c_buf.is_null() {
-        unsafe {
-            drop(Box::from_raw(std::slice::from_raw_parts_mut(c_buf, len as usize)));
-        };
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn presage_rust_strfreev(
-    c_arr_of_str: *mut *mut std::os::raw::c_char,
-    len: std::os::raw::c_ulonglong, // this should be the C equivalent of usize
-) {
-    if !c_arr_of_str.is_null() {
-        unsafe {
-            let slice = std::slice::from_raw_parts_mut(c_arr_of_str, len as usize);
-            for c_str in &mut *slice {
-                presage_rust_free_string(*c_str);
-            }
-            drop(Box::from_raw(slice));
-        };
-    }
-}
-
 /*
  * Around the core's main function.
  *
@@ -149,7 +118,7 @@ pub unsafe extern "C" fn presage_rust_main(
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.tx_ptr = tx_ptr as crate::bridge_structs::RustChannelPtr;
-    append_message(&message); // let front-end know how to reach us
+    append_message(message); // let front-end know how to reach us
 
     // now execute the actual program
     let runtime = rt.as_ref().unwrap();
