@@ -128,11 +128,15 @@ impl ::std::ops::BitAndAssign for PurpleMessageFlags {
         self.0 &= rhs.0;
     }
 }
+impl Default for PurpleMessageFlags {
+    fn default() -> Self {
+        PurpleMessageFlags(0)
+    }
+}
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PurpleMessageFlags(pub ::std::os::raw::c_uint);
 pub type PurpleXfer = [u64; 29usize];
-pub type PurpleRoomlist = [u64; 7usize];
 #[allow(dead_code)]
 pub const PURPLE_DEBUG_ALL: PurpleDebugLevel = 0;
 #[allow(dead_code)]
@@ -143,38 +147,38 @@ pub const PURPLE_DEBUG_ERROR: PurpleDebugLevel = 4;
 #[allow(dead_code)]
 pub const PURPLE_DEBUG_FATAL: PurpleDebugLevel = 5;
 pub type PurpleDebugLevel = ::std::os::raw::c_int;
-pub type RustChannelPtr = *mut std::os::raw::c_void;
+pub type RustChannelPtr = *const std::os::raw::c_void;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Group {
-    pub key: *mut ::std::os::raw::c_char,
-    pub title: *mut ::std::os::raw::c_char,
-    pub description: *mut ::std::os::raw::c_char,
+    pub key: *const ::std::os::raw::c_char,
+    pub title: *const ::std::os::raw::c_char,
+    pub description: *const ::std::os::raw::c_char,
     pub revision: u32,
-    pub members: *mut *mut ::std::os::raw::c_char,
+    pub members: *const *const ::std::os::raw::c_char,
     pub population: usize,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Message {
-    pub account: *mut PurpleAccount,
+    pub account: *const PurpleAccount,
     pub tx_ptr: RustChannelPtr,
-    pub qrcode: *mut ::std::os::raw::c_char,
-    pub uuid: *mut ::std::os::raw::c_char,
+    pub qrcode: *const ::std::os::raw::c_char,
+    pub uuid: *const ::std::os::raw::c_char,
     pub debug: PurpleDebugLevel,
     pub error: PurpleConnectionError,
     pub connected: i32,
     pub padding: i32,
     pub timestamp: u64,
     pub flags: PurpleMessageFlags,
-    pub who: *mut ::std::os::raw::c_char,
-    pub name: *mut ::std::os::raw::c_char,
-    pub phone_number: *mut ::std::os::raw::c_char,
-    pub group: *mut ::std::os::raw::c_char,
-    pub body: *mut ::std::os::raw::c_char,
-    pub blob: *mut ::std::os::raw::c_void,
-    pub size: usize,
-    pub groups: *mut Group,
-    pub roomlist: *mut PurpleRoomlist,
-    pub xfer: *mut PurpleXfer,
+    pub who: *const ::std::os::raw::c_char,
+    pub name: *const ::std::os::raw::c_char,
+    pub phone_number: *const ::std::os::raw::c_char,
+    pub group: *const ::std::os::raw::c_char,
+    pub body: *const ::std::os::raw::c_char,
+    pub blob: *const ::std::os::raw::c_void,
+    pub blob_length: usize,
+    pub groups: *const Group,
+    pub groups_length: usize,
+    pub xfer: *const PurpleXfer,
 }

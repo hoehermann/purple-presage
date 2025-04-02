@@ -12,9 +12,11 @@ async fn run<C: presage::store::Store + 'static>(
         crate::structs::Cmd::Whoami => {
             let whoami = manager.whoami().await?;
             let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
-            let mut message = crate::bridge_structs::Message::from_account(account);
-            message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(crate::bridge::Message {
+                account: account,
+                uuid: Some(uuid.to_string()),
+                ..Default::default()
+            });
             Ok(true)
         }
 
@@ -24,15 +26,18 @@ async fn run<C: presage::store::Store + 'static>(
             xfer,
         } => {
             // prepare a PurplePresage message for providing feed-back (send success or error)
-            let mut msg = crate::bridge_structs::Message::from_account(account);
-            msg.timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-            msg.xfer = xfer; // in case of attachments, this is the reference to the respective purple Xfer
+            let mut msg = crate::bridge::Message {
+                account: account,
+                timestamp: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
+                xfer: xfer, // in case of attachments, this is the reference to the respective purple Xfer
+                ..Default::default()
+            };
             match recipient {
                 crate::structs::Recipient::Contact(uuid) => {
-                    msg.who = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
+                    msg.who = Some(uuid.to_string());
                 }
                 crate::structs::Recipient::Group(master_key) => {
-                    msg.group = std::ffi::CString::new(hex::encode(master_key)).unwrap().into_raw();
+                    msg.group = Some(hex::encode(master_key));
                 }
             }
             // now do the actual sending and error-handling
@@ -41,7 +46,7 @@ async fn run<C: presage::store::Store + 'static>(
                     // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
                     msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_SEND;
                     if let Some(body) = message {
-                        msg.body = std::ffi::CString::new(body).unwrap().into_raw();
+                        msg.body = Some(body);
                     }
                 }
                 Err(err) => {
@@ -52,12 +57,11 @@ async fn run<C: presage::store::Store + 'static>(
                         format!("Error „{err}“ occurred while sending a message. The error message should appear in the conversation window.\n"),
                     );
                     msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-                    let errmsg = err.to_string(); // TODO: prefix error message with "Error: "
-                    msg.body = std::ffi::CString::new(errmsg).unwrap().into_raw();
+                    msg.body = Some(format!("Error: {err}"));
                 }
             }
             // feed the feed-back back into purple
-            crate::bridge::append_message(&msg);
+            crate::bridge::append_message(msg);
             Ok(true)
         }
 
@@ -81,11 +85,15 @@ async fn run<C: presage::store::Store + 'static>(
                 Ok(contact) => match contact {
                     None => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("No contact information available for {uuid}.\n")),
                     Some(contact) => {
-                        let mut message = crate::bridge_structs::Message::from_account(account);
-                        message.who = std::ffi::CString::new(contact.uuid.to_string()).unwrap().into_raw();
-                        message.name = if contact.name != "" { std::ffi::CString::new(contact.name).unwrap().into_raw() } else { std::ptr::null_mut() };
-                        message.phone_number = contact.phone_number.map_or(std::ptr::null_mut(), |pn| std::ffi::CString::new(pn.to_string()).unwrap().into_raw());
-                        crate::bridge::append_message(&message);
+                        let name = if contact.name.is_empty() { None } else { Some(contact.name) };
+                        let phone_number = contact.phone_number.map(|pn| pn.to_string());
+                        crate::bridge::append_message(crate::bridge::Message {
+                            account: account,
+                            who: Some(contact.uuid.to_string()),
+                            name: name,
+                            phone_number: phone_number,
+                            ..Default::default()
+                        });
                     }
                 },
             }
@@ -198,9 +206,11 @@ async fn link(
         match provisioning_link_rx.await {
             Ok(url) => {
                 crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("got URL for QR code\n"));
-                let mut message = crate::bridge_structs::Message::from_account(account);
-                message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
-                crate::bridge::append_message(&message);
+                crate::bridge::append_message(crate::bridge::Message {
+                    account: account,
+                    qrcode: Some(url.to_string()),
+                    ..Default::default()
+                });
             }
             Err(err) => {
                 crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error linking device: {err:?}"));
@@ -216,9 +226,11 @@ async fn link(
             match whoami {
                 Ok(whoami) => {
                     let uuid = whoami.aci.to_string(); // TODO: check if there are alternatives to aci
-                    let mut message = crate::bridge_structs::Message::from_account(account);
-                    message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                    crate::bridge::append_message(&message);
+                    crate::bridge::append_message(crate::bridge::Message {
+                        account: account,
+                        uuid: Some(uuid),
+                        ..Default::default()
+                    });
 
                     // request contacts now after linking once. requesting again on a subsequent log-in sometimes blocks forever.
                     if let Err(err) = manager.request_contacts().await {
@@ -279,15 +291,16 @@ pub async fn main(
             However, the connection is not fully usable, yet. The presage docs at https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 state:
             „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
             */
-            let mut message = crate::bridge_structs::Message::from_account(account);
-            message.connected = 1;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(crate::bridge::Message {
+                account: account,
+                connected: 1,
+                ..Default::default()
+            });
 
             if let Some(mut manager) = login(config_store, account).await {
-                
                 // Login has succeeded, forward (cached) contacts for bitlbee. It tends to forget them after re-connects.
                 crate::contacts::forward_contacts(account, &mut manager).await;
-                
+
                 mainloop(manager, command_receiver, account).await;
             }
         }

@@ -23,9 +23,6 @@ void presage_rust_send(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const
 void presage_rust_get_group_members(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_get_profile(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_list_groups(PurpleConnection *, RustRuntimePtr, RustChannelPtr);
-void presage_rust_free_string(char *);
-void presage_rust_free_buffer(char *, uint64_t);
-void presage_rust_strfreev(char **, uint64_t);
 
 extern RustRuntimePtr rust_runtime;
 
@@ -55,9 +52,9 @@ typedef struct {
     char *group;
     char *body;
     void *blob;
-    size_t size;
+    size_t blob_length;
     Group *groups;
-    PurpleRoomlist *roomlist;
+    size_t groups_length;
     PurpleXfer *xfer;
 } Message;
 

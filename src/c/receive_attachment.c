@@ -26,7 +26,7 @@ static void xfer_ack_fnc(PurpleXfer * xfer, const guchar * buffer, size_t bytes_
 }
 
 static void xfer_release_blob(PurpleXfer * xfer) {
-    presage_rust_free_buffer(xfer->data, xfer->size);
+    g_free(xfer->data);
     xfer->data = NULL;
 }
 
