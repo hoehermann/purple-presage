@@ -49,10 +49,11 @@ async fn run<C: presage::store::Store + 'static>(
                     crate::bridge::purple_debug(
                         account,
                         crate::bridge_structs::PURPLE_DEBUG_ERROR,
-                        format!("{err} occurred while sending a message. The error message should appear in the conversation window.\n"),
+                        format!("Error „{err}“ occurred while sending a message. The error message should appear in the conversation window.\n"),
                     );
                     msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-                    msg.body = std::ffi::CString::new(err.to_string()).unwrap().into_raw();
+                    let errmsg = err.to_string(); // TODO: prefix error message with "Error: "
+                    msg.body = std::ffi::CString::new(errmsg).unwrap().into_raw();
                 }
             }
             // feed the feed-back back into purple

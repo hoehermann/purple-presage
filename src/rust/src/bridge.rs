@@ -1,5 +1,3 @@
-use crate::bridge_structs::PurpleMessageFlags;
-
 impl crate::bridge_structs::Message {
     pub fn from_account(account: *mut crate::bridge_structs::PurpleAccount) -> Self {
         Self {
@@ -12,7 +10,7 @@ impl crate::bridge_structs::Message {
             connected: 0,
             padding: 0,
             timestamp: 0,
-            flags: PurpleMessageFlags(0),
+            flags: crate::bridge_structs::PurpleMessageFlags(0),
             who: std::ptr::null_mut(),
             name: std::ptr::null_mut(),
             phone_number: std::ptr::null_mut(),

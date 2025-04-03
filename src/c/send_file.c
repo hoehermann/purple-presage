@@ -4,7 +4,7 @@ static void xfer_start_fnc(PurpleXfer *xfer) {
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
     Presage *presage = purple_connection_get_protocol_data(connection);
-    presage_rust_send(rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
+    presage_rust_send(connection, rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
 }
 
 static void presage_xfer_send_init(PurpleXfer *xfer) {

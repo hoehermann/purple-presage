@@ -69,6 +69,6 @@ void presage_login(PurpleAccount *account) {
 
 void presage_close(PurpleConnection *connection) {
     Presage *presage = purple_connection_get_protocol_data(connection);
-    presage_rust_exit(rust_runtime, presage->tx_ptr);
+    presage_rust_exit(connection, rust_runtime, presage->tx_ptr);
     // TODO: deallocate protocol data (including rust channel)
 }
