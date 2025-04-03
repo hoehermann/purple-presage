@@ -128,6 +128,11 @@ impl ::std::ops::BitAndAssign for PurpleMessageFlags {
         self.0 &= rhs.0;
     }
 }
+impl Default for PurpleMessageFlags {
+    fn default() -> Self {
+        PurpleMessageFlags(0)
+    }
+}
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PurpleMessageFlags(pub ::std::os::raw::c_uint);

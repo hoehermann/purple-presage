@@ -3,45 +3,22 @@
  */
 #[derive(Clone)]
 pub struct Message {
-    thread: Option<presage::store::Thread>,
-    account: *mut crate::bridge_structs::PurpleAccount,
-    timestamp: Option<u64>,
-    flags: crate::bridge_structs::PurpleMessageFlags,
-    who: Option<String>,
-    name: Option<String>,
-    group: Option<String>,
-    body: Option<String>,
+    pub thread: Option<presage::store::Thread>,
+    pub account: *mut crate::bridge_structs::PurpleAccount,
+    pub timestamp: Option<u64>,
+    pub flags: crate::bridge_structs::PurpleMessageFlags,
+    pub who: Option<String>,
+    pub name: Option<String>,
+    pub group: Option<String>,
+    pub body: Option<String>,
+    pub attachment: Option<Vec<u8>>,
+    pub phone_number: Option<String>,
 }
-impl Message {
-    fn into_bridge(
-        self,
-        body: Option<String>,
-    ) -> crate::bridge_structs::Message {
-        // TODO: Do this in append_message, but not with into_raw, but with as_ptr, then g_strdup in presage_append_message.
-        // Then the presage_rust_free_* functions are no longer needed.
-        let to_cstr_or_null = |s: Option<String>| -> *mut ::std::os::raw::c_char { s.map_or(std::ptr::null_mut(), |s| std::ffi::CString::new(s).unwrap().into_raw()) };
-        let body = body.or(self.body);
-        crate::bridge_structs::Message {
-            account: self.account,
-            tx_ptr: std::ptr::null_mut(),
-            qrcode: std::ptr::null_mut(),
-            uuid: std::ptr::null_mut(),
-            debug: -1,
-            error: -1,
-            connected: -1,
-            padding: -1,
-            timestamp: self.timestamp.unwrap_or_default() as u64,
-            flags: self.flags,
-            who: to_cstr_or_null(self.who),
-            name: to_cstr_or_null(self.name),
-            phone_number: std::ptr::null_mut(),
-            group: to_cstr_or_null(self.group),
-            body: to_cstr_or_null(body),
-            blob: std::ptr::null_mut(),
-            size: 0,
-            groups: std::ptr::null_mut(),
-            roomlist: std::ptr::null_mut(),
-            xfer: std::ptr::null_mut(),
+impl Default for Message {
+    fn default() -> Self {
+        Message {
+            account: std::ptr::null_mut(),
+            ..Default::default()
         }
     }
 }
@@ -158,9 +135,10 @@ async fn process_attachments<C: presage::store::Store>(
     let account = message.account;
     for attachment_pointer in attachments {
         let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
-            let mut message = message.clone().into_bridge(Some("Failed to fetch attachment.".to_string()));
+            let mut message = message.clone();
+            message.body = Some("Failed to fetch attachment.".to_string());
             message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_receive_message(message);
             continue;
         };
 
@@ -172,7 +150,9 @@ async fn process_attachments<C: presage::store::Store>(
                 // TODO: this should be routed through the function that usually handles the text messages
                 // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
                 let body = std::ffi::CStr::from_bytes_until_nul(&attachment_data).unwrap().to_str().unwrap().to_owned();
-                crate::bridge::append_message(&message.clone().into_bridge(Some(body)));
+                let mut message = message.clone();
+                message.body = Some(body);
+                crate::bridge::append_receive_message(message);
             }
             Some(mimetype) => {
                 let extension = match mimetype {
@@ -192,12 +172,10 @@ async fn process_attachments<C: presage::store::Store>(
                     };
                     format!("{hash}.{extension}")
                 });
-                let boxed_slice = attachment_data.into_boxed_slice();
-                let mut message = message.clone().into_bridge(None);
-                message.size = boxed_slice.len() as usize;
-                message.name = std::ffi::CString::new(filename).unwrap().into_raw();
-                message.blob = Box::into_raw(boxed_slice) as *mut std::os::raw::c_void;
-                crate::bridge::append_message(&message);
+                let mut message = message.clone();
+                message.name = Some(filename);
+                message.attachment = Some(attachment_data);
+                crate::bridge::append_receive_message(message);
             }
         }
     }
@@ -236,7 +214,9 @@ async fn process_sent_message<C: presage::store::Store>(
             None
         }
     } {
-        crate::bridge::append_message(&message.into_bridge(Some(body)));
+        let mut message = message.clone();
+        message.body = Some(body);
+        crate::bridge::append_receive_message(message);
     }
 }
 
@@ -272,7 +252,9 @@ async fn process_received_message<C: presage::store::Store>(
             None
         }
     } {
-        crate::bridge::append_message(&message.into_bridge(Some(body)));
+        let mut message = message.clone();
+        message.body = Some(body);
+        crate::bridge::append_receive_message(message);
     }
 }
 
@@ -292,13 +274,7 @@ async fn process_incoming_message<C: presage::store::Store>(
     };
     let mut message = Message {
         account: account,
-        timestamp: None,
-        who: None,
-        group: None,
-        flags: crate::bridge_structs::PurpleMessageFlags(0),
-        body: None,
-        name: None,
-        thread: None,
+        ..Default::default()
     };
     message.thread = Some(thread.clone());
     message.timestamp = Some(content.metadata.timestamp);
@@ -337,7 +313,7 @@ pub async fn handle_received<S: presage::store::Store>(
             // NOTE: the C part assumes the account is "connected" instantly because libpurple's blist functions do not work on offline accounts
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.connected = 1;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(message);
         }
         presage::model::messages::Received::Contacts => {
             // this happens in response to manager.request_contacts()

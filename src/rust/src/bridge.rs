@@ -1,4 +1,4 @@
-use crate::bridge_structs::PurpleMessageFlags;
+use crate::bridge_structs::{Message, PurpleMessageFlags};
 
 impl crate::bridge_structs::Message {
     pub fn from_account(account: *mut crate::bridge_structs::PurpleAccount) -> Self {
@@ -37,9 +37,16 @@ extern "C" {
 }
 
 // wrapper around unsafe presage_append_message
-pub fn append_message(message: *const crate::bridge_structs::Message) {
+pub fn append_message(message: crate::bridge_structs::Message) {
     unsafe {
-        presage_append_message(message);
+        presage_append_message(&message);
+    }
+}
+
+pub fn append_receive_message(receive_message: crate::receive::Message) {
+    let message = Message::from_account(receive_message.account);
+    unsafe {
+        presage_append_message(&message);
     }
 }
 
@@ -52,7 +59,7 @@ pub fn purple_error(
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.error = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
-    crate::bridge::append_message(&message);
+    crate::bridge::append_message(message);
 }
 
 // convenience function for calling purple_debug on the main thread
@@ -64,7 +71,7 @@ pub fn purple_debug(
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.debug = level;
     message.body = std::ffi::CString::new(msg).unwrap().into_raw();
-    crate::bridge::append_message(&message);
+    crate::bridge::append_message(message);
 }
 
 // wrapper around unsafe purple_xfer_get_local_filename
@@ -113,7 +120,7 @@ pub unsafe extern "C" fn presage_rust_main(
     let tx_ptr = Box::into_raw(Box::new(tx));
     let mut message = crate::bridge_structs::Message::from_account(account);
     message.tx_ptr = tx_ptr as crate::bridge_structs::RustChannelPtr;
-    append_message(&message); // let front-end know how to reach us
+    append_message(message); // let front-end know how to reach us
 
     // now execute the actual program
     let runtime = rt.as_ref().unwrap();
