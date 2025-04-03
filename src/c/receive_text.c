@@ -44,6 +44,10 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
             // the backend does not include the username for sync messages
             who = purple_account_get_username(account);
         }
+        if (flags & PURPLE_MESSAGE_ERROR) {
+            // who must be set in a chat, even for an error message
+            who = purple_account_get_username(account);
+        }
         purple_serv_got_chat_in(connection, g_str_hash(group), who, flags, text, timestamp_seconds);
     }
 

@@ -85,7 +85,7 @@ void presage_handle_qrcode(PurpleConnection *connection, const char *data) {
         // empty string means "linking has finished"
         purple_request_close_with_handle(connection); // close request displaying the QR code
         Presage *presage = purple_connection_get_protocol_data(connection);
-        presage_rust_whoami(rust_runtime, presage->tx_ptr); // now that linking is done, get own uuid
+        presage_rust_whoami(connection, rust_runtime, presage->tx_ptr); // now that linking is done, get own uuid
     } else {
         PurpleRequestUiOps *ui_ops = purple_request_get_ui_ops();
         if (ui_ops && ui_ops->request_fields) {

@@ -87,7 +87,7 @@ void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
                 // set own identity in this chat
                 purple_conv_chat_set_nick(conv_chat, purple_account_get_username(account));
                 // request list of participants
-                presage_rust_get_group_members(rust_runtime, presage->tx_ptr, identifier);
+                presage_rust_get_group_members(connection, rust_runtime, presage->tx_ptr, identifier);
             }
         }
     }
@@ -177,6 +177,6 @@ PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection) {
     purple_roomlist_set_fields(roomlist, fields);
     Presage *presage = purple_connection_get_protocol_data(connection);
     presage->roomlist = roomlist; // store the pointer to the roomlist so presage_handle_groups can write to it
-    presage_rust_list_groups(rust_runtime, presage->tx_ptr);
+    presage_rust_list_groups(connection, rust_runtime, presage->tx_ptr);
     return roomlist;
 }
