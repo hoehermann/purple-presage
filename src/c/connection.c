@@ -58,13 +58,6 @@ void presage_login(PurpleAccount *account) {
         g_free(errmsg);
     }
     #endif
-
-    /*
-    At this point, we assume the account is "connected" immediately. We need to do this since the blist's aliasing functions do not work on disconnected accounts.
-    However, the connection is not fully usable, yet. The presage docs at https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 state: 
-    „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
-    */
-    purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTED);
 }
 
 void presage_close(PurpleConnection *connection) {
