@@ -1,5 +1,3 @@
-// TODO: rename to receive so it is analogous to send.c
-
 #include "presage.h"
 
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
@@ -9,8 +7,9 @@ void presage_handle_text(PurpleConnection *connection, const char *who, const ch
     time_t timestamp_seconds = timestamp_ms/1000;
 
     // Signal is a plain-text protocol, but Pidgin expects HTML
-    // NOTE: This turns newlines into br-tags which may mess up textual representation of QR-codes
-    gchar *text = purple_markup_escape_text(body, -1);
+    gchar *html = purple_markup_escape_text(body, -1);
+    gchar *text = purple_strdup_withhtml(html); // this turns newlines into br-tags which might mess up textual representation of QR-codes, but I have not added that feature to this prpl
+    g_free(html);
     
     if (group == NULL) {
         // direct message
