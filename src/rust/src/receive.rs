@@ -170,19 +170,11 @@ async fn process_attachments<C: presage::store::Store>(
             }
             Some("text/x-signal-plain") => {
                 // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
-                match std::ffi::CStr::from_bytes_until_nul(&attachment_data) {
-                    Ok(cstr) => {
-                        match cstr.to_str() {
-                            Ok(str) => {
-                                // TODO: this should be routed through the function that usually handles the text messages
-                                crate::bridge::append_message(&message.clone().into_bridge(Some(str.to_owned())));  
-                            },
-                            Err(err) => {
-                                let mut message = message.clone().into_bridge(Some(err.to_string()));
-                                message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-                                crate::bridge::append_message(&message);
-                            },
-                        }
+                match String::from_utf8(attachment_data) {
+                    Ok(padded) => {
+                        let body = padded.trim_end_matches(char::from(0));
+                        // TODO: this should be routed through the function that usually handles the text messages
+                        crate::bridge::append_message(&message.clone().into_bridge(Some(body.to_owned())));
                     },
                     Err(err) => {
                         let mut message = message.clone().into_bridge(Some(err.to_string()));
