@@ -5,6 +5,8 @@
 
 #define PLUGIN_NAME "presage"
 
+extern const char * PRESAGE_STARTUP_DELAY_SECONDS_OPTION;
+
 // https://github.com/LLNL/lbann/issues/117#issuecomment-334333286
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
@@ -68,10 +70,12 @@ typedef struct {
 
 // procotol properties
 GList * presage_status_types(PurpleAccount *account);
+GList * presage_add_account_options(GList *account_options);
 
 // connection
 void presage_login(PurpleAccount *account);
 void presage_close(PurpleConnection *pc);
+void presage_account_error(PurpleAccount *account, PurpleConnectionError reason, const char *description);
 
 // qrcode (linking and identification)
 void presage_handle_qrcode(PurpleConnection * connection, const char *qrcode);

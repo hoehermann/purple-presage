@@ -1,15 +1,14 @@
 extern "C" {
-    // this is implemented by libpurple's connection.c
-    // TODO: automatically generate declaration from connection.h
-    fn purple_connection_error_reason(
-        connection: *mut ::std::os::raw::c_void,
+    // TODO: automatically generate declaration from presage.h
+    fn presage_account_error(
+        account: *mut crate::bridge_structs::PurpleAccount,
         reason: crate::bridge_structs::PurpleConnectionError,
         description: *const ::std::os::raw::c_char,
     );
 }
 
 unsafe fn send_cmd(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     cmd: crate::structs::Cmd,
@@ -22,7 +21,7 @@ unsafe fn send_cmd(
         // Consequently, the error reported here is reported as a transient network error since it can overwrite the previous error (see #18).
         // Looking at libpurple/connection.c, purple_connection_error_reason should not overwrite a previous error, but here we are.
         // TODO: Investigate further. Maybe use separate error reasons based on the command that was going to be sent? Or do not report an error at all, just log?
-        purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg.as_ptr());
+        presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg.as_ptr());
     }
 }
 
@@ -41,38 +40,38 @@ unsafe fn send_cmd_impl(
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_exit(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::Exit {};
-    send_cmd(purple_connection, rt, tx, cmd);
+    send_cmd(account, rt, tx, cmd);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_whoami(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::Whoami {};
-    send_cmd(purple_connection, rt, tx, cmd);
+    send_cmd(account, rt, tx, cmd);
 }
 
 // TODO: wire this up completely
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_list_groups(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::ListGroups {};
-    send_cmd(purple_connection, rt, tx, cmd);
+    send_cmd(account, rt, tx, cmd);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_get_group_members(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_group: *const std::os::raw::c_char,
@@ -83,18 +82,18 @@ pub unsafe extern "C" fn presage_rust_get_group_members(
             let cmd = crate::structs::Cmd::GetGroupMembers {
                 master_key_bytes: master_key_bytes,
             };
-            send_cmd(purple_connection, rt, tx, cmd);
+            send_cmd(account, rt, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
-            purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
+            presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
         }
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_send(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_destination: *const std::os::raw::c_char,
@@ -122,11 +121,11 @@ pub unsafe extern "C" fn presage_rust_send(
                 },
                 xfer: xfer,
             };
-            send_cmd(purple_connection, rt, tx, cmd);
+            send_cmd(account, rt, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
-            purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
+            presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
         }
     }
 }
@@ -141,7 +140,7 @@ fn parse_group_master_key(value: &str) -> Result<presage::libsignal_service::zkg
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_get_profile(
-    purple_connection: *mut ::std::os::raw::c_void,
+    account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_uuid: *const std::os::raw::c_char,
@@ -149,11 +148,11 @@ pub unsafe extern "C" fn presage_rust_get_profile(
     match presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()) {
         Ok(uuid) => {
             let cmd = crate::structs::Cmd::GetProfile { uuid };
-            send_cmd(purple_connection, rt, tx, cmd);
+            send_cmd(account, rt, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
-            purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
+            presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
         }
     }
 }
