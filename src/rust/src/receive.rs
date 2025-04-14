@@ -175,12 +175,12 @@ async fn process_attachments<C: presage::store::Store>(
                         let body = padded.trim_end_matches(char::from(0));
                         // TODO: this should be routed through the function that usually handles the text messages
                         crate::bridge::append_message(&message.clone().into_bridge(Some(body.to_owned())));
-                    },
+                    }
                     Err(err) => {
                         let mut message = message.clone().into_bridge(Some(err.to_string()));
                         message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
                         crate::bridge::append_message(&message);
-                    },
+                    }
                 }
             }
             Some(mimetype) => {
@@ -194,13 +194,14 @@ async fn process_attachments<C: presage::store::Store>(
                         extensions.and_then(|e| e.first()).unwrap_or(&"bin")
                     }
                 };
-                let filename = attachment_pointer.file_name.clone().unwrap_or_else(|| {
-                    let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
-                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-                    };
-                    format!("{hash}.{extension}")
-                });
+                // TODO: have a user-configurable template for generating the file-name
+                // NOTE: for some conversations, all image come with the same filename
+                let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
+                };
+                let suffix = attachment_pointer.file_name.clone().unwrap_or_else(|| format!(".{extension}"));
+                let filename = hash + &suffix;
                 let boxed_slice = attachment_data.into_boxed_slice();
                 let mut message = message.clone().into_bridge(None);
                 message.size = boxed_slice.len() as usize;
