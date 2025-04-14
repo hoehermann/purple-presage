@@ -13,6 +13,11 @@ See the Releases section on github.
 
 Note: bitlbee users will receive the login QR-code in form of a URI from a system contact "Logon QR Code". You may need to allow unsolicited messages from unknown contacts in your client. The URI can be converted using any tool like a local [`qrencode`](https://www.shellhacks.com/qr-code-generator-windows-linux-macos/) or [online services](https://www.the-qrcode-generator.com/) (use at your own risk).
 
+## Configuration
+
+* `startup-delay-seconds` int  
+  Tells the plug-in to wait the specified amount of seconds (default: 1) between spawning the native thread for the rust runtime and actually starting the rust runtime. This magically alleviates database locking issues.
+
 ## Features
 
 ### Present
@@ -20,12 +25,13 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
-* Receives attachments.
+* Receives attachments. Special handling for long text messages.
 * Can send a simple text message. 
 * Can send an attachment.
 * Will add buddies to contact list unconditionally.
 * Uses special handling of login procedure for bitlbee.
 * Can reply to a specific message via "@searchstring:".
+* Some very basic support for Spectrum.
 
 ### Missing
 
@@ -37,6 +43,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 * Mark messages as "read". This is currently not implemented in back-end, see [#141](https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
 * A group chat is only added to the buddy list when receiving a message. There seems to be no way to fetch the list of groups from the main device, see [#303](https://github.com/whisperfish/presage/issues/303).
+* The maximum allowed length of a text-message is unknown.
 
 #### "Contributions Welcome"
 
@@ -46,7 +53,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Receive stickers, mentions, styles, contact,…
 * Display typing notifications
 * Display receipts (not important)
-* Support for alternative host applications (Spectrum, Bitlbee)
+* Support for alternative host applications (Bitlbee)
 * Support for adding contact via phone number
 
 These lists are not exhaustive.
@@ -54,8 +61,10 @@ These lists are not exhaustive.
 ### Known Issues
 
 * Contacts are fetched from the main device only once after linking.
-* Own name is not transferred to the buddy list and thererfore not resolved in group chats.
+* Own name is not transferred to the buddy list and therefore not resolved in group chats.
 * Information about contact names arrive after the first messages.
+* Sometimes, the database cannot be opened due to locking issues.
+* Spectrum support is very flaky. Crashes, infinite loops and silent disconnects may happen. Please keep an eye on your system and check the logs frequently. Issue reports are welcome.
 
 ## Building
 
