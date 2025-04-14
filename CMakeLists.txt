@@ -43,6 +43,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/receive_attachment.c"
     "src/c/send_file.c"
     "src/c/profile.c"
+    "src/c/options.c"
     "src/c/presage.h"
     "src/c/hehoe-purple2and3/purple.h"
 )

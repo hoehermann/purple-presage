@@ -46,10 +46,6 @@ static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
     return TRUE;
 }
 
-static void plugin_init(PurplePlugin *plugin) {
-    // nothing to do
-}
-
 static PurplePluginProtocolInfo prpl_info = {
     .struct_size = sizeof(PurplePluginProtocolInfo), // must be set for PURPLE_PROTOCOL_PLUGIN_HAS_FUNC to work across versions
     .list_icon = list_icon,
@@ -74,6 +70,10 @@ static PurplePluginProtocolInfo prpl_info = {
     .chat_send_file = presage_chat_send_file,
     #endif
 };
+
+static void plugin_init(PurplePlugin *plugin) {
+    prpl_info.protocol_options = presage_add_account_options(prpl_info.protocol_options);
+}
 
 static PurplePluginInfo info = {
     .magic = PURPLE_PLUGIN_MAGIC,
