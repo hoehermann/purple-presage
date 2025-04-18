@@ -110,6 +110,6 @@ When using the "Debug" configuration, the linker complains about mismatching con
 
 #### Notes
 
-purple-presage must be built with MSVC. MinGW's GCC encountered a number of issues such as [incompatibility with rustc versions newer than 1.69](https://github.com/rust-lang/rust/issues/112368) and not shipping libbcrypt by default.
+On Windows, purple-presage must be built with MSVC. gcc (via MinGW or MSYS2) has a number of issues such as [incompatibility with recent rustc versions](https://github.com/rust-lang/rust/issues/112368) and not shipping libbcrypt by default.
 
 Needs a whooping 6 GB of disk space during build! 😳
