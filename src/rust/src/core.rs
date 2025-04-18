@@ -131,6 +131,7 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
                         }
                     },
                     None => {
+                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Command channel disrupted."));
                         keep_running = false;
                     }
                 }
