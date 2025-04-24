@@ -15,8 +15,14 @@ unsafe fn send_cmd(
     cmd: crate::structs::Cmd,
 ) {
     if let Err(err) = send_cmd_impl(rt, tx, cmd) {
-        let errmsg = std::ffi::CString::new(err.to_string()).unwrap();
-        purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg.as_ptr());
+        let errmsg = std::ffi::CString::new(format!("send cmd error: {err}")).unwrap();
+        // If the receiver is disconnected in crate::core::mainloop, a network error is reported.
+        // The main loop terminates, implicitly closing the command channel immediately.
+        // On the next gtk event loop iteration, Pidgin tries to close the connection gracefully, but fails to send the exit command due to the closed channel.
+        // Consequently, the error reported here is reported as a transient network error since it can overwrite the previous error (see #18).
+        // Looking at libpurple/connection.c, purple_connection_error_reason should not overwrite a previous error, but here we are.
+        // TODO: Investigate further. Maybe use separate error reasons based on the command that was going to be sent? Or do not report an error at all, just log?
+        purple_connection_error_reason(purple_connection, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg.as_ptr());
     }
 }
 
