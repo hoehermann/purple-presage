@@ -117,7 +117,6 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
     while keep_running {
         tokio::select! {
             maybe_cmd = command_receiver.recv() => {
-                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("cmd: {maybe_cmd:?}\n"));
                 match maybe_cmd {
                     Some(cmd) =>  {
                         match run(cmd, manager.clone(), account).await {
@@ -131,6 +130,7 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
                         }
                     },
                     None => {
+                        // this should never happen
                         crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Command channel disrupted."));
                         keep_running = false;
                     }
