@@ -78,6 +78,7 @@ async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
             }) = message.body
             {
                 body
+                // TODO: also return body_ranges
             } else {
                 None
             }
@@ -99,15 +100,20 @@ async fn format_data_message<C: presage::store::Store>(
     match data_message {
         // Quote
         presage::libsignal_service::content::DataMessage {
-            quote: Some(presage::proto::data_message::Quote {
-                text: Some(quoted_text),
-                ..
-            }),
+            quote:
+                Some(presage::proto::data_message::Quote {
+                    text: Some(quoted_text),
+                    body_ranges: quoted_text_ranges,
+                    ..
+                }),
             body: Some(body),
+            body_ranges,
             ..
         } => {
-            let firstline = quoted_text.split("\n").next().unwrap_or("<message body missing>");
+            let quote = resolve_mentions(quoted_text, quoted_text_ranges);
+            let firstline = quote.split("\n").next().unwrap_or("<message body missing>");
             // TODO: add ellipsis if quoted_text contains more than one line
+            let body = resolve_mentions(body, body_ranges);
             Some(format!("> {firstline}\n\n{body}"))
         }
         // Reaction
@@ -134,10 +140,11 @@ async fn format_data_message<C: presage::store::Store>(
             }
         }
         // Plain text message
-        // TODO: resolve mentions
         presage::libsignal_service::content::DataMessage {
-            body: Some(body), ..
-        } => Some(body.to_string()),
+            body: Some(body),
+            body_ranges,
+            ..
+        } => Some(resolve_mentions(body, body_ranges)),
         // Default (catch all other cases)
         c => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("DataMessage without body {c:?}\n"));
@@ -148,6 +155,36 @@ async fn format_data_message<C: presage::store::Store>(
             None
         }
     }
+}
+
+/*
+ * Resolve mentions by Object Replacement Character with UUIDs.
+ */
+// TODO: forward body ranges and let front-end take care of resolving the UUIDs
+// NOTE: keep an eye on PurpleMarkupSpan documented at https://issues.imfreedom.org/issue/PIDGIN-17842
+fn resolve_mentions(
+    body: &String,
+    body_ranges: &Vec<presage::proto::BodyRange>,
+) -> String {
+    let mut body_ranges_iter = body_ranges.into_iter();
+    body.chars()
+        .map(|c| {
+            if c == '￼' {
+                if let Some(presage::proto::BodyRange {
+                    associated_value: Some(presage::proto::body_range::AssociatedValue::MentionAci(mention_aci)),
+                    ..
+                }) = body_ranges_iter.next()
+                {
+                    // NOTE: This relies on mentions being sorted. This may or may not always be the case.
+                    format!("@{mention_aci}")
+                } else {
+                    c.to_string()
+                }
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
 }
 
 async fn process_attachments<C: presage::store::Store>(
