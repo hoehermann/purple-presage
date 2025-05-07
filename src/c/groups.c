@@ -1,4 +1,3 @@
-#include <inttypes.h>
 #include "presage.h"
 
 /*
@@ -143,7 +142,7 @@ void presage_handle_groups(PurpleConnection *connection, const Group *groups, ui
     presage_roomlist_populate(connection, groups, length);
 
     for (uint64_t i = 0; i < length; i++) {
-        purple_debug_info(PLUGIN_NAME, "got group %s „%s“ with %" PRIu64 " members at %p\n", groups[i].key, groups[i].title, groups[i].population, groups[i].members);
+        purple_debug_info(PLUGIN_NAME, "got group %s „%s“ with %zu members at %p\n", groups[i].key, groups[i].title, groups[i].population, groups[i].members);
         presage_blist_update_chat(purple_connection_get_account(connection), groups[i].key, groups[i].title);
         if (groups[i].members != NULL) {
             presage_handle_members(connection, groups[i].key, groups[i].members, groups[i].population);
