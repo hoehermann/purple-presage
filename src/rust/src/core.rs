@@ -108,6 +108,7 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
     mut command_receiver: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
+    crate::contacts::forward_contacts(account, &mut manager).await;
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("mainloop begins…\n"));
     let messages = manager.receive_messages().await.expect("receive_messages failed");
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("messages ok\n"));
