@@ -352,7 +352,7 @@ pub async fn handle_received<S: presage::store::Store>(
             // this happens in response to manager.request_contacts()
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received contacts\n"));
             crate::contacts::forward_contacts(account, manager).await;
-            crate::contacts::forward_groups(account, manager).await;
+            crate::contacts::forward_groups(account, manager).await; // TODO: find out how to actually request list of groups
         }
         presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
     }
