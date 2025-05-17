@@ -8,22 +8,22 @@ name = "purple_presage_backend"
 path = "src/lib.rs"
 crate-type = ["staticlib"]
 
-# presage needs this, taken from https://github.com/whisperfish/presage/blob/3f55d5f/Cargo.toml
+# presage needs this, taken from https://github.com/whisperfish/presage/blob/d3a7600/Cargo.toml
 [patch.crates-io]
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
 
 [dependencies]
-presage = { git = "https://github.com/whisperfish/presage", rev = "3f55d5f" }
-presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "3f55d5f" }
+presage = { git = "https://github.com/whisperfish/presage", rev = "d3a7600" }
+presage-store-sled = { git = "https://github.com/whisperfish/presage", rev = "d3a7600" }
 mime-sniffer = { git = "https://github.com/kamadorueda/rust-mime-sniffer"}
 mime_guess = "2.0"
 anyhow = "1.0" # TODO: use thiserror = "1.0" instead since presage is depending on it anyway
 chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 #stdint = "0.2" # TODO: find out how to use this for more reliable type widths
-# these are taken from https://github.com/whisperfish/presage/blob/3f55d5f/presage-cli/Cargo.toml
+# these version numbers are taken from https://github.com/whisperfish/presage/blob/d3a7600/presage-cli/Cargo.toml
 futures = "0.3"
-hex = "0.4.3"
-tokio = { version = "1.35", default-features = false, features = ["sync", "time", "rt-multi-thread"] }
+hex = "0.4"
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "io-std", "io-util"] }
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
