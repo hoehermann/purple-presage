@@ -53,7 +53,7 @@ pub async fn get_group_members<C: presage::store::Store + 'static>(
             }];
             message.size = 1;
             message.groups = Box::into_raw(groups.into_boxed_slice()) as *mut crate::bridge_structs::Group;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(message);
         }
         None => {
             let key = hex::encode(key);
@@ -101,7 +101,7 @@ pub async fn forward_groups<C: presage::store::Store + 'static>(
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.size = groups.len();
             message.groups = Box::into_raw(groups.into_boxed_slice()) as *mut crate::bridge_structs::Group;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(message);
         }
     }
 }

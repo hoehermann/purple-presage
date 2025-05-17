@@ -14,7 +14,7 @@ async fn run<C: presage::store::Store + 'static>(
             let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(message);
             Ok(true)
         }
 
@@ -57,7 +57,7 @@ async fn run<C: presage::store::Store + 'static>(
                 }
             }
             // feed the feed-back back into purple
-            crate::bridge::append_message(&msg);
+            crate::bridge::append_message(msg);
             Ok(true)
         }
 
@@ -85,7 +85,7 @@ async fn run<C: presage::store::Store + 'static>(
                         message.who = std::ffi::CString::new(contact.uuid.to_string()).unwrap().into_raw();
                         message.name = if contact.name != "" { std::ffi::CString::new(contact.name).unwrap().into_raw() } else { std::ptr::null_mut() };
                         message.phone_number = contact.phone_number.map_or(std::ptr::null_mut(), |pn| std::ffi::CString::new(pn.to_string()).unwrap().into_raw());
-                        crate::bridge::append_message(&message);
+                        crate::bridge::append_message(message);
                     }
                 },
             }
@@ -200,7 +200,7 @@ async fn link(
                 crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("got URL for QR code\n"));
                 let mut message = crate::bridge_structs::Message::from_account(account);
                 message.qrcode = std::ffi::CString::new(url.to_string()).unwrap().into_raw();
-                crate::bridge::append_message(&message);
+                crate::bridge::append_message(message);
             }
             Err(err) => {
                 crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED, format!("Error linking device: {err:?}"));
@@ -218,7 +218,7 @@ async fn link(
                     let uuid = whoami.aci.to_string(); // TODO: check if there are alternatives to aci
                     let mut message = crate::bridge_structs::Message::from_account(account);
                     message.uuid = std::ffi::CString::new(uuid.to_string()).unwrap().into_raw();
-                    crate::bridge::append_message(&message);
+                    crate::bridge::append_message(message);
 
                     // request contacts now after linking once. requesting again on a subsequent log-in sometimes blocks forever.
                     if let Err(err) = manager.request_contacts().await {
@@ -281,7 +281,7 @@ pub async fn main(
             */
             let mut message = crate::bridge_structs::Message::from_account(account);
             message.connected = 1;
-            crate::bridge::append_message(&message);
+            crate::bridge::append_message(message);
 
             if let Some(mut manager) = login(config_store, account).await {
                 

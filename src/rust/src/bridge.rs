@@ -42,7 +42,7 @@ pub fn append_message(message: crate::bridge_structs::Message) {
 }
 
 pub fn append_receive_message(receive_message: crate::receive::Message) {
-    let message = Message::from_account(receive_message.account);
+    let message = crate::bridge_structs::Message::from_account(receive_message.account);
     unsafe {
         presage_append_message(&message);
     }

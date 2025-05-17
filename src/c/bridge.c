@@ -32,15 +32,18 @@ static int account_exists(PurpleAccount *account)
 
 void free_message(Message * message) {
     // release all the memory
-    presage_rust_free_string(message->qrcode);
-    presage_rust_free_string(message->uuid);
-    presage_rust_free_string(message->who);
-    presage_rust_free_string(message->name);
-    presage_rust_free_string(message->group);
-    presage_rust_free_string(message->body);
+    g_free(message->qrcode);
+    g_free(message->uuid);
+    g_free(message->who);
+    g_free(message->name);
+    if (message->group) {
+        for (int i = 0; i < message->size; i++) {
+            // TODO: release fields in groups
+        }
+    }
+    g_free(message->group);
+    g_free(message->body);
     // message->blob is not released here – it must be released by the xfer callback
-    // TODO: free message->groups here // presage_rust_strfreev(message->members, message->size);
-
 }
 
 /*
@@ -124,6 +127,7 @@ static gboolean process_message(gpointer data) {
  */
 void presage_append_message(const Message *message_rust) {
     Message *message_heap = g_memdup2(message_rust, sizeof *message_rust);
+    // TODO: memdup all fields recursively
     purple_timeout_add(
         0, // schedule for immediate execution
         process_message, // handle message in main thread

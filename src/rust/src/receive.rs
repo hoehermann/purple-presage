@@ -22,6 +22,13 @@ impl Default for Message {
         }
     }
 }
+impl Message {
+    fn clone_with_body(&self, body: String) -> Self {
+        let mut copy = self.clone();
+        copy.body = Some(body);
+        copy
+    }
+}
 
 /*
  * Looks up the title of a group identified by its group master key.
@@ -172,8 +179,7 @@ async fn process_attachments<C: presage::store::Store>(
     let account = message.account;
     for attachment_pointer in attachments {
         let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
-            let mut message = message.clone();
-            message.body = Some("Failed to fetch attachment.".to_string());
+            let mut message = message.clone_with_body("Failed to fetch attachment.".to_string());
             message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
             crate::bridge::append_receive_message(message);
             continue;
@@ -189,12 +195,12 @@ async fn process_attachments<C: presage::store::Store>(
                     Ok(padded) => {
                         let body = padded.trim_end_matches(char::from(0));
                         // TODO: this should be routed through the function that usually handles the text messages
-                        crate::bridge::append_message(&message.clone().into_bridge(Some(body.to_owned())));
+                        crate::bridge::append_receive_message(message.clone_with_body(body.to_owned()));
                     }
                     Err(err) => {
-                        let mut message = message.clone().into_bridge(Some(err.to_string()));
+                        let mut message = message.clone_with_body(format!("Failed to fetch long text message due to {err}"));
                         message.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-                        crate::bridge::append_message(&message);
+                        crate::bridge::append_receive_message(message);
                     }
                 }
             }
