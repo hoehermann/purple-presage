@@ -89,7 +89,6 @@ int presage_send_chat(PurpleConnection *connection, int id, const gchar *message
 
 // contact management
 void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleGroup *group);
-void presage_blist_buddies_all_set_online(PurpleAccount *account);
 PurpleBuddy *presage_blist_update_buddy(PurpleAccount *account, const char *uuid, const char *name);
 void presage_blist_set_online(PurpleAccount *account, PurpleBuddy *buddy);
 void presage_blist_buddies_all_set_online(PurpleAccount *account);
