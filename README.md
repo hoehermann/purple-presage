@@ -70,20 +70,24 @@ These lists are not exhaustive.
 
 ### Linux
 
-#### Dependencies
+#### Install Dependencies
 
-* `libpurple-dev`
-* `libqrencode-dev`
-* `protobuf` (or any other package which provides the `protoc` compiler)
+If your distribution is rolling or very recent, the rust compiler might be recent enough. If not, install rust according to [the rustup instructions](https://www.rust-lang.org/tools/install).
+
+##### Ubuntu and Debian 
+
+    sudo apt install libpurple-dev libqrencode-dev protobuf-compiler
+
+##### Alpine
+
+    doas apk add rust pidgin-dev libqrencode-dev protoc
 
 #### Build
 
-    git clone --recurse-submodules https://github.com/hoehermann/purple-presage
-    mkdir purple-presage/build
-    cd purple-presage/build
-    cmake ..
-    cmake --build .
-    sudo cmake --install .
+    git clone --recurse-submodules https://github.com/hoehermann/purple-presage purple-presage
+    cmake -S purple-presage -B build
+    cmake --build build
+    sudo cmake --install build
 
 ### Windows
 
@@ -105,15 +109,15 @@ Same as Linux build instructions, but may need to modify the configuration:
 
 1. Generate MSBuild project:
 
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" ..
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" -S purple-presage -B build
 
     If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
-        cmake --build .
-        cmake --install . --config Release
-        cmake --build . --target run
+        cmake --build build
+        cmake --install build --config Release
+        cmake --build build --target run
 
 When using the "Debug" configuration, the linker complains about mismatching configurations. The implications of this are unknown.
 
