@@ -122,7 +122,7 @@ struct CGroup {
 }
 
 pub fn append_message(message: Message) {
-    print!("(xx:xx:xx) presage: append_message {message:#?}\n");
+    //print!("(xx:xx:xx) presage: append_message {message:#?}\n");
     let to_cstring = |s: Option<String>| -> Option<std::ffi::CString> { s.map_or(None, |s| std::ffi::CString::new(s).ok()) };
     let get_cstring_ptr = |s: &Option<std::ffi::CString>| {
         if let Some(ss) = s {
@@ -195,7 +195,7 @@ pub fn append_message(message: Message) {
         groups_length: groups_length,
         xfer: message.xfer,
     };
-    print!("(xx:xx:xx) presage: c_message.groups is at {0:p}\n", c_message.groups);
+    //print!("(xx:xx:xx) presage: c_message.groups is at {0:p}\n", c_message.groups);
     unsafe {
         presage_append_message(&c_message);
     }
