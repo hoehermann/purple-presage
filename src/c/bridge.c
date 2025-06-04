@@ -133,8 +133,8 @@ static gboolean process_message(gpointer data) {
  * Yes, this is indeed neccessary – we checked.
  */
 void presage_append_message(const Message *message_rust) {
-    printf("(xx:xx:xx) presage: presage_append_message(…)\n");
-    fflush(stdout);
+    //printf("(xx:xx:xx) presage: presage_append_message(…)\n");
+    //fflush(stdout);
     // create a copy of the message struct on the heap so we can pass it into the main thread
     Message *message_heap = g_memdup2(message_rust, sizeof *message_rust); // this also copies all data of primitive type
     // copy all strings to the heap
@@ -143,14 +143,14 @@ void presage_append_message(const Message *message_rust) {
     message_heap->who = g_strdup(message_rust->who);
     message_heap->name = g_strdup(message_rust->name);
     message_heap->phone_number = g_strdup(message_rust->phone_number);
-    printf("(xx:xx:xx) presage: message_rust->group is at %p\n", message_rust->group);
-    fflush(stdout);
+    //printf("(xx:xx:xx) presage: message_rust->group is at %p\n", message_rust->group);
+    //fflush(stdout);
     message_heap->group = g_strdup(message_rust->group);
     message_heap->body = g_strdup(message_rust->body);
     message_heap->blob = g_memdup2(message_rust->blob, message_rust->blob_length);
     // copy all groups to the heap
-    printf("(xx:xx:xx) presage: message_rust->groups is at %p and has %zu.\n", message_rust->groups, message_rust->groups_length);
-    fflush(stdout);
+    //printf("(xx:xx:xx) presage: message_rust->groups is at %p and has %zu.\n", message_rust->groups, message_rust->groups_length);
+    //fflush(stdout);
     message_heap->groups = g_new(Group, message_rust->groups_length);
     for (int gi = 0; gi < message_heap->groups_length; gi++) {
         // copy all strings to the heap
@@ -159,8 +159,8 @@ void presage_append_message(const Message *message_rust) {
         message_heap->groups[gi].description = g_strdup(message_rust->groups[gi].description);
         message_heap->groups[gi].population = message_rust->groups[gi].population;
         message_heap->groups[gi].members = g_new(char*, message_rust->groups[gi].population);
-        printf("(xx:xx:xx) presage: message_rust->groups[%d].members is at %p and has %zu.\n", gi, message_rust->groups[gi].members, message_heap->groups[gi].population);
-        fflush(stdout);
+        //printf("(xx:xx:xx) presage: message_rust->groups[%d].members is at %p and has %zu.\n", gi, message_rust->groups[gi].members, message_heap->groups[gi].population);
+        //fflush(stdout);
         for (int mi = 0; mi < message_heap->groups[gi].population; mi++) {
             message_heap->groups[gi].members[mi] = g_strdup(message_rust->groups[gi].members[mi]);
         }
