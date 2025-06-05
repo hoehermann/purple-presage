@@ -22,7 +22,7 @@ pub async fn forward_contacts<C: presage::store::Store + 'static>(
                 let message = crate::bridge::Message {
                     account: account,
                     who: Some(uuid.to_string()),
-                    name: if name != "" { Some(name) } else { None },
+                    name: if name.is_empty() { None } else { Some(name) },
                     phone_number: phone_number.map(|pn| pn.to_string()),
                     ..Default::default()
                 };

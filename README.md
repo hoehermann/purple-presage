@@ -41,6 +41,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 #### On Hold
 
+* Fetch contact names from the main device.
 * Mark messages as "read". This is currently not implemented in back-end, see [#141](https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
 * A group chat is only added to the buddy list when receiving a message. There seems to be no way to fetch the list of groups from the main device, see [#303](https://github.com/whisperfish/presage/issues/303).
 * The maximum allowed length of a text-message is unknown.
@@ -61,8 +62,8 @@ These lists are not exhaustive.
 ### Known Issues
 
 * Contacts are fetched from the main device only once after linking.
-* Own name is not transferred to the buddy list and therefore not resolved in group chats.
 * Information about contact names arrive after the first messages.
+* Own name is not transferred to the buddy list and therefore not resolved in group chats.
 * Sometimes, the database cannot be opened due to locking issues.
 * Spectrum support is very flaky. Crashes, infinite loops and silent disconnects may happen. Please keep an eye on your system and check the logs frequently. Issue reports are welcome.
 
