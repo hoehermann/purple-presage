@@ -86,5 +86,7 @@ else()
 endif()
 
 if ("${PURPLE_VERSION}" VERSION_LESS "3.0.0")
-    install(DIRECTORY "pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
+    install(DIRECTORY "assets/pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
 endif()
+
+include(cpack.cmake)
