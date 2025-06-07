@@ -48,6 +48,7 @@ async fn format_data_message<C: presage::store::Store>(
     account: *mut crate::bridge_structs::PurpleAccount,
     thread: &presage::store::Thread,
     data_message: &presage::libsignal_service::content::DataMessage,
+    body_override: Option<String>
 ) -> Option<String> {
     match data_message {
         // Quote
@@ -62,10 +63,10 @@ async fn format_data_message<C: presage::store::Store>(
             body_ranges,
             ..
         } => {
-            let quote = resolve_mentions(quoted_text, quoted_text_ranges);
+            let quote = resolve_mentions(quoted_text.to_owned(), quoted_text_ranges);
             let firstline = quote.split("\n").next().unwrap_or("<message body missing>");
             // TODO: add ellipsis if quoted_text contains more than one line
-            let body = resolve_mentions(body, body_ranges);
+            let body = resolve_mentions(body_override.unwrap_or(body.to_owned()), body_ranges);
             Some(format!("> {firstline}\n\n{body}"))
         }
         // Reaction
@@ -96,7 +97,7 @@ async fn format_data_message<C: presage::store::Store>(
             body: Some(body),
             body_ranges,
             ..
-        } => Some(resolve_mentions(body, body_ranges)),
+        } => Some(resolve_mentions(body_override.unwrap_or(body.to_owned()), body_ranges)),
         // Default (catch all other cases)
         c => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("DataMessage without body {c:?}\n"));
@@ -115,7 +116,7 @@ async fn format_data_message<C: presage::store::Store>(
 // TODO: forward body ranges and let front-end take care of resolving the UUIDs
 // NOTE: keep an eye on PurpleMarkupSpan documented at https://issues.imfreedom.org/issue/PIDGIN-17842
 fn resolve_mentions(
-    body: &String,
+    body: String,
     body_ranges: &Vec<presage::proto::BodyRange>,
 ) -> String {
     let mut body_ranges_iter = body_ranges.into_iter();
@@ -143,31 +144,18 @@ async fn process_attachments<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     message: crate::bridge::Message,
     attachments: &Vec<presage::proto::AttachmentPointer>,
-) {
+) -> Option<String> {
     let account = message.account;
-    for attachment_pointer in attachments {
-        let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
-            crate::bridge::append_message(
-                message
-                    .clone()
-                    .body("Failed to fetch attachment.".to_string())
-                    .flags(crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR),
-            );
-            continue;
-        };
+    let mut bodies = Vec::new();
 
-        match attachment_pointer.content_type.as_deref() {
-            None => {
-                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
-            }
-            Some("text/x-signal-plain") => {
-                // strip trailing null bytes, thanks to https://stackoverflow.com/questions/49406517/how-to-remove-trailing-null-characters-from-string#comment139692696_49406848
-                // TODO: check if stripping the trailing null byte is still necessary now that https://github.com/whisperfish/presage/commit/ab8b3a8 is live
+    for attachment_pointer in attachments {
+        
+        if attachment_pointer.content_type() == "text/x-signal-plain" {
+            // not actually an attachment, just a long text message
+            if let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await {
                 match String::from_utf8(attachment_data) {
-                    Ok(padded) => {
-                        let body = padded.trim_end_matches(char::from(0));
-                        // TODO: this should be routed through the function that usually handles the text messages
-                        crate::bridge::append_message(message.clone().body(body.to_owned()));
+                    Ok(body) => {
+                        bodies.push(body);
                     }
                     Err(err) => {
                         crate::bridge::append_message(
@@ -178,29 +166,60 @@ async fn process_attachments<C: presage::store::Store>(
                         );
                     }
                 }
+            } else {
+                crate::bridge::append_message(
+                    message
+                        .clone()
+                        .body(format!("Some parts of this long text message might be missing."))
+                        .flags(crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR),
+                );
             }
-            Some(mimetype) => {
-                let extension = match mimetype {
-                    // use the most poplular default for some common mimetypes
-                    "image/jpeg" => "jpg",
-                    "image/png" => "png",
-                    "video/mp4" => "mp4",
-                    mimetype => {
-                        let extensions = mime_guess::get_mime_extensions_str(mimetype);
-                        extensions.and_then(|e| e.first()).unwrap_or(&"bin")
-                    }
-                };
-                // TODO: have a user-configurable template for generating the file-name
-                // NOTE: for some conversations, all image come with the same filename
-                let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
-                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                    presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-                };
-                let suffix = attachment_pointer.file_name.clone().unwrap_or_else(|| format!(".{extension}"));
-                let filename = hash + &suffix;
-                crate::bridge::append_message(message.clone().name(filename).attachment(attachment_data));
+        } else {
+
+            // TODO: announce attachment, get data only after user acknowledged
+            let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
+                crate::bridge::append_message(
+                    message
+                        .clone()
+                        .body("Failed to fetch attachment.".to_string())
+                        .flags(crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR),
+                );
+                continue;
+            };
+
+            match attachment_pointer.content_type.as_deref() {
+                None => {
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
+                }
+                Some(mimetype) => {
+                    let extension = match mimetype {
+                        // use the most poplular default for some common mimetypes
+                        "image/jpeg" => "jpg",
+                        "image/png" => "png",
+                        "video/mp4" => "mp4",
+                        mimetype => {
+                            let extensions = mime_guess::get_mime_extensions_str(mimetype);
+                            extensions.and_then(|e| e.first()).unwrap_or(&"bin")
+                        }
+                    };
+                    // TODO: have a user-configurable template for generating the file-name
+                    // NOTE: for some conversations, all images come with the same filename
+                    let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
+                    };
+                    let suffix = attachment_pointer.file_name.clone().unwrap_or_else(|| format!(".{extension}"));
+                    let filename = hash + &suffix;
+                    crate::bridge::append_message(message.clone().name(filename).attachment(attachment_data));
+                }
             }
         }
+    }
+    
+    if bodies.is_empty() {
+        None
+    } else {
+        Some(bodies.join("\n\n"))
     }
 }
 
@@ -209,8 +228,8 @@ async fn process_data_message<C: presage::store::Store>(
     message: crate::bridge::Message,
     data_message: &presage::proto::DataMessage,
 ) -> Option<String> {
-    process_attachments(manager, message.clone(), &data_message.attachments).await;
-    format_data_message(manager, message.account, &message.thread.unwrap(), data_message).await
+    let body= process_attachments(manager, message.clone(), &data_message.attachments).await;
+    format_data_message(manager, message.account, &message.thread.unwrap(), data_message, body).await
 }
 
 async fn process_sent_message<C: presage::store::Store>(
