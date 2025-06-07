@@ -73,9 +73,10 @@ void presage_add_buddy(PurpleConnection *connection, PurpleBuddy *buddy, PurpleG
  * Add group chat to blist. Updates existing group chat if found.
  */
 void presage_blist_update_chat(PurpleAccount *account, const char *identifier, const char *topic) {
+    // purple_blist_find_chat returns NULL if account is not connected
     g_return_if_fail(purple_account_is_connected(account));
-
-    PurpleChat *chat = purple_blist_find_chat(account, identifier); // can only work if chat_info is defined
+    // purple_blist_find_chat can only work if chat_info is defined
+    PurpleChat *chat = purple_blist_find_chat(account, identifier); 
 
     if (chat == NULL) {
         GHashTable *comp = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free); // MEMCHECK: purple_chat_new takes ownership

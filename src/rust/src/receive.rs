@@ -332,7 +332,7 @@ pub async fn handle_received<S: presage::store::Store>(
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
 
             // now that the initial sync has completed, the account can be regarded as "connected" since it is ready to send messages
-            // NOTE: we already told the front-end the account was "connected" earlier because some of libpurple's blist functions do not work on offline accounts
+            // NOTE: we already told the front-end the account was "connected" earlier purple_blist_find_chat do not work on offline accounts
             crate::bridge::append_message(crate::bridge::Message {
                 account: account,
                 connected: 1,
