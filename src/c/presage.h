@@ -43,7 +43,7 @@ typedef struct {
     const PurpleDebugLevel debug;
     const PurpleConnectionError error;
     const int32_t connected;
-    const int32_t padding;
+    const uint32_t attachment_size;
     const uint64_t timestamp;
     const PurpleMessageFlags flags;
     char *who;
@@ -51,8 +51,7 @@ typedef struct {
     char *phone_number;
     char *group;
     char *body;
-    void *blob;
-    size_t blob_length;
+    void *attachment_pointer_box;
     Group *groups;
     size_t groups_length;
     PurpleXfer *xfer;

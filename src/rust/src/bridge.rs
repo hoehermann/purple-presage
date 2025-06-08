@@ -19,7 +19,7 @@ pub struct Message {
     pub phone_number: Option<String>,
     pub group: Option<String>,
     pub body: Option<String>,
-    pub attachment: Option<Vec<u8>>,
+    pub attachment_pointer: Option<presage::proto::AttachmentPointer>,
     pub groups: Vec<crate::bridge::Group>,
     pub xfer: *mut crate::bridge_structs::PurpleXfer,
     pub thread: Option<presage::store::Thread>,
@@ -59,7 +59,7 @@ impl Default for Message {
             name: None,
             group: None,
             body: None,
-            attachment: None,
+            attachment_pointer: None,
             phone_number: None,
             error: -1,
             debug: -1,
@@ -87,11 +87,11 @@ impl Message {
         self.name = Some(name);
         self
     }
-    pub fn attachment(
+    pub fn attachment_pointer(
         mut self,
-        attachment: Vec<u8>,
+        attachment_pointer: presage::proto::AttachmentPointer,
     ) -> Self {
-        self.attachment = Some(attachment);
+        self.attachment_pointer = Some(attachment_pointer);
         self
     }
     pub fn flags(
@@ -139,7 +139,7 @@ pub fn append_message(message: Message) {
     let phone_number = to_cstring(message.phone_number);
     let group = to_cstring(message.group);
     let body = to_cstring(message.body);
-    let blob_length = message.attachment.as_ref().map_or(0, |a| a.len() as usize);
+    let attachment_size = message.attachment_pointer.as_ref().map_or(0, |a| a.size());
     let groups_length = message.groups.len();
     // create a CString for every field for every CGroup
     let groups: Vec<CGroup> = message
@@ -181,7 +181,7 @@ pub fn append_message(message: Message) {
         debug: message.debug,
         error: message.error,
         connected: message.connected,
-        padding: 0,
+        attachment_pointer_box: message.attachment_pointer.map_or(std::ptr::null(), |a| Box::into_raw(Box::new(a)) as *const std::os::raw::c_void),
         timestamp: message.timestamp.unwrap_or(0),
         flags: message.flags,
         who: get_cstring_ptr(&who),
@@ -189,8 +189,7 @@ pub fn append_message(message: Message) {
         phone_number: get_cstring_ptr(&phone_number),
         group: get_cstring_ptr(&group),
         body: get_cstring_ptr(&body),
-        blob: message.attachment.as_ref().map_or(std::ptr::null(), |a| a.as_ptr() as *const std::os::raw::c_void),
-        blob_length: blob_length,
+        attachment_size: attachment_size,
         groups: c_groups.as_ptr(),
         groups_length: groups_length,
         xfer: message.xfer,

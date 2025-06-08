@@ -17,6 +17,10 @@ pub enum Cmd {
     GetProfile {
         uuid: presage::libsignal_service::prelude::Uuid,
     },
+    GetAttachment {
+        filepath: String,
+        attachment_pointer: presage::proto::AttachmentPointer,
+    },
 }
 
 #[derive(Debug, Clone)]

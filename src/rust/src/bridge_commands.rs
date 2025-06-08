@@ -156,3 +156,20 @@ pub unsafe extern "C" fn presage_rust_get_profile(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_get_attachment(
+    account: *mut crate::bridge_structs::PurpleAccount,
+    rt: *mut tokio::runtime::Runtime,
+    tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+    attachment_pointer_box: *mut presage::proto::AttachmentPointer,
+    c_filepath: *const std::os::raw::c_char,
+) {
+    let filepath= std::ffi::CStr::from_ptr(c_filepath).to_str().unwrap();
+    let attachment_pointer = Box::from_raw(attachment_pointer_box);
+    let cmd = crate::structs::Cmd::GetAttachment { 
+        filepath: filepath.to_string(),
+        attachment_pointer: *attachment_pointer
+     };
+    send_cmd(account, rt, tx, cmd);
+}

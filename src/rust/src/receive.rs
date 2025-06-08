@@ -176,17 +176,6 @@ async fn process_attachments<C: presage::store::Store>(
             }
         } else {
 
-            // TODO: announce attachment, get data only after user acknowledged
-            let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await else {
-                crate::bridge::append_message(
-                    message
-                        .clone()
-                        .body("Failed to fetch attachment.".to_string())
-                        .flags(crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR),
-                );
-                continue;
-            };
-
             match attachment_pointer.content_type.as_deref() {
                 None => {
                     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
@@ -208,9 +197,13 @@ async fn process_attachments<C: presage::store::Store>(
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
                     };
-                    let suffix = attachment_pointer.file_name.clone().unwrap_or_else(|| format!(".{extension}"));
-                    let filename = hash + &suffix;
-                    crate::bridge::append_message(message.clone().name(filename).attachment(attachment_data));
+                    let filename = attachment_pointer.file_name(); // TODO: strip extension for consistency
+
+                    crate::bridge::append_message(
+                    message
+                    .clone()
+                    .attachment_pointer(attachment_pointer.clone())
+                    );
                 }
             }
         }
