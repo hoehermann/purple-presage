@@ -38,20 +38,25 @@ jobs:
 
     # NOTE: Ninja does not support specifying an architecture, so I am going with the default which seems to be MSBuild
     # NOTE: CMAKE_GENERATOR_PLATFORM must take WIN32, not x86 because consistency (thanks to https://stackoverflow.com/questions/28350214/#comment121308920_52846043 and https://github.com/microsoft/vcpkg/issues/15465)
-    - name: Configure
-      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Release -DRust_CARGO_TARGET="i686-pc-windows-msvc" -DRust_TOOLCHAIN="stable-i686-pc-windows-msvc" -S . -B build
+    - name: Configure Release
+      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Releaseg -DRust_PROFILE=release -DRust_CARGO_TARGET="i686-pc-windows-msvc" -DRust_TOOLCHAIN="stable-i686-pc-windows-msvc" -S . -B build
 
-    - name: Build
+    - name: Build Release
       run: cmake --build build --config Release
 
-    - name: Strip
-      run: strip -s build/Release/libpresage.dll
+    - name: Strip Release Binary
+      run: |
+        strip -s build/Release/libpresage.dll
+        cp build/Release/libpresage.dll libpresage.dll
 
-    - name: Upload
-      uses: actions/upload-artifact@v4
-      with:
-        path: build/Release/libpresage.dll
-        name: libpresage.dll
+    - name: Configure
+      run: cmake -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DVCPKG_MANIFEST_MODE=OFF -DCMAKE_BUILD_TYPE=Debug -DRust_PROFILE=dev -DRust_CARGO_TARGET="i686-pc-windows-msvc" -DRust_TOOLCHAIN="stable-i686-pc-windows-msvc" -S . -B buildd
+
+    - name: Build Debug
+      run: cmake --build buildd --config Debug
+
+    - name: Rename Debug Binary
+      run: mv buildd/Debug/libpresage.dll libpresaged.dll
 
     - name: Prepare Release Info
       run: |
@@ -64,7 +69,7 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: build/Release/libpresage.dll
+        artifacts: libpresage.dll,libpresaged.dll
         tag: nightly-${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}
         #name: Nightly ${{ github.sha }}
         allowUpdates: true
