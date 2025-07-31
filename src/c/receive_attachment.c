@@ -47,13 +47,13 @@ static void xfer_release(PurpleXfer * xfer) {
 }
 
 static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *group, uint64_t timestamp_ms, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
+    //purple_debug_info(PLUGIN_NAME, "xfer_new(%s, %s, %ld, %lu, %s, %p)…\n", who, group, timestamp_ms, size, filename, attachment_pointer);
     const char *sender = who;
     if (group) {
         sender = group;
     }
     PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, sender);
     purple_xfer_set_filename(xfer, filename);
-    purple_xfer_set_local_filename(xfer, filename); // TODO: find out if this is detrimental to non-automated downloads. this is certainly useful for setting the local filename
     purple_xfer_set_size(xfer, size);
     xfer->data = xfer_data_new(attachment_pointer, who, group, timestamp_ms);
     // NOTE: xfer->message cannot be used for the caption since in purple_xfer_ask_recv message is automatically written to the conversation of the sender, but purple_xfer_ask_recv does not consider the case where the sender is a chat. also purple_xfer_ask_recv disregards the message timestamp
@@ -78,12 +78,13 @@ void presage_handle_attachment(PurpleConnection *connection, const char *who, co
     if (local_path_template && local_path_template[0]) {
         PurpleMessageFlags flags = PURPLE_MESSAGE_RECV; // TODO: actually distinguish direction
         char *local_path = attachment_fill_template(local_path_template, timestamp, hash, filename, extension, group, who, NULL, flags);
-        PurpleXfer * xfer = xfer_new(account, who, group, timestamp, size, local_path, NULL);
+        PurpleXfer * xfer = xfer_new(account, who, group, timestamp, size, NULL, NULL);
+        purple_xfer_set_local_filename(xfer, local_path); // NOTE: when this is set, purple_xfer_request(xfer) will not ask the user for the file destination
         presage_rust_get_attachment(connection, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
         g_free(local_path);
     } else {
         char *filename_full = g_strdup_printf("%s%s%s", hash, filename, extension);
-        PurpleXfer * xfer = xfer_new(account, who, group, timestamp, size, filename, attachment_pointer);
+        PurpleXfer * xfer = xfer_new(account, who, group, timestamp, size, filename_full, attachment_pointer);
         purple_xfer_request(xfer);
         g_free(filename_full);
     }
