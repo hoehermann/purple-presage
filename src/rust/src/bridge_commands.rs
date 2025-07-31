@@ -98,7 +98,7 @@ pub unsafe extern "C" fn presage_rust_send(
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_destination: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
-    xfer: *mut crate::bridge_structs::PurpleXfer,
+    xfer: *const crate::bridge_structs::PurpleXfer,
 ) {
     let destination = std::ffi::CStr::from_ptr(c_destination).to_str().unwrap();
     let d = destination.as_bytes();
@@ -163,13 +163,20 @@ pub unsafe extern "C" fn presage_rust_get_attachment(
     rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     attachment_pointer_box: *mut presage::proto::AttachmentPointer,
-    c_filepath: *const std::os::raw::c_char,
+    xfer: *const crate::bridge_structs::PurpleXfer,
 ) {
-    let filepath= std::ffi::CStr::from_ptr(c_filepath).to_str().unwrap();
     let attachment_pointer = Box::from_raw(attachment_pointer_box);
-    let cmd = crate::structs::Cmd::GetAttachment { 
-        filepath: filepath.to_string(),
-        attachment_pointer: *attachment_pointer
+    let cmd = crate::structs::Cmd::GetAttachment {
+        attachment_pointer: *attachment_pointer,
+        xfer: xfer
      };
     send_cmd(account, rt, tx, cmd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn presage_rust_drop_attachment(
+    attachment_pointer_box: *mut presage::proto::AttachmentPointer,
+) {
+    print!("(xx:xx:xx) presage: presage_rust_drop_attachment({attachment_pointer_box:#?})…\n");
+    drop(Box::from_raw(attachment_pointer_box));
 }

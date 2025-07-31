@@ -20,8 +20,11 @@ pub struct Message {
     pub group: Option<String>,
     pub body: Option<String>,
     pub attachment_pointer: Option<presage::proto::AttachmentPointer>,
+    pub hash: Option<String>,
+    pub filename: Option<String>,
+    pub extension: Option<String>,
     pub groups: Vec<crate::bridge::Group>,
-    pub xfer: *mut crate::bridge_structs::PurpleXfer,
+    pub xfer: *const crate::bridge_structs::PurpleXfer,
     pub thread: Option<presage::store::Thread>,
 }
 #[derive(Clone, Debug)]
@@ -60,6 +63,9 @@ impl Default for Message {
             group: None,
             body: None,
             attachment_pointer: None,
+            hash: None,
+            filename: None,
+            extension: None,
             phone_number: None,
             error: -1,
             debug: -1,
@@ -80,20 +86,6 @@ impl Message {
         self.body = Some(body);
         self
     }
-    pub fn name(
-        mut self,
-        name: String,
-    ) -> Self {
-        self.name = Some(name);
-        self
-    }
-    pub fn attachment_pointer(
-        mut self,
-        attachment_pointer: presage::proto::AttachmentPointer,
-    ) -> Self {
-        self.attachment_pointer = Some(attachment_pointer);
-        self
-    }
     pub fn flags(
         mut self,
         flags: crate::bridge_structs::PurpleMessageFlags,
@@ -109,7 +101,7 @@ extern "C" {
 
     // this is implemented by libpurple's ft.c
     // TODO: automatically generate declaration from ft.h
-    fn purple_xfer_get_local_filename(xfer: *mut crate::bridge_structs::PurpleXfer) -> *const std::os::raw::c_char;
+    fn purple_xfer_get_local_filename(xfer: *const crate::bridge_structs::PurpleXfer) -> *const std::os::raw::c_char;
 }
 
 // I want to forward a Vec of groups to the C part, but the rust-allocated C-compatible CStrings must live somewhere, so we have this intermediate type
@@ -140,6 +132,9 @@ pub fn append_message(message: Message) {
     let group = to_cstring(message.group);
     let body = to_cstring(message.body);
     let attachment_size = message.attachment_pointer.as_ref().map_or(0, |a| a.size());
+    let hash = to_cstring(message.hash);
+    let filename = to_cstring(message.filename);
+    let extension = to_cstring(message.extension);
     let groups_length = message.groups.len();
     // create a CString for every field for every CGroup
     let groups: Vec<CGroup> = message
@@ -182,6 +177,9 @@ pub fn append_message(message: Message) {
         error: message.error,
         connected: message.connected,
         attachment_pointer_box: message.attachment_pointer.map_or(std::ptr::null(), |a| Box::into_raw(Box::new(a)) as *const std::os::raw::c_void),
+        hash: get_cstring_ptr(&hash),
+        filename: get_cstring_ptr(&filename),
+        extension: get_cstring_ptr(&extension),
         timestamp: message.timestamp.unwrap_or(0),
         flags: message.flags,
         who: get_cstring_ptr(&who),
@@ -229,7 +227,7 @@ pub fn purple_debug(
 }
 
 // wrapper around unsafe purple_xfer_get_local_filename
-pub fn xfer_get_local_filename(xfer: *mut crate::bridge_structs::PurpleXfer) -> String {
+pub fn xfer_get_local_filename(xfer: *const crate::bridge_structs::PurpleXfer) -> String {
     unsafe {
         return std::ffi::CStr::from_ptr(purple_xfer_get_local_filename(xfer)).to_str().unwrap().to_owned();
     }

@@ -95,8 +95,8 @@ async fn run<C: presage::store::Store + 'static>(
                 }
                 Ok(true)
             }
-        crate::structs::Cmd::GetAttachment { filepath, attachment_pointer } => {
-            crate::attachment::get_attachment(account, manager, filepath, attachment_pointer).await;
+        crate::structs::Cmd::GetAttachment { attachment_pointer , xfer} => {
+            crate::attachment::get_attachment(account, manager, attachment_pointer, xfer).await;
             Ok(true)
         },
         crate::structs::Cmd::Exit {} => Ok(false),

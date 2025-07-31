@@ -8,7 +8,7 @@ pub enum Cmd {
     Send {
         recipient: Recipient,
         message: Option<String>,
-        xfer: *mut crate::bridge_structs::PurpleXfer,
+        xfer: *const crate::bridge_structs::PurpleXfer,
     },
     ListGroups,
     GetGroupMembers {
@@ -18,8 +18,8 @@ pub enum Cmd {
         uuid: presage::libsignal_service::prelude::Uuid,
     },
     GetAttachment {
-        filepath: String,
         attachment_pointer: presage::proto::AttachmentPointer,
+        xfer: *const crate::bridge_structs::PurpleXfer,
     },
 }
 

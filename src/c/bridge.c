@@ -39,6 +39,9 @@ void free_message(Message * message) {
     g_free(message->phone_number);
     g_free(message->group);
     g_free(message->body);
+    g_free(message->extension);
+    g_free(message->filename);
+    g_free(message->hash);
     // message->blob is not released here – it must be released by the xfer callback
     if (message->groups) {
         for (int gi = 0; gi < message->groups_length; gi++) {
@@ -93,8 +96,8 @@ static void handle_message(Message * message) {
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
     } else if (message->error != -1) {
         purple_connection_error(connection, message->error, message->body);
-    } else if (message->blob != NULL) {
-        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->blob, message->blob_length, message->name);
+    } else if (message->attachment_pointer_box != NULL) {
+        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
     } else if (message->xfer != NULL) {
         presage_handle_xfer(message->xfer, message->flags, message->body);
     } else if (message->body != NULL) {
@@ -133,24 +136,20 @@ static gboolean process_message(gpointer data) {
  * Yes, this is indeed neccessary – we checked.
  */
 void presage_append_message(const Message *message_rust) {
-    //printf("(xx:xx:xx) presage: presage_append_message(…)\n");
-    //fflush(stdout);
     // create a copy of the message struct on the heap so we can pass it into the main thread
-    Message *message_heap = g_memdup2(message_rust, sizeof *message_rust); // this also copies all data of primitive type
+    Message *message_heap = g_memdup2(message_rust, sizeof *message_rust); // this also copies all data of fields with primitive types
     // copy all strings to the heap
     message_heap->qrcode = g_strdup(message_rust->qrcode);
     message_heap->uuid = g_strdup(message_rust->uuid);
     message_heap->who = g_strdup(message_rust->who);
     message_heap->name = g_strdup(message_rust->name);
     message_heap->phone_number = g_strdup(message_rust->phone_number);
-    //printf("(xx:xx:xx) presage: message_rust->group is at %p\n", message_rust->group);
-    //fflush(stdout);
     message_heap->group = g_strdup(message_rust->group);
     message_heap->body = g_strdup(message_rust->body);
-    message_heap->blob = g_memdup2(message_rust->blob, message_rust->blob_length);
+    message_heap->hash = g_strdup(message_rust->hash);
+    message_heap->filename = g_strdup(message_rust->filename);
+    message_heap->extension = g_strdup(message_rust->extension);
     // copy all groups to the heap
-    //printf("(xx:xx:xx) presage: message_rust->groups is at %p and has %zu.\n", message_rust->groups, message_rust->groups_length);
-    //fflush(stdout);
     message_heap->groups = g_new(Group, message_rust->groups_length);
     for (int gi = 0; gi < message_heap->groups_length; gi++) {
         // copy all strings to the heap
@@ -159,8 +158,6 @@ void presage_append_message(const Message *message_rust) {
         message_heap->groups[gi].description = g_strdup(message_rust->groups[gi].description);
         message_heap->groups[gi].population = message_rust->groups[gi].population;
         message_heap->groups[gi].members = g_new(char*, message_rust->groups[gi].population);
-        //printf("(xx:xx:xx) presage: message_rust->groups[%d].members is at %p and has %zu.\n", gi, message_rust->groups[gi].members, message_heap->groups[gi].population);
-        //fflush(stdout);
         for (int mi = 0; mi < message_heap->groups[gi].population; mi++) {
             message_heap->groups[gi].members[mi] = g_strdup(message_rust->groups[gi].members[mi]);
         }

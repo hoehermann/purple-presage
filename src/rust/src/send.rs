@@ -63,7 +63,7 @@ pub async fn send<C: presage::store::Store + 'static>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     recipient: crate::structs::Recipient,
     body: Option<String>,
-    xfer: *mut crate::bridge_structs::PurpleXfer,
+    xfer: *const crate::bridge_structs::PurpleXfer,
 ) -> Result<(), anyhow::Error> {
     // -> Result<(), presage::Error<<C>::Error>>
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;

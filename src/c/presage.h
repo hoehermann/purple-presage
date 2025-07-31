@@ -6,6 +6,7 @@
 #define PLUGIN_NAME "presage"
 
 extern const char * PRESAGE_STARTUP_DELAY_SECONDS_OPTION;
+extern const char * PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION;
 
 // https://github.com/LLNL/lbann/issues/117#issuecomment-334333286
 #define MAKE_STR(x) _MAKE_STR(x)
@@ -15,11 +16,14 @@ extern const char * PRESAGE_STARTUP_DELAY_SECONDS_OPTION;
 // TODO: uint64_t should actually correspond to rust's usize
 typedef struct _RustRuntime * RustRuntimePtr;
 typedef struct _RustChannelTx * RustChannelPtr;
+typedef struct _RustAttachment * RustAttachmentPtr;
 RustRuntimePtr presage_rust_init();
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_whoami(PurpleConnection *, RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(PurpleConnection *, RustRuntimePtr, RustChannelPtr);
 void presage_rust_send(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
+void presage_rust_get_attachment(PurpleConnection *, RustRuntimePtr, RustChannelPtr, RustAttachmentPtr, PurpleXfer *);
+void presage_rust_drop_attachment(RustAttachmentPtr);
 void presage_rust_get_group_members(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_get_profile(PurpleConnection *, RustRuntimePtr, RustChannelPtr, const char *);
 void presage_rust_list_groups(PurpleConnection *, RustRuntimePtr, RustChannelPtr);
@@ -52,6 +56,9 @@ typedef struct {
     char *group;
     char *body;
     void *attachment_pointer_box;
+    char *extension;
+    char *filename;
+    char *hash;
     Group *groups;
     size_t groups_length;
     PurpleXfer *xfer;
@@ -103,7 +110,7 @@ void presage_handle_groups(PurpleConnection *connection, const Group *groups, ui
 PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection);
 
 // attachments
-void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *group, uint64_t timestamp, void *blob, uint64_t blobsize, const char *filename);
+void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *group, uint64_t timestamp, RustAttachmentPtr attachment_pointer_box, uint64_t attachment_size, const char *hash, const char *filename, const char *extension);
 void presage_send_file(PurpleConnection *connection, const gchar *who, const gchar *filename);
 void presage_chat_send_file(PurpleConnection *connection, int id, const char *filename);
 void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error);

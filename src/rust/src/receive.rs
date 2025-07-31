@@ -197,13 +197,16 @@ async fn process_attachments<C: presage::store::Store>(
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
                     };
-                    let filename = attachment_pointer.file_name(); // TODO: strip extension for consistency
+                    
+                    let filename = std::path::Path::new(attachment_pointer.file_name());
 
-                    crate::bridge::append_message(
-                    message
-                    .clone()
-                    .attachment_pointer(attachment_pointer.clone())
-                    );
+                    let mut msg = message.clone();
+                    msg.attachment_pointer = Some(attachment_pointer.clone());
+                    msg.hash = Some(hash);
+                    msg.filename = filename.file_stem().unwrap_or_default().to_str().map(|s|s.to_string());
+                    let ext = filename.extension().map_or(extension,|s|s.to_str().unwrap_or(extension)).to_string();
+                    msg.extension = Some(format!(".{ext}"));
+                    crate::bridge::append_message(msg);
                 }
             }
         }

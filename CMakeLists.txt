@@ -45,6 +45,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/profile.c"
     "src/c/options.c"
     "src/c/presage.h"
+    "src/c/attachment_common.c"
     "src/c/hehoe-purple2and3/purple.h"
 )
 if (${PURPLE_VERSION} VERSION_LESS "3.0.0")

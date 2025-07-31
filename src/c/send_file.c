@@ -36,15 +36,3 @@ void presage_chat_send_file(PurpleConnection *connection, int id, const char *fi
     g_return_if_fail(group != NULL);
     xfer_new(connection, group, PURPLE_CONV_TYPE_CHAT, filename);
 }
-
-void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error) {
-    if (flags & PURPLE_MESSAGE_ERROR) {
-        PurpleAccount *account = purple_xfer_get_account(xfer);
-        const char *destination = purple_xfer_get_remote_user(xfer);
-        purple_xfer_error(purple_xfer_get_type(xfer), account, destination, error); 
-        purple_xfer_cancel_local(xfer);
-    } else {
-        purple_xfer_set_bytes_sent(xfer, purple_xfer_get_size(xfer));
-        purple_xfer_set_completed(xfer, TRUE);
-    }
-}
