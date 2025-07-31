@@ -5,7 +5,6 @@ static void replace_placeholder(gpointer key, gpointer value, gpointer user_data
         char **text = user_data;
         // NOTE: I am not using g_string_replace here since the GLib shipped with win32 Pidgin is ancient
         char *replaced = purple_strreplace(*text, key, value);
-        purple_debug_info("presage", "replace_placeholder(…) replaced is now „%s“\n", replaced);
         g_free(*text);
         *text = replaced;
     }
