@@ -31,7 +31,7 @@ static void show_qrcode(PurpleConnection *connection, const char *qrstring, gcha
         fields,
         "Hide", G_CALLBACK(qrcode_hide), 
         "Cancel", G_CALLBACK(qrcode_cancel),
-        purple_request_cpar_from_account(account),
+        account, NULL, NULL,
         connection);
 }
 

@@ -20,7 +20,7 @@ static void *
 #endif 
 rust_main(void* account) {
     // NOTE: This code is not being run on the main thread. Reading from account here is asking for trouble. Yet I am optimistic that the data will not be moved around while we are reading it.
-    const char *user_dir = purple_config_dir();
+    const char *user_dir = purple_user_dir();
     const char *username = purple_account_get_username(account);
     const int startup_delay_seconds = purple_account_get_int(account, PRESAGE_STARTUP_DELAY_SECONDS_OPTION, 1);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);

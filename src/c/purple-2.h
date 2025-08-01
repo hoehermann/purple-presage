@@ -1,9 +1,8 @@
+/*
+ * This header defines aliases to overcome inconsistencies in purple's naming scheme.
+ */
+
 #pragma once
-
-#define purple_config_dir() purple_user_dir()
-
-// blist
-#define purple_blist_find_buddies purple_find_buddies
 
 // connection
 #define purple_connection_error purple_connection_error_reason
@@ -16,17 +15,8 @@
 #define PURPLE_CONNECTION_STATE_CONNECTING PURPLE_CONNECTING
 #define PURPLE_CONNECTION_STATE_DISCONNECTED PURPLE_DISCONNECTED
 
-// conversation
-#define purple_conversation_find_im_by_name(who, account) purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, account) // neither
-
-// im_conversation
-#define purple_im_conversation_new(account, from) purple_conversation_new(PURPLE_CONV_TYPE_IM, account, from)
-
 // protocol
 #define purple_protocol_got_user_status purple_prpl_got_user_status
-
-// request
-#define purple_request_cpar_from_account(account) account, NULL, NULL
 
 // serv
 #define purple_serv_got_im serv_got_im
@@ -34,8 +24,9 @@
 #define purple_serv_got_alias serv_got_alias
 
 // blist
-#define purple_blist_find_group purple_find_group
 #define purple_blist_find_buddy purple_find_buddy
+#define purple_blist_find_buddies purple_find_buddies
+#define purple_blist_find_group purple_find_group
 #define purple_blist_chat_new purple_chat_new
 
 // xfer

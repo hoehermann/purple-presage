@@ -46,21 +46,8 @@ add_library(${TARGET_NAME} SHARED
     "src/c/options.c"
     "src/c/presage.h"
     "src/c/attachment_common.c"
-    "src/c/hehoe-purple2and3/purple.h"
+    "src/c/init.c"
 )
-if (${PURPLE_VERSION} VERSION_LESS "3.0.0")
-    target_sources(${TARGET_NAME} PRIVATE
-        "src/c/init2.c"
-        "src/c/hehoe-purple2and3/purple-2.h"
-    )
-else()
-    target_sources(${TARGET_NAME} PRIVATE
-        "src/c/init3.c"
-        "src/c/init3.h"
-        "src/c/hehoe-purple2and3/purple-3.c"
-        "src/c/hehoe-purple2and3/purple-3.h"
-    )
-endif()
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
@@ -86,8 +73,6 @@ else()
     install(TARGETS ${TARGET_NAME} DESTINATION "${PURPLE_PLUGIN_DIR}")
 endif()
 
-if ("${PURPLE_VERSION}" VERSION_LESS "3.0.0")
-    install(DIRECTORY "assets/pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
-endif()
+install(DIRECTORY "assets/pixmaps" DESTINATION "${PURPLE_DATA_DIR}" FILES_MATCHING PATTERN "*.png")
 
 include(cpack.cmake)

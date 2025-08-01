@@ -1,6 +1,7 @@
 #pragma once
 
-#include "hehoe-purple2and3/purple.h"
+#include <purple.h>
+#include "purple-2.h"
 #include <stdint.h>
 
 #define PLUGIN_NAME "presage"
