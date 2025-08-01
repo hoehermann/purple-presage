@@ -97,7 +97,7 @@ static void handle_message(Message * message) {
     } else if (message->error != -1) {
         purple_connection_error(connection, message->error, message->body);
     } else if (message->attachment_pointer_box != NULL) {
-        presage_handle_attachment(connection, message->who, message->group, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
+        presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
     } else if (message->xfer != NULL) {
         presage_handle_xfer(message->xfer, message->flags, message->body);
     } else if (message->body != NULL) {

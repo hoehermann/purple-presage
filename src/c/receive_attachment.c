@@ -47,7 +47,6 @@ static void xfer_release(PurpleXfer * xfer) {
 }
 
 static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *chat, uint64_t timestamp_ms, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
-    //purple_debug_info(PLUGIN_NAME, "xfer_new(%s, %s, %ld, %lu, %s, %p)…\n", who, chat, timestamp_ms, size, filename, attachment_pointer);
     const char *sender = who;
     if (chat) {
         sender = chat;
@@ -69,22 +68,50 @@ static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char
     // MEMCHECK NOTE: purple_xfer_unref calls purple_xfer_destroy which MAY call purple_xfer_cancel_local if (purple_xfer_get_status(xfer) == PURPLE_XFER_STATUS_STARTED) which calls cancel_recv and cancel_local
 }
 
-void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, uint64_t timestamp, RustAttachmentPtr attachment_pointer, uint64_t size, const char *hash, const char *filename, const char *extension) {
+static GHashTable * replacement_table_new(const char *sender, const char *chat, PurpleMessageFlags flags, const char *hash, const char *filename, const char *extension) {
+    // in case of direct conversations, the chat field may be unset
+    if (chat == NULL) {
+        chat = sender;
+        sender = ""; // I do not want the sender to appear twice
+    }
+    const char *direction = "";
+    if (flags & PURPLE_MESSAGE_RECV) {
+        direction = "received";
+    }
+    if (flags & PURPLE_MESSAGE_SEND) {
+        direction = "sent";
+    }
+    // this hash table does not release keys since they are static
+    // it does not release values since they are not owned by this function
+    GHashTable *replacements = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+    g_hash_table_insert(replacements, "$direction", (char *)direction);
+    g_hash_table_insert(replacements, "$hash", (char *)hash);
+    g_hash_table_insert(replacements, "$chat", (char *)chat);
+    g_hash_table_insert(replacements, "$sender", (char *)sender);
+    g_hash_table_insert(replacements, "$extension", (char *)extension);
+    g_hash_table_insert(replacements, "$filename", (char *)filename); // NOTE: is is not guaranteed this replacement happens last. weird things could happen if the filename contains a placeholder…
+    return replacements;
+}
+
+/*
+ * This is called when we receive an attachment.
+ */
+void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, uint64_t timestamp_ms, RustAttachmentPtr attachment_pointer, uint64_t size, const char *hash, const char *filename, const char *extension) {
     g_return_if_fail(connection != NULL);
     Presage *presage = purple_connection_get_protocol_data(connection);
     PurpleAccount *account = purple_connection_get_account(connection);
     // local path for auto-downloader
     const char *local_path_template = purple_account_get_string(account, PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION, "");
     if (local_path_template && local_path_template[0]) {
-        PurpleMessageFlags flags = PURPLE_MESSAGE_RECV; // TODO: actually distinguish direction
-        char *local_path = attachment_fill_template(local_path_template, timestamp, hash, filename, extension, chat, who, NULL, flags);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp, size, NULL, NULL);
+        GHashTable * replacements = replacement_table_new(who, chat, flags, hash, filename, extension);
+        char *local_path = attachment_fill_template(local_path_template, replacements, timestamp_ms/1000);
+        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_ms, size, NULL, NULL);
         purple_xfer_set_local_filename(xfer, local_path); // NOTE: when this is set, purple_xfer_request(xfer) will not ask the user for the file destination
         presage_rust_get_attachment(connection, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
         g_free(local_path);
     } else {
         char *filename_full = g_strdup_printf("%s%s%s", hash, filename, extension);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp, size, filename_full, attachment_pointer);
+        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_ms, size, filename_full, attachment_pointer);
         purple_xfer_request(xfer);
         g_free(filename_full);
     }

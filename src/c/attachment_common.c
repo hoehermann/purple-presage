@@ -10,39 +10,11 @@ static void replace_placeholder(gpointer key, gpointer value, gpointer user_data
     }
 }
 
-char * attachment_fill_template(const char *template, time_t timestamp, const char *hash, const char *filename, const char *extension, const char *chat, const char *sender, const char *messageid, PurpleMessageFlags flags) {
-    // in case of direct conversations, the chat field may be unset
-    if (chat == NULL) {
-        chat = sender;
-    }
-    // in case of chats, chat and sender may be different
-    // but in case of direct messages, they are the same
-    // I do not want the sender to appear twice
-    if (purple_strequal(chat, sender)) {
-        sender = "";
-    }
-    const char *direction = "";
-    if (flags & PURPLE_MESSAGE_RECV) {
-        direction = "received";
-    }
-    if (flags & PURPLE_MESSAGE_SEND) {
-        direction = "sent";
-    }
-
-    // this hash table does not release keys since they are static
-    // it does not release values since they are not owned by this function
-    GHashTable *replacements = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+char * attachment_fill_template(const char *template, GHashTable *replacements, time_t timestamp) {
+    // these are the only place-holders which are always available
     // casts necessary to remove const
     g_hash_table_insert(replacements, "$home", (char *)purple_home_dir());
     g_hash_table_insert(replacements, "$purple", (char *)purple_user_dir());
-    g_hash_table_insert(replacements, "$hash", (char *)hash);
-    g_hash_table_insert(replacements, "$direction", (char *)direction);
-    g_hash_table_insert(replacements, "$chat", (char *)chat);
-    g_hash_table_insert(replacements, "$sender", (char *)sender);
-    g_hash_table_insert(replacements, "$messageid", (char *)messageid);
-    g_hash_table_insert(replacements, "$extension", (char *)extension);
-    g_hash_table_insert(replacements, "$filename", (char *)filename); // NOTE: weird things could happen if the filename contains a placeholder…
-
     char *replaced = g_strdup(purple_utf8_strftime(template, localtime(&timestamp)));
     g_hash_table_foreach(replacements, replace_placeholder, &replaced);
     return replaced;
@@ -69,10 +41,12 @@ void create_symlinks_recurse(char *path, char *aliased_path) {
     }
 }
 
-char * attachment_create_symlinks(PurpleAccount *account, const char *template, time_t timestamp, const char *hash, const char *filename, const char *extension, const char *remote, const char *sender, const char *messageid, PurpleMessageFlags flags) {
-    const char *chat_alias = remote;
-    const char *buddy_alias = sender;
-    PurpleBuddy *buddy = purple_find_buddy(account, sender);
+/*
+ * NOTE: This operates on `replacements` destructively.
+ */
+char * attachment_create_symlinks(PurpleAccount *account, const char *template, GHashTable *replacements, const char *chat_key, const char *buddy_key, time_t timestamp) {
+    const char *buddy_alias = g_hash_table_lookup(replacements, buddy_key);
+    PurpleBuddy *buddy = purple_find_buddy(account, buddy_alias);
     if (buddy) {
         const char *alias = purple_buddy_get_alias(buddy);
         // do not use alias if it is NULL, empty or containing directory separator (characters unfit for use in file-system are not checked or escaped)
@@ -80,7 +54,8 @@ char * attachment_create_symlinks(PurpleAccount *account, const char *template, 
             buddy_alias = alias;
         }
     }
-    PurpleChat *chat = purple_blist_find_chat(account, remote);
+    const char *chat_alias = g_hash_table_lookup(replacements, chat_key);
+    PurpleChat *chat = purple_blist_find_chat(account, chat_alias);
     if (chat) {
         const char *alias = purple_chat_get_name(chat);
         // do not use alias if it is NULL, empty or containing directory separator (characters unfit for use in file-system are not checked or escaped)
@@ -88,15 +63,12 @@ char * attachment_create_symlinks(PurpleAccount *account, const char *template, 
             chat_alias = alias;
         }
     }
-    if (purple_strequal(remote, sender)) {
-        // chat is contact (direct message)
-        chat_alias = buddy_alias;
-    } else {
-        // group chat
-    }
+
     // TODO: always store files with their hash, then provide symlink with the filename?
-    char *aliased_path = attachment_fill_template(template, timestamp, hash, filename, extension, chat_alias, buddy_alias, messageid, flags);
-    char *path = attachment_fill_template(template, timestamp, hash, filename, extension, remote, sender, messageid, flags);
+    char *path = attachment_fill_template(template, replacements, timestamp);
+    g_hash_table_insert(replacements, (char *)buddy_key, (char *)buddy_alias);
+    g_hash_table_insert(replacements, (char *)chat_key, (char *)chat_alias);
+    char *aliased_path = attachment_fill_template(template, replacements, timestamp);
     create_symlinks_recurse(path, aliased_path);
     g_free(aliased_path);
     g_free(path);
