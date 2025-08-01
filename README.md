@@ -1,6 +1,8 @@
-A libpurple/Pidgin protocol plugin for Signal (formerly textsecure) using [presage](https://github.com/whisperfish/presage).
+A Pidgin/libpurple protocol plug-in for Signal using [presage](https://github.com/whisperfish/presage).
 
 Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schmiddi](https://github.com/Schmiddiii).
+
+![Screenshot](screenshot.png?raw=true "Screenshot showing the Signal App and a Pidgin conversation window")
 
 ## Download
 
