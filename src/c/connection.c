@@ -12,8 +12,6 @@ static gboolean rust_main_finished(gpointer account) {
     return FALSE; // tell the gtk event loop not to schedule calling this function again
 }
 
-void presage_rust_main(void *, PurpleAccount *, char *); // this is implemented by the rust part
-
 #ifdef WIN32
 #include <windows.h>
 static DWORD WINAPI
@@ -27,7 +25,7 @@ rust_main(void* account) {
     const int startup_delay_seconds = purple_account_get_int(account, PRESAGE_STARTUP_DELAY_SECONDS_OPTION, 1);
     char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
     g_usleep(G_USEC_PER_SEC * startup_delay_seconds); // waiting here for alleviates database locking issues O_o
-    presage_rust_main(rust_runtime, account, store_path);
+    presage_rust_main(account, rust_runtime, store_path);
     g_free(store_path);
     purple_timeout_add(500, rust_main_finished, account); // wait half a second before assessing the termination – there might be messages lingering in the rust → C bridge queue
     return 0;
@@ -65,8 +63,9 @@ void presage_login(PurpleAccount *account) {
 }
 
 void presage_close(PurpleConnection *connection) {
+    PurpleAccount *account = purple_connection_get_account(connection);
     Presage *presage = purple_connection_get_protocol_data(connection);
-    presage_rust_exit(connection, rust_runtime, presage->tx_ptr);
+    presage_rust_exit(account, rust_runtime, presage->tx_ptr);
 }
 
 /*

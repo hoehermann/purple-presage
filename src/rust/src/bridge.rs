@@ -261,8 +261,8 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
  */
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_main(
-    rt: *mut tokio::runtime::Runtime,
     account: *mut crate::bridge_structs::PurpleAccount,
+    rt: *mut tokio::runtime::Runtime,
     c_store_path: *const std::os::raw::c_char,
 ) {
     let store_path = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();

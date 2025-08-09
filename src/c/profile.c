@@ -1,10 +1,11 @@
 #include "presage.h"
 
 void presage_get_info(PurpleConnection *connection, const char *who) {
+    PurpleAccount *account = purple_connection_get_account(connection);
     Presage *presage = purple_connection_get_protocol_data(connection);
     g_free(presage->profile);
     presage->profile = g_strdup(who);
-    presage_rust_get_profile(connection, rust_runtime, presage->tx_ptr, who);
+    presage_rust_get_profile(account, rust_runtime, presage->tx_ptr, who);
 }
 
 void presage_show_info(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number) {

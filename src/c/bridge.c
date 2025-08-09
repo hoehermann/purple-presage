@@ -85,7 +85,7 @@ static void handle_message(Message * message) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
         presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
-        presage_rust_whoami(connection, rust_runtime, presage->tx_ptr);
+        presage_rust_whoami(message->account, rust_runtime, presage->tx_ptr);
     } else if (message->qrcode != NULL) {
         presage_handle_qrcode(connection, message->qrcode);
     } else if (message->uuid != NULL) {

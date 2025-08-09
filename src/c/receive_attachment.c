@@ -32,7 +32,7 @@ static void xfer_init(PurpleXfer *xfer) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     RustAttachmentPtr attachment_pointer = xfer_data->attachment_pointer;
     xfer_data->attachment_pointer = NULL; // the pointer is "consumed" by the rust runtime and must not be released again
-    presage_rust_get_attachment(connection, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
+    presage_rust_get_attachment(account, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
 }
 
 static void xfer_release(PurpleXfer * xfer) {
@@ -107,7 +107,7 @@ void presage_handle_attachment(PurpleConnection *connection, const char *who, co
         char *local_path = attachment_fill_template(local_path_template, replacements, timestamp_ms/1000);
         PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_ms, size, NULL, NULL);
         purple_xfer_set_local_filename(xfer, local_path); // NOTE: when this is set, purple_xfer_request(xfer) will not ask the user for the file destination
-        presage_rust_get_attachment(connection, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
+        presage_rust_get_attachment(account, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
         g_free(local_path);
     } else {
         char *filename_full = g_strdup_printf("%s%s%s", hash, filename, extension);
