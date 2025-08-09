@@ -59,6 +59,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .tooltip_text = presage_tooltip_text,
     .get_info = presage_get_info,
     // group chat related
+    .find_blist_chat = presage_find_blist_chat,
     .set_chat_topic = presage_set_chat_topic,
     .chat_send = presage_send_chat,
     .chat_info = presage_chat_info,

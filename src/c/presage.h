@@ -104,6 +104,7 @@ void presage_get_info(PurpleConnection *connection, const char *who);
 void presage_show_info(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
 
 // group management
+PurpleChat * presage_find_blist_chat(PurpleAccount *account, const char *identifier);
 void presage_set_chat_topic(PurpleConnection *connection, int id, const char *topic);
 GList * presage_chat_info(PurpleConnection *connection);
 void presage_join_chat(PurpleConnection *connection, GHashTable *data);

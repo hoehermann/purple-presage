@@ -282,24 +282,9 @@ pub async fn main(
         }
         Ok(config_store) => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("config store OK\n"));
-
-            /*
-            At this point, we tell the front-end that the account is "connected". We need to do this since purple_blist_find_chat does only work on connected accounts.
-            Also, Spectrum2 allegedly needs the account to be connected else prosody refuses to forward the message with the code string necessary for linking.
-            On Spectrum2, the account must not be marked as connected before the C → rust channel has been set-up since Spectrum2 will start requesting the room list immediately.
-            However, the connection is not fully usable, yet. The presage docs at https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 state:
-            „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
-            */
-            crate::bridge::append_message(crate::bridge::Message {
-                account: account,
-                connected: 1,
-                ..Default::default()
-            });
-
             if let Some(mut manager) = login(config_store, account).await {
                 // Login has succeeded, forward (cached) contacts for bitlbee. It tends to forget them after re-connects.
                 crate::contacts::forward_contacts(account, &mut manager).await;
-
                 mainloop(manager, command_receiver, account).await;
             }
         }

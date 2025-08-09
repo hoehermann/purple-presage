@@ -347,7 +347,9 @@ pub async fn handle_received<S: presage::store::Store>(
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
 
             // now that the initial sync has completed, the account can be regarded as "connected" since it is ready to send messages
-            // NOTE: we already told the front-end the account was "connected" earlier purple_blist_find_chat do not work on offline accounts
+            // see https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 which says:
+            // „As a client, it is heavily recommended to process incoming messages and wait for the Received::QueueEmpty messages before giving the ability for users to send messages.“
+            // NOTE: if an error occurs between login and here, libpurple does not automatically close the connection
             crate::bridge::append_message(crate::bridge::Message {
                 account: account,
                 connected: 1,
