@@ -48,7 +48,7 @@ async fn format_data_message<C: presage::store::Store>(
     account: *mut crate::bridge_structs::PurpleAccount,
     thread: &presage::store::Thread,
     data_message: &presage::libsignal_service::content::DataMessage,
-    body_override: Option<String>
+    body_override: Option<String>,
 ) -> Option<String> {
     match data_message {
         // Quote
@@ -149,7 +149,6 @@ async fn process_attachments<C: presage::store::Store>(
     let mut bodies = Vec::new();
 
     for attachment_pointer in attachments {
-        
         if attachment_pointer.content_type() == "text/x-signal-plain" {
             // not actually an attachment, just a long text message
             if let Ok(attachment_data) = manager.get_attachment(attachment_pointer).await {
@@ -175,7 +174,6 @@ async fn process_attachments<C: presage::store::Store>(
                 );
             }
         } else {
-
             match attachment_pointer.content_type.as_deref() {
                 None => {
                     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
@@ -197,21 +195,21 @@ async fn process_attachments<C: presage::store::Store>(
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
                         presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
                     };
-                    
+
                     let filename = std::path::Path::new(attachment_pointer.file_name());
 
                     let mut msg = message.clone();
                     msg.attachment_pointer = Some(attachment_pointer.clone());
                     msg.hash = Some(hash);
-                    msg.filename = filename.file_stem().unwrap_or_default().to_str().map(|s|s.to_string());
-                    let ext = filename.extension().map_or(extension,|s|s.to_str().unwrap_or(extension)).to_string();
+                    msg.filename = filename.file_stem().unwrap_or_default().to_str().map(|s| s.to_string());
+                    let ext = filename.extension().map_or(extension, |s| s.to_str().unwrap_or(extension)).to_string();
                     msg.extension = Some(format!(".{ext}"));
                     crate::bridge::append_message(msg);
                 }
             }
         }
     }
-    
+
     if bodies.is_empty() {
         None
     } else {
@@ -224,7 +222,7 @@ async fn process_data_message<C: presage::store::Store>(
     message: crate::bridge::Message,
     data_message: &presage::proto::DataMessage,
 ) -> Option<String> {
-    let body= process_attachments(manager, message.clone(), &data_message.attachments).await;
+    let body = process_attachments(manager, message.clone(), &data_message.attachments).await;
     format_data_message(manager, message.account, &message.thread.unwrap(), data_message, body).await
 }
 

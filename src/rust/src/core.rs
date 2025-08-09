@@ -10,95 +10,98 @@ async fn run<C: presage::store::Store + 'static>(
 ) -> Result<bool, presage::Error<<C>::Error>> {
     match subcommand {
         crate::structs::Cmd::Whoami => {
-                        let whoami = manager.whoami().await?;
-                        let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
-                        crate::bridge::append_message(crate::bridge::Message {
-                            account: account,
-                            uuid: Some(uuid.to_string()),
-                            ..Default::default()
-                        });
-                        Ok(true)
-            }
+            let whoami = manager.whoami().await?;
+            let uuid = whoami.aci.to_string(); // TODO: check alternatives to aci
+            crate::bridge::append_message(crate::bridge::Message {
+                account: account,
+                uuid: Some(uuid.to_string()),
+                ..Default::default()
+            });
+            Ok(true)
+        }
         crate::structs::Cmd::Send {
-                recipient,
-                message,
-                xfer,
-            } => {
-                // prepare a PurplePresage message for providing feed-back (send success or error)
-                let mut msg = crate::bridge::Message {
-                    account: account,
-                    timestamp: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
-                    xfer: xfer, // in case of attachments, this is the reference to the respective purple Xfer
-                    ..Default::default()
-                };
-                match recipient {
-                    crate::structs::Recipient::Contact(uuid) => {
-                        msg.who = Some(uuid.to_string());
-                    }
-                    crate::structs::Recipient::Group(master_key) => {
-                        msg.group = Some(hex::encode(master_key));
+            recipient,
+            message,
+            xfer,
+        } => {
+            // prepare a PurplePresage message for providing feed-back (send success or error)
+            let mut msg = crate::bridge::Message {
+                account: account,
+                timestamp: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
+                xfer: xfer, // in case of attachments, this is the reference to the respective purple Xfer
+                ..Default::default()
+            };
+            match recipient {
+                crate::structs::Recipient::Contact(uuid) => {
+                    msg.who = Some(uuid.to_string());
+                }
+                crate::structs::Recipient::Group(master_key) => {
+                    msg.group = Some(hex::encode(master_key));
+                }
+            }
+            // now do the actual sending and error-handling
+            match crate::send::send(&mut manager, recipient, message.clone(), xfer).await {
+                Ok(_) => {
+                    // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
+                    msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_SEND;
+                    if let Some(body) = message {
+                        msg.body = Some(body);
                     }
                 }
-                // now do the actual sending and error-handling
-                match crate::send::send(&mut manager, recipient, message.clone(), xfer).await {
-                    Ok(_) => {
-                        // NOTE: for Spectrum, send-acknowledgements should be PURPLE_MESSAGE_SEND only (without PURPLE_MESSAGE_REMOTE_SEND)
-                        msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_SEND;
-                        if let Some(body) = message {
-                            msg.body = Some(body);
-                        }
-                    }
-                    Err(err) => {
-                        // TODO: remove this purple_debug once handling errors is reasonably well tested
-                        crate::bridge::purple_debug(
-                            account,
-                            crate::bridge_structs::PURPLE_DEBUG_ERROR,
-                            format!("Error „{err}“ occurred while sending a message. The error message should appear in the conversation window.\n"),
-                        );
-                        msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
-                        msg.body = Some(format!("Error: {err}"));
-                    }
-                }
-                // feed the feed-back back into purple
-                crate::bridge::append_message(msg);
-                Ok(true)
-            }
-        crate::structs::Cmd::ListGroups => {
-                crate::contacts::forward_groups(account, &mut manager).await;
-                Ok(true)
-            }
-        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => {
-                crate::contacts::get_group_members(account, manager, master_key_bytes).await?;
-                Ok(true)
-            }
-        crate::structs::Cmd::GetProfile { uuid } => {
-                match manager.store().contact_by_id(&uuid).await {
-                    Err(err) => crate::bridge::purple_debug(
+                Err(err) => {
+                    // TODO: remove this purple_debug once handling errors is reasonably well tested
+                    crate::bridge::purple_debug(
                         account,
                         crate::bridge_structs::PURPLE_DEBUG_ERROR,
-                        format!("Error while looking up contact information for {uuid}: {err}\n"),
-                    ),
-                    Ok(contact) => match contact {
-                        None => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("No contact information available for {uuid}.\n")),
-                        Some(contact) => {
-                            let name = if contact.name.is_empty() { None } else { Some(contact.name) };
-                            let phone_number = contact.phone_number.map(|pn| pn.to_string());
-                            crate::bridge::append_message(crate::bridge::Message {
-                                account: account,
-                                who: Some(contact.uuid.to_string()),
-                                name: name,
-                                phone_number: phone_number,
-                                ..Default::default()
-                            });
-                        }
-                    },
+                        format!("Error „{err}“ occurred while sending a message. The error message should appear in the conversation window.\n"),
+                    );
+                    msg.flags = crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR;
+                    msg.body = Some(format!("Error: {err}"));
                 }
-                Ok(true)
             }
-        crate::structs::Cmd::GetAttachment { attachment_pointer , xfer} => {
+            // feed the feed-back back into purple
+            crate::bridge::append_message(msg);
+            Ok(true)
+        }
+        crate::structs::Cmd::ListGroups => {
+            crate::contacts::forward_groups(account, &mut manager).await;
+            Ok(true)
+        }
+        crate::structs::Cmd::GetGroupMembers { master_key_bytes } => {
+            crate::contacts::get_group_members(account, manager, master_key_bytes).await?;
+            Ok(true)
+        }
+        crate::structs::Cmd::GetProfile { uuid } => {
+            match manager.store().contact_by_id(&uuid).await {
+                Err(err) => crate::bridge::purple_debug(
+                    account,
+                    crate::bridge_structs::PURPLE_DEBUG_ERROR,
+                    format!("Error while looking up contact information for {uuid}: {err}\n"),
+                ),
+                Ok(contact) => match contact {
+                    None => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("No contact information available for {uuid}.\n")),
+                    Some(contact) => {
+                        let name = if contact.name.is_empty() { None } else { Some(contact.name) };
+                        let phone_number = contact.phone_number.map(|pn| pn.to_string());
+                        crate::bridge::append_message(crate::bridge::Message {
+                            account: account,
+                            who: Some(contact.uuid.to_string()),
+                            name: name,
+                            phone_number: phone_number,
+                            ..Default::default()
+                        });
+                    }
+                },
+            }
+            Ok(true)
+        }
+        crate::structs::Cmd::GetAttachment {
+            attachment_pointer,
+            xfer,
+        } => {
             crate::attachment::get_attachment(account, manager, attachment_pointer, xfer).await;
             Ok(true)
-        },
+        }
         crate::structs::Cmd::Exit {} => Ok(false),
     }
 }
