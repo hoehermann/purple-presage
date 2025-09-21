@@ -46,7 +46,7 @@ impl Group {
             title: group.title,
             description: group.description.unwrap_or_default(),
             revision: group.revision,
-            members: group.members.into_iter().map(|member| member.uuid.to_string()).collect(),
+            members: group.members.into_iter().map(|member| member.aci.service_id_string()).collect(),
             // `avatar`, `disappearing_messages_timer`, `access_control`, `pending_members`, `requesting_members`, `invite_link_password`
         }
     }
