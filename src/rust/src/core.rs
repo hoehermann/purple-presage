@@ -163,9 +163,9 @@ pub async fn mainloop<C: presage::store::Store + 'static>(
 }
 
 pub async fn login(
-    config_store: presage_store_sled::SledStore,
+    config_store: presage_store_sqlite::SqliteStore,
     account: *mut crate::bridge_structs::PurpleAccount,
-) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> {
+) -> Option<presage::Manager<presage_store_sqlite::SqliteStore, presage::manager::Registered>> {
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login begins…\n"));
     match presage::Manager::load_registered(config_store.clone()).await {
         Ok(manager) => {
@@ -198,9 +198,9 @@ pub async fn login(
 }
 
 async fn link(
-    config_store: presage_store_sled::SledStore,
+    config_store: presage_store_sqlite::SqliteStore,
     account: *mut crate::bridge_structs::PurpleAccount,
-) -> Option<presage::Manager<presage_store_sled::SledStore, presage::manager::Registered>> {
+) -> Option<presage::Manager<presage_store_sqlite::SqliteStore, presage::manager::Registered>> {
     let device_name = "purple-presage".to_string(); // TODO: use hostname or make user-configurable
     let server = presage::libsignal_service::configuration::SignalServers::Production;
     let (provisioning_link_tx, provisioning_link_rx) = futures::channel::oneshot::channel();
@@ -273,12 +273,7 @@ pub async fn main(
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("opening config database from {store_path}\n"));
-    let config_store = presage_store_sled::SledStore::open_with_passphrase(
-        store_path,
-        passphrase,
-        presage_store_sled::MigrationConflictStrategy::Raise,
-        presage::model::identity::OnNewIdentity::Trust,
-    );
+    let config_store = presage_store_sqlite::SqliteStore::open_with_passphrase(&store_path, passphrase.as_deref(),presage::model::identity::OnNewIdentity::Trust,);
     match config_store.await {
         Err(err) => {
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config store error {err:#?}"));

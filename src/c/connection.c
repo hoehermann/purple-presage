@@ -23,7 +23,7 @@ rust_main(void* account) {
     const char *user_dir = purple_user_dir();
     const char *username = purple_account_get_username(account);
     const int startup_delay_seconds = purple_account_get_int(account, PRESAGE_STARTUP_DELAY_SECONDS_OPTION, 1);
-    char *store_path = g_strdup_printf("%s/presage/%s", user_dir, username);
+    char *store_path = g_strdup_printf("%s/presage/%s.db3", user_dir, username);
     g_usleep(G_USEC_PER_SEC * startup_delay_seconds); // waiting here for alleviates database locking issues O_o
     presage_rust_main(account, rust_runtime, store_path);
     g_free(store_path);
