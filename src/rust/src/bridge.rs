@@ -269,11 +269,11 @@ pub unsafe extern "C" fn presage_rust_main(
 
     // create a channel for asynchronous communication of commands c → rust
     let (tx, rx) = tokio::sync::mpsc::channel(32);
-    // pass the pointer to the channel to the C part
-    // this should be safe as tx lives here and the runtime blocks here, too
+    // put the sender into a box so it can live in the C part
+    let tx_box = Box::new(tx);
     append_message(Message {
         account: account,
-        tx_ptr: &tx as *const tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+        tx_ptr: Box::into_raw(tx_box) as *const tokio::sync::mpsc::Sender<crate::structs::Cmd>,
         ..Default::default()
     }); // let front-end know how to reach us
 

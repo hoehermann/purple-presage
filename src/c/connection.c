@@ -66,6 +66,7 @@ void presage_close(PurpleConnection *connection) {
     PurpleAccount *account = purple_connection_get_account(connection);
     Presage *presage = purple_connection_get_protocol_data(connection);
     presage_rust_exit(account, rust_runtime, presage->tx_ptr);
+    presage->tx_ptr = NULL; // presage_rust_exit drops tx, we must no longer use it
 }
 
 /*
