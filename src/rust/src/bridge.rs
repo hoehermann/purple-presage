@@ -157,7 +157,7 @@ pub fn append_message(message: Message) {
     let c_groups: Vec<crate::bridge_structs::Group> = groups
         .iter()
         .zip(message.groups)
-        .map(|(cg,rg)| crate::bridge_structs::Group {
+        .map(|(cg, rg)| crate::bridge_structs::Group {
             key: get_cstring_ptr(&cg.key),
             title: get_cstring_ptr(&cg.title),
             description: get_cstring_ptr(&cg.description),

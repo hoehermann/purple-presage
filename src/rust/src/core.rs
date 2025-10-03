@@ -273,7 +273,7 @@ pub async fn main(
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("opening config database from {store_path}\n"));
-    let config_store = presage_store_sqlite::SqliteStore::open_with_passphrase(&store_path, passphrase.as_deref(),presage::model::identity::OnNewIdentity::Trust,);
+    let config_store = presage_store_sqlite::SqliteStore::open_with_passphrase(&store_path, passphrase.as_deref(), presage::model::identity::OnNewIdentity::Trust);
     match config_store.await {
         Err(err) => {
             crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("config store error {err:#?}"));

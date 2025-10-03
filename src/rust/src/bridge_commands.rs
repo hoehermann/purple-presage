@@ -165,15 +165,13 @@ pub unsafe extern "C" fn presage_rust_get_attachment(
     let attachment_pointer = Box::from_raw(attachment_pointer_box);
     let cmd = crate::structs::Cmd::GetAttachment {
         attachment_pointer: *attachment_pointer,
-        xfer: xfer
-     };
+        xfer: xfer,
+    };
     send_cmd(account, rt, tx, cmd);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn presage_rust_drop_attachment(
-    attachment_pointer_box: *mut presage::proto::AttachmentPointer,
-) {
+pub unsafe extern "C" fn presage_rust_drop_attachment(attachment_pointer_box: *mut presage::proto::AttachmentPointer) {
     //print!("(xx:xx:xx) presage: presage_rust_drop_attachment({attachment_pointer_box:#?})…\n");
     drop(Box::from_raw(attachment_pointer_box));
 }
