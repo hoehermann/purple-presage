@@ -5,28 +5,20 @@
 pub type PurpleAccount = [u64; 22usize];
 pub const PURPLE_CONNECTION_ERROR_NETWORK_ERROR: PurpleConnectionError = 0;
 pub const PURPLE_CONNECTION_ERROR_INVALID_USERNAME: PurpleConnectionError = 1;
-pub const PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED:
-    PurpleConnectionError = 2;
-pub const PURPLE_CONNECTION_ERROR_AUTHENTICATION_IMPOSSIBLE:
-    PurpleConnectionError = 3;
+pub const PURPLE_CONNECTION_ERROR_AUTHENTICATION_FAILED: PurpleConnectionError = 2;
+pub const PURPLE_CONNECTION_ERROR_AUTHENTICATION_IMPOSSIBLE: PurpleConnectionError = 3;
 pub const PURPLE_CONNECTION_ERROR_NO_SSL_SUPPORT: PurpleConnectionError = 4;
 pub const PURPLE_CONNECTION_ERROR_ENCRYPTION_ERROR: PurpleConnectionError = 5;
 pub const PURPLE_CONNECTION_ERROR_NAME_IN_USE: PurpleConnectionError = 6;
 pub const PURPLE_CONNECTION_ERROR_INVALID_SETTINGS: PurpleConnectionError = 7;
-pub const PURPLE_CONNECTION_ERROR_CERT_NOT_PROVIDED: PurpleConnectionError =
-    8;
+pub const PURPLE_CONNECTION_ERROR_CERT_NOT_PROVIDED: PurpleConnectionError = 8;
 pub const PURPLE_CONNECTION_ERROR_CERT_UNTRUSTED: PurpleConnectionError = 9;
 pub const PURPLE_CONNECTION_ERROR_CERT_EXPIRED: PurpleConnectionError = 10;
-pub const PURPLE_CONNECTION_ERROR_CERT_NOT_ACTIVATED: PurpleConnectionError =
-    11;
-pub const PURPLE_CONNECTION_ERROR_CERT_HOSTNAME_MISMATCH:
-    PurpleConnectionError = 12;
-pub const PURPLE_CONNECTION_ERROR_CERT_FINGERPRINT_MISMATCH:
-    PurpleConnectionError = 13;
-pub const PURPLE_CONNECTION_ERROR_CERT_SELF_SIGNED: PurpleConnectionError =
-    14;
-pub const PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR: PurpleConnectionError =
-    15;
+pub const PURPLE_CONNECTION_ERROR_CERT_NOT_ACTIVATED: PurpleConnectionError = 11;
+pub const PURPLE_CONNECTION_ERROR_CERT_HOSTNAME_MISMATCH: PurpleConnectionError = 12;
+pub const PURPLE_CONNECTION_ERROR_CERT_FINGERPRINT_MISMATCH: PurpleConnectionError = 13;
+pub const PURPLE_CONNECTION_ERROR_CERT_SELF_SIGNED: PurpleConnectionError = 14;
+pub const PURPLE_CONNECTION_ERROR_CERT_OTHER_ERROR: PurpleConnectionError = 15;
 pub const PURPLE_CONNECTION_ERROR_OTHER_ERROR: PurpleConnectionError = 16;
 pub type PurpleConnectionError = ::std::os::raw::c_int;
 impl PurpleMessageFlags {
@@ -80,26 +72,38 @@ impl PurpleMessageFlags {
 impl ::std::ops::BitOr<PurpleMessageFlags> for PurpleMessageFlags {
     type Output = Self;
     #[inline]
-    fn bitor(self, other: Self) -> Self {
+    fn bitor(
+        self,
+        other: Self,
+    ) -> Self {
         PurpleMessageFlags(self.0 | other.0)
     }
 }
 impl ::std::ops::BitOrAssign for PurpleMessageFlags {
     #[inline]
-    fn bitor_assign(&mut self, rhs: PurpleMessageFlags) {
+    fn bitor_assign(
+        &mut self,
+        rhs: PurpleMessageFlags,
+    ) {
         self.0 |= rhs.0;
     }
 }
 impl ::std::ops::BitAnd<PurpleMessageFlags> for PurpleMessageFlags {
     type Output = Self;
     #[inline]
-    fn bitand(self, other: Self) -> Self {
+    fn bitand(
+        self,
+        other: Self,
+    ) -> Self {
         PurpleMessageFlags(self.0 & other.0)
     }
 }
 impl ::std::ops::BitAndAssign for PurpleMessageFlags {
     #[inline]
-    fn bitand_assign(&mut self, rhs: PurpleMessageFlags) {
+    fn bitand_assign(
+        &mut self,
+        rhs: PurpleMessageFlags,
+    ) {
         self.0 &= rhs.0;
     }
 }
