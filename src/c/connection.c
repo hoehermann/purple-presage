@@ -75,7 +75,8 @@ void presage_close(PurpleConnection *connection) {
  * The switch regarding Spectrum is necessary since Spectrum may send commands to the backend 
  * before the backend signals readiness by explicitly setting the account to "connected".
  */
-// TODO: Investigate why this happens, when excactly and on which commands. Then narrow down so not all errors are ignored.
+// TODO: Investigate why this happens, when excactly and on which commands. Then narrow down so not all errors are ignored. It is quite possible that the check regarding presage->error solved the issue.
+// TODO: Maybe we should never call purple_connection_error_reason here, only log for all UIs?
 void presage_account_error(PurpleAccount *account, PurpleConnectionError reason, const char *description) {
     GHashTable *ui_info = purple_core_get_ui_info();
     const gchar *ui_name = g_hash_table_lookup(ui_info, "name");
@@ -83,6 +84,17 @@ void presage_account_error(PurpleAccount *account, PurpleConnectionError reason,
         purple_debug_error(PLUGIN_NAME, "Host application is Spectrum. Error is ignored: %s\n", description);
     } else {
         PurpleConnection *connection = purple_account_get_connection(account);
-        purple_connection_error_reason(connection, reason, description);
+        if (connection != NULL) {
+            Presage *presage = purple_connection_get_protocol_data(connection);
+            if (presage->error == TRUE) {
+                purple_debug_error(PLUGIN_NAME, "Ignoring subsequent error: %s\n", description);
+                // an error has alreade been reported, do not report an error again
+                // this should be covered by the check for connection->disconnect_timeout > 0 in purple_connection_error_reason,
+                // but due to the asynchronous nature of the rust part, errors might come in after the disconnect_timeout has happened
+                // The current connection cannot recover from the error state. It will be destroyed and a new connection can be established.
+            } else {
+                purple_connection_error_reason(connection, reason, description);
+            }
+        }
     }
 }

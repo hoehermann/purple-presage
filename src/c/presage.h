@@ -71,6 +71,7 @@ typedef struct {
     RustChannelPtr tx_ptr;
     PurpleRoomlist *roomlist;
     char *profile;
+    gboolean error;
 } Presage;
 
 // procotol properties
