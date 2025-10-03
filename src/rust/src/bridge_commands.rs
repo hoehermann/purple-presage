@@ -180,6 +180,6 @@ pub unsafe extern "C" fn presage_rust_get_attachment(
 pub unsafe extern "C" fn presage_rust_drop_attachment(
     attachment_pointer_box: *mut presage::proto::AttachmentPointer,
 ) {
-    print!("(xx:xx:xx) presage: presage_rust_drop_attachment({attachment_pointer_box:#?})…\n");
+    //print!("(xx:xx:xx) presage: presage_rust_drop_attachment({attachment_pointer_box:#?})…\n");
     drop(Box::from_raw(attachment_pointer_box));
 }
