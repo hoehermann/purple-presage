@@ -46,7 +46,7 @@ async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
 async fn format_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
-    thread: &presage::store::Thread,
+    maybe_thread: Option<presage::store::Thread>,
     data_message: &presage::libsignal_service::content::DataMessage,
     body_override: Option<String>,
 ) -> Option<String> {
@@ -79,17 +79,21 @@ async fn format_data_message<C: presage::store::Store>(
                 }),
             ..
         } => {
-            match lookup_message_body_by_timestamp(manager, thread, *timestamp).await {
-                None => {
-                    let sent_at =
-                        chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
-                    Some(format!("Reacted with {emoji} to message from {sent_at}."))
+            if let Some(thread) = maybe_thread {
+                match lookup_message_body_by_timestamp(manager, &thread, *timestamp).await {
+                    None => {
+                        let sent_at =
+                            chrono::prelude::DateTime::<chrono::Local>::from(std::time::UNIX_EPOCH + std::time::Duration::from_millis(*timestamp)).format("%Y-%m-%d %H:%M:%S");
+                        Some(format!("Reacted with {emoji} to message from {sent_at}."))
+                    }
+                    Some(body) => {
+                        let firstline = body.split("\n").next().unwrap_or("<message body missing>");
+                        // TODO: add ellipsis if body contains more than one line
+                        Some(format!("Reacted with {emoji} to message „{firstline}“."))
+                    }
                 }
-                Some(body) => {
-                    let firstline = body.split("\n").next().unwrap_or("<message body missing>");
-                    // TODO: add ellipsis if body contains more than one line
-                    Some(format!("Reacted with {emoji} to message „{firstline}“."))
-                }
+            } else {
+                Some(format!("Reacted with {emoji} to unknown message (history not available for this conversation)."))
             }
         }
         // Plain text message
@@ -223,7 +227,7 @@ async fn process_data_message<C: presage::store::Store>(
     data_message: &presage::proto::DataMessage,
 ) -> Option<String> {
     let body = process_attachments(manager, message.clone(), &data_message.attachments).await;
-    format_data_message(manager, message.account, &message.thread.unwrap(), data_message, body).await
+    format_data_message(manager, message.account, message.thread, data_message, body).await
 }
 
 async fn process_sent_message<C: presage::store::Store>(
@@ -302,29 +306,37 @@ async fn process_incoming_message<C: presage::store::Store>(
     content: &presage::libsignal_service::content::Content,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
-    // TODO: check where thread is actually needed and look it up conditionally?
-    let Ok(thread) = presage::store::Thread::try_from(content) else {
-        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, String::from("failed to find conversation"));
-        return;
-    };
     let mut message = crate::bridge::Message {
         account: account,
+        timestamp: Some(content.metadata.timestamp),
         ..Default::default()
     };
-    match thread {
-        presage::store::Thread::Contact(uuid) => {
-            message.who = Some(uuid.to_string());
+    // TODO: check where thread is actually needed and look it up conditionally?
+    // That would mean handling the metadata for determining source/destination/sender/recipient ourselves.
+    match presage::store::Thread::try_from(content) {
+        Ok(thread) => {
+            match thread {
+                presage::store::Thread::Contact(uuid) => {
+                    message.who = Some(uuid.to_string());
+                }
+                presage::store::Thread::Group(key) => {
+                    message.who = Some(content.metadata.sender.raw_uuid().to_string());
+                    message.group = Some(hex::encode(key));
+                    message.name = Some(format_group(key, manager).await);
+                }
+            }
+            message.thread = Some(thread);
         }
-        presage::store::Thread::Group(key) => {
-            // TODO: check if this who works for sync messages
-            message.who = Some(content.metadata.sender.raw_uuid().to_string());
-            message.group = Some(hex::encode(key));
-            message.name = Some(format_group(key, manager).await);
+        Err(err) => {
+            crate::bridge::purple_debug(
+                account,
+                crate::bridge_structs::PURPLE_DEBUG_ERROR,
+                format!("Unable to find conversation thread due to {err:?} for {content:?}.\n"),
+            );
+            message.who = Some("00000000-0000-0000-0000-000000000000".to_string());
+            message.name = Some("unknown contact – do not reply".to_owned());
         }
-    }
-    message.thread = Some(thread);
-    message.timestamp = Some(content.metadata.timestamp);
-
+    };
     match &content.body {
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => process_sync_message(manager, message, sync_message).await,
         _ => {

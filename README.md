@@ -76,13 +76,14 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Receive stickers, mentions, styles, contact,…
 * Display typing notifications
 * Display receipts (not important)
-* Support for alternative host applications (Bitlbee)
+* Support for alternative host applications (Bitlbee, Spectrum)
 * Support for adding contact via phone number
 
 These lists are not exhaustive.
 
 ### Known Issues
 
+* When using the main device to send a message to a new contact for the first time, the plug-in does not know the contact yet.
 * Contacts are fetched from the main device only once after linking.
 * Information about contact names arrive after the first messages.
 * Own name is not transferred to the buddy list and therefore not resolved in group chats.
