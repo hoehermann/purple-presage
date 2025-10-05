@@ -20,6 +20,26 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * `startup-delay-seconds` int  
   Tells the plug-in to wait the specified amount of seconds (default: 1) between spawning the native thread for the rust runtime and actually starting the rust runtime. This magically alleviates database locking issues.
 
+* `attachment-path-template` string  
+  This is a template for specifying a path to a local file-name. Setting this to a non-empty value will enable the automated downloader which stores attachments immediately, completely bypassing libpurple's file transfer mechanism. This can be useful for message bridges with limited resources. Also it can help with maintaining the order of messages. Sub-directories will be created as needed.
+
+  Default value is the empty string.
+
+  The template is passed through `strftime` and accepts time and date format parameters such as `%Y-%m-%d_%H:%M:%S`. The result may not be longer than 128 bytes! Then the replacements are done:
+
+    * `$home`: User directory (same as `~`).
+    * `$purple`: Purple configuration directory (usually `~/.purple`).
+    * `$direction`: Whether this attachment was "received" (sent by a contact) or "sent" (other device on the own account).
+    * `$chat`: The UUID of the contact or key group chat this attachment has been posted to.
+    * `$sender`: The UUID of the contact who posted this attachment to the group chat. Empty if not posted in a group chat.
+    * `$hash`: The file's SHA256 (useful for avoiding clashes and for de-duplication).
+    * `$filename`: The sender-supplied file-name (only for Document messages, otherwise empty). Does not contain the extension.
+    * `$extension`: A file-name extension fitting the mime-type. Includes the dot.
+
+  Example: `$purple/presage/attachments/$chat/$filename$hash$extension`
+
+  There is no shell expansion (`~` will not become the home directory). Relative paths are resolved to the application's working directory. Using an absolute path is recommended.
+
 ## Features
 
 ### Present
