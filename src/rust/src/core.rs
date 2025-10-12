@@ -184,6 +184,23 @@ pub async fn login(
                 presage::libsignal_service::push_service::ServiceError::Unauthorized => {
                     return link(config_store, account).await;
                 }
+                // Handle specific HTTP timeout error – by ChatGPT
+                presage::libsignal_service::push_service::ServiceError::Http(ref http_err) => {
+                    // Check if the error is a timeout
+                    if let Some(source) = std::error::Error::source(&http_err) {
+                        // Try to downcast to a timeout error type
+                        if source.downcast_ref::<std::io::Error>().map_or(false, |io_err| io_err.kind() == std::io::ErrorKind::TimedOut) {
+                            crate::bridge::purple_error(
+                                account,
+                                crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR,
+                                format!("Network timeout while logging in: {http_err:?}"),
+                            );
+                            return None;
+                        }
+                    }
+                    // Fallback for other HTTP errors
+                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login ServiceError {http_err:?}"));
+                }
                 _ => {
                     crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login ServiceError {err:?}"));
                 }
