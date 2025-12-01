@@ -160,5 +160,7 @@ void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char*
                 */
             }
         }
+        
+        purple_xfer_end(xfer);
     }
 }

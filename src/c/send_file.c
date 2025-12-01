@@ -1,15 +1,17 @@
 #include "presage.h"
 
-static void xfer_start_fnc(PurpleXfer *xfer) {
+static void presage_xfer_send_init(PurpleXfer *xfer) {
+    /*
+    this function deliberately does not call purple_xfer_start 
+    since purple_xfer_start calls begin_transfer 
+    and begin_transfer g_fopens the file to be sent
+    but in our implementation the file is handled by the rust back-end exclusively
+    */
+    purple_xfer_set_status(xfer, PURPLE_XFER_STATUS_STARTED); // this is all we need from purple_xfer_start(…)
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
     Presage *presage = purple_connection_get_protocol_data(connection);
     presage_rust_send(account, rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
-}
-
-static void presage_xfer_send_init(PurpleXfer *xfer) {
-    purple_xfer_set_start_fnc(xfer, xfer_start_fnc);
-    purple_xfer_start(xfer, -1, NULL, 0);
 }
 
 void xfer_new(PurpleConnection *connection, const char *destination, intptr_t destination_type, const char *filename) {
