@@ -6,8 +6,15 @@ static void presage_xfer_send_init(PurpleXfer *xfer) {
     since purple_xfer_start calls begin_transfer 
     and begin_transfer g_fopens the file to be sent
     but in our implementation the file is handled by the rust back-end exclusively
+    
+    the next two lines are taken from purple_xfer_set_status 
+    since we want to mark the transfer as started
+    without calling purple_xfer_start
+    but purple_xfer_set_status is static
     */
-    purple_xfer_set_status(xfer, PURPLE_XFER_STATUS_STARTED); // this is all we need from purple_xfer_start(…)
+    xfer->status = PURPLE_XFER_STATUS_STARTED;
+    purple_signal_emit(purple_xfers_get_handle(), "file-send-start", xfer);
+    
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
     Presage *presage = purple_connection_get_protocol_data(connection);
