@@ -1,2 +1,7 @@
-build
+build/
 src/rust/target/
+src/c/*.o
+src/c/*.a
+*.so
+.vscode
+ignore/
