@@ -199,11 +199,18 @@ pub async fn login(
                             );
                             return None;
                         }
-                        if source.downcast_ref::<reqwest::Error>().map_or(false, |reqwest_err| reqwest_err.source().map_or(false, |source| source.downcast_ref::<hyper_util::client::legacy::Error>().map_or(false, |client_error| client_error.is_connect()))) {
+                        let is_connect_error = source
+                            .downcast_ref::<reqwest::Error>()
+                            .and_then(|e| e.source())
+                            .and_then(|s| s.downcast_ref::<hyper_util::client::legacy::Error>())
+                            .and_then(|e| e.source())
+                            .and_then(|s| s.downcast_ref::<std::io::Error>())
+                            .is_some_and(|io| io.kind() == std::io::ErrorKind::TimedOut);
+                        if is_connect_error {
                             crate::bridge::purple_error(
                                 account,
                                 crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR,
-                                format!("Client connect error while logging in: {http_err:?}"),
+                                format!("Client timed out while logging in: {http_err:?}"),
                             );
                             return None;
                         }
