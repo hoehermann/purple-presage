@@ -1,0 +1,102 @@
+name: Windows
+
+on:
+  push:
+    branches: [windows-gnu]
+
+permissions:
+  packages: write # necessary for vcpkg cache
+
+jobs:
+
+  build:
+    runs-on: windows-2022
+    
+    steps:
+    - uses: actions/checkout@v5
+
+    # steps that download stuff are mentioned early since downloads may time out or rate-limit
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
+    # we are going to need a bunch of tools, so set-up MSYS2 early
+    - name: Install x86 GCC in MSYS2
+      run: C:\msys64\usr\bin\pacman.exe --sync --needed --noconfirm mingw-w64-i686-gcc mingw-w64-i686-make mingw-w64-i686-pkgconf mingw-w64-i686-jq
+
+    # MSYS2 mingw32 must be added to path before rust since rust's libwinpthread.dll is older and may cause cc to fail
+    - name: Add MSYS2 mingw32 to PATH
+      run: |
+        echo "C:\msys64\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+    - name: Setup Dependencies Cache
+      uses: actions/cache@v5
+      id: cache
+      with:
+        path: |
+          gtk+-bundle_2.16.6-20100912_win32.zip
+          pidgin-2.14.14-win32-bin.zip
+          pidgin-2.14.14.tar.bz2
+          vcpkg/installed
+        key: windows-2026-01-05_1
+
+    - name: gtk
+      run: |
+        curl.exe -L --skip-existing -o gtk+-bundle_2.16.6-20100912_win32.zip https://download.gnome.org/binaries/win32/gtk+/2.16/gtk+-bundle_2.16.6-20100912_win32.zip
+        Expand-Archive gtk+-bundle_2.16.6-20100912_win32.zip -DestinationPath gtk
+
+    - name: Pidgin
+      run: |
+        curl.exe -L --skip-existing -o pidgin-2.14.14-win32-bin.zip http://prdownloads.sourceforge.net/pidgin/pidgin-2.14.14-win32-bin.zip
+        Expand-Archive pidgin-2.14.14-win32-bin.zip -DestinationPath .
+        curl.exe -L --skip-existing -o pidgin-2.14.14.tar.bz2 http://prdownloads.sourceforge.net/pidgin/pidgin-2.14.14.tar.bz2
+        
+    - name: Extract Sources
+      uses: ihiroky/extract-action@v1
+      with:
+        file_path: pidgin-2.14.14.tar.bz2
+    
+    - name: Install Rust Toolchain
+      run: |
+        rustup toolchain install stable-i686-pc-windows-gnu --profile minimal
+        rustup default stable-i686-pc-windows-gnu
+    
+    - name: Enable Rust Cache # maybe this helps with build times
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "src/rust"
+
+    - name: vcpkg
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: johnwason/vcpkg-action@v6
+      with:
+        pkgs: libqrencode openssl
+        triplet: x86-mingw-static
+        token: ${{ github.token }}
+
+    - name: make
+      run: |
+        #TODO: use ${{ github.workspace }} instead of $PWD
+        $PWDforward = $PWD.Path.Replace("\","/")
+        $env:PKG_CONFIG_PATH = "${{ github.workspace }}/vcpkg/installed/x86-mingw-static/lib/pkgconfig;"+$PWDforward+"/gtk/lib/pkgconfig;"+$PWDforward
+        # glib comes with .pc files, but their prefix is wrong and is adjusted here
+        # purple depends on glib so the adjustment would happen for the glib .pc file as well as the purple .pc file although they are in different locations
+        # note how the decoy purple .pc file does not use the prefix variable and therefore is unaffected by the re-definition
+        $env:PKG_CONFIG_PURPLE_ARGS = "--define-variable=prefix="+$PWDforward+"/gtk"
+        $env:OPENSSL_DIR = "${{ github.workspace }}/vcpkg/installed/x86-mingw-static"
+        # overriding RUST_LIBS since the output of `cargo rustc -- --print native-static-libs` has been unreliable
+        $env:RUST_LIBS = "-lntdll -luserenv -lbcrypt -lcrypto -lcrypt32 -lws2_32"
+        # it looks like the rust part needs libpthread for whatever reason, and the linker enables -lphread by default and links against libwinpthread-1.dll,
+        # but I do not want to ship another dll, so I force linking against the static variant – even though pthread_once is not directly available
+        $env:RUST_LIBS = $env:RUST_LIBS+" -no-pthread -Wl,--defsym,pthread_once=_pthread_once -l:libwinpthread.a"
+        make
+        cp libpresage.dll libpresage-debug.dll
+        strip --strip-all libpresage.dll
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v6
+      with: 
+        path: |
+            libpresage.dll
+            libpresage-debug.dll
+        name: libpresage
