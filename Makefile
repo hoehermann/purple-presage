@@ -6,15 +6,15 @@ ifeq ($(OS),Windows_NT)
     SUFFIX := dll
 endif
 
-libpresage.$(SUFFIX): src/c/purple-presage.a src/rust/target/i686-pc-windows-gnu/debug/libpurple_presage_backend.a Makefile
-	$(CC) -shared -o $@ -Wl,--whole-archive src/c/purple-presage.a -Wl,--no-whole-archive src/rust/target/i686-pc-windows-gnu/debug/libpurple_presage_backend.a $(LDFLAGS)
+libpresage.$(SUFFIX): src/c/purple-presage.a src/rust/target/debug/libpurple_presage_backend.a Makefile
+	$(CC) -shared -o $@ -static-libgcc -Wl,--whole-archive src/c/purple-presage.a -Wl,--no-whole-archive src/rust/target/debug/libpurple_presage_backend.a $(LDFLAGS)
 
-.PHONY: clean src/c/purple-presage.a src/rust/target/i686-pc-windows-gnu/debug/libpurple_presage_backend.a
+.PHONY: clean src/c/purple-presage.a src/rust/target/debug/libpurple_presage_backend.a
 
 src/c/purple-presage.a:
 	$(MAKE) -C src/c
 
-src/rust/target/i686-pc-windows-gnu/debug/libpurple_presage_backend.a:
+src/rust/target/debug/libpurple_presage_backend.a:
 	$(MAKE) -C src/rust
 
 PLUGINDIR ?= $(shell pkg-config purple --variable=plugindir)
