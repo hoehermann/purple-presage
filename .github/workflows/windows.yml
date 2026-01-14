@@ -2,10 +2,11 @@ name: Windows
 
 on:
   push:
-    branches: [windows-gnu]
+    branches: [master]
 
 permissions:
   packages: write # necessary for vcpkg cache
+  contents: write # This is required to create/push the new git tag as well as the release
 
 jobs:
 
@@ -93,10 +94,21 @@ jobs:
         cp libpresage.dll libpresage-debug.dll
         strip --strip-all libpresage.dll
 
-    - name: Upload Binary
-      uses: actions/upload-artifact@v6
-      with: 
-        path: |
+    - name: Prepare Release Info
+      run: |
+        $COMMIT_DATE = (git log -1 --date=format:'%Y%m%d' --format='%ad')
+        echo "COMMIT_DATE=$COMMIT_DATE" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        [string](Get-Content "src\rust\Cargo.toml") -match 'presage = [^}]+rev = \"([a-f0-9]+)\"' | Out-Null
+        $PRESAGE_REVISION = $matches[1]
+        echo "PRESAGE_REVISION=$PRESAGE_REVISION" | Out-File -FilePath $Env:GITHUB_ENV -Append
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: |
             libpresage.dll
             libpresage-debug.dll
-        name: libpresage
+        tag: nightly-${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        makeLatest: true
