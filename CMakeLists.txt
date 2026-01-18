@@ -27,7 +27,22 @@ corrosion_add_target_rustflags(purple_presage_backend "-C target-feature=+crt-st
 
 # obtain version string from back-end metadata
 execute_process(COMMAND ${Rust_CARGO_CACHED} metadata --format-version 1 --no-deps --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml OUTPUT_VARIABLE BACKEND_METADATA)
-string(JSON PLUGIN_VERSION GET ${BACKEND_METADATA} packages 0 version)
+string(JSON BACKEND_VERSION GET ${BACKEND_METADATA} packages 0 version)
+string(JSON BACKEND_DEPENDENCIES GET ${BACKEND_METADATA} packages 0 dependencies)
+execute_process(COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log -1 --date=format:%Y%m%d --format=%ad OUTPUT_VARIABLE COMMIT_DATE OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} rev-list --count HEAD OUTPUT_VARIABLE REVISION_COUNT OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+string(JSON DEPENDENCY_COUNT LENGTH "${BACKEND_DEPENDENCIES}")
+math(EXPR DEPENDENCY_COUNT "${DEPENDENCY_COUNT}-1")
+foreach(i RANGE ${DEPENDENCY_COUNT})
+  string(JSON BACKEND_DEPENDENCY GET "${BACKEND_DEPENDENCIES}" ${i})
+  string(JSON BACKEND_DEPENDENCY_NAME GET "${BACKEND_DEPENDENCY}" "name")
+  if("${BACKEND_DEPENDENCY_NAME}" STREQUAL "presage")
+    string(JSON PRESAGE_SOURCE GET "${BACKEND_DEPENDENCY}" "source")
+    string(REGEX MATCH "[^=]+$" PRESAGE_COMMIT "${PRESAGE_SOURCE}")
+  endif()
+endforeach()
+set(PLUGIN_VERSION "${BACKEND_VERSION}_${COMMIT_DATE}_${REVISION_COUNT}_${PRESAGE_COMMIT}" CACHE STRING "Plug-In Version")
 message(STATUS "PLUGIN_VERSION: ${PLUGIN_VERSION}")
 
 set(TARGET_NAME "presage")
@@ -54,13 +69,13 @@ target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
     add_dependencies(${TARGET_NAME} libpurple_lib)
     target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
+    set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
 else()
     target_link_libraries(purple_presage_backend INTERFACE crypto m ${TARGET_NAME})
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
     # gcc_s util rt pthread m dl c
 endif()
 set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
-set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
 
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
 target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS})
