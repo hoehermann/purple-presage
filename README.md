@@ -115,19 +115,27 @@ If your distribution is rolling or very recent, the rust compiler might be recen
 
 ### Windows
 
-purple-presage is known to compile with MSVC 19.30 and rust 1.75. You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+#### MSYS2 GNU Toolchain
 
-#### Dependencies
+Look into the Github Action [windows.yml](.github/workflows/windows.yml) to see how to build.
+
+#### MSVC Toolchain
+
+purple-presage is known to compile with MSVC 19.30 and rust 1.87. You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+
+##### Dependencies
 
 Install dependencies via vcpkg:
 
-    vcpkg.exe install libqrencode:x86-windows-static
+    vcpkg.exe install --triplet x86-windows-static libqrencode openssl
+
+openssl is required by a libsqlite3/sqlcipher crate somewhere deep in the dependency tree of presage.
 
 protoc needs to be in your PATH. You can install it with any method you like, including vcpkg:
 
     vcpkg.exe install protobuf
 
-#### Build
+##### Build
 
 Same as Linux build instructions, but may need to modify the configuration:
 
@@ -135,7 +143,7 @@ Same as Linux build instructions, but may need to modify the configuration:
 
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" -S purple-presage -B build
 
-    If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.75-i686-pc-windows-msvc"`.
+    If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.87-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
@@ -145,8 +153,6 @@ Same as Linux build instructions, but may need to modify the configuration:
 
 When using the "Debug" configuration, the linker complains about mismatching configurations. The implications of this are unknown.
 
-#### Notes
+##### Notes
 
-On Windows, purple-presage must be built with MSVC. gcc (via MinGW or MSYS2) has a number of issues such as [incompatibility with recent rustc versions](https://github.com/rust-lang/rust/issues/112368) and not shipping libbcrypt by default.
-
-Needs a whooping 6 GB of disk space during build! 😳
+Needs a whooping 6 GB of disk space during build! 😳 And, depending on the amount of concurrenty, several gigabytes of RAM, too.
