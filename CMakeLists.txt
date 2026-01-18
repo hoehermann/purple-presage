@@ -15,12 +15,16 @@ message(STATUS "PURPLE_VERSION: ${PURPLE_VERSION}")
 find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h)
 find_library(QRENCODE_LIBRARIES qrencode)
 
+find_package(OpenSSL REQUIRED)
+cmake_path(GET OPENSSL_INCLUDE_DIR PARENT_PATH OPENSSL_DIR)
+
 include(FetchContent)
 FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
 FetchContent_MakeAvailable(Corrosion)
 set(Rust_PROFILE "release" CACHE STRING "Rust profile")
 set_property(CACHE Rust_PROFILE PROPERTY STRINGS "dev" "release")
 corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
+corrosion_set_env_vars(purple_presage_backend OPENSSL_DIR=${OPENSSL_DIR})
 corrosion_add_target_rustflags(purple_presage_backend "-C target-feature=+crt-static")
 # https://stackoverflow.com/questions/31770604/how-to-generate-statically-linked-executables
 # maybe also look at https://github.com/chrisdenton/static_vcruntime
@@ -68,7 +72,7 @@ target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
     add_dependencies(${TARGET_NAME} libpurple_lib)
-    target_link_libraries(${TARGET_NAME} PRIVATE ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
+    target_link_libraries(${TARGET_NAME} PRIVATE OpenSSL::Crypto ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
     set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
 else()
     target_link_libraries(purple_presage_backend INTERFACE crypto m ${TARGET_NAME})
