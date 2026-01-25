@@ -66,7 +66,11 @@ static void handle_message(Message * message) {
 
     if (message->debug != -1) {
         // log messages do not need an active connection
-        purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
+        time_t mtime = time(NULL);
+        const char *mdate = purple_utf8_strftime("%H:%M:%S", localtime(&mtime));
+        char *msg = g_strdup_printf("(%s) %s", mdate, message->body);
+        purple_debug(message->debug, PLUGIN_NAME, "%s", msg);
+        g_free(msg);
         free_message(message);
         return;
     }
