@@ -1,5 +1,3 @@
-use std::error::Error;
-
 /*
  * Runs a command.
  *
@@ -305,7 +303,20 @@ pub async fn main(
     passphrase: Option<String>,
     command_receiver: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *mut crate::bridge_structs::PurpleAccount,
-) {
+) {    
+    if let Some(dir) = std::path::Path::new(&store_path).parent() {
+        if !dir.exists() {
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Directory „{dir:?}“ does not exist. Creating…\n"));
+            if let Err(err) = std::fs::create_dir_all(dir) {
+                crate::bridge::purple_error(
+                    account,
+                    crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
+                    format!("Failed to create directory {dir:?}: {err}"),
+                );
+                return;
+            }
+        }
+    }
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("opening config database from {store_path}\n"));
     let config_store = presage_store_sqlite::SqliteStore::open_with_passphrase(&store_path, passphrase.as_deref(), presage::model::identity::OnNewIdentity::Trust);
     match config_store.await {
