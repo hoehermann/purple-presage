@@ -312,7 +312,11 @@ pub async fn main(
         if !dir.exists() {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Directory „{dir:?}“ does not exist. Creating…\n"));
             if let Err(err) = std::fs::create_dir_all(dir) {
-                crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("Failed to create directory {dir:?}: {err}"));
+                crate::bridge::purple_error(
+                    account,
+                    crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
+                    format!("Failed to create directory {dir:?}: {err}"),
+                );
                 return;
             }
         }
