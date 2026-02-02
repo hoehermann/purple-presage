@@ -47,7 +47,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Can link as secondary device via QR-Code.
 * Receives a simple text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
-* Receives attachments. Special handling for long text messages.
+* Receives stickers and attachments in general. Special handling for long text messages.
 * Can send a simple text message. 
 * Can send an attachment.
 * Will add buddies to contact list unconditionally.
@@ -73,7 +73,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Configuration option whether to add contacts to buddy list or not
 * Use the hostname (or a user-defined string) as a device name
 * Reasonable generation of C headers and rust constants
-* Receive stickers, mentions, styles, contact,…
+* Properly process mentions, styles, contact,…
 * Display typing notifications
 * Display receipts (not important)
 * Support for alternative host applications (Bitlbee, Spectrum)
