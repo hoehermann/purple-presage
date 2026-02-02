@@ -42,6 +42,9 @@ async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
  * Turns a DataMessage into a string for presentation via libpurple.
  *
  * Adapted from presage-cli.
+ *
+ * For long message, the message text body is not actually contained in the DataMessage, but delivered as an attachment.
+ * In this case, the attachment is downloaded first and overrides the body of the DataMessage since that is only a preview.
  */
 async fn format_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
@@ -286,11 +289,15 @@ async fn process_received_message<C: presage::store::Store>(
             None
         }
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some("is calling!".to_string()),
+        presage::libsignal_service::content::ContentBody::EditMessage(presage::proto::EditMessage {
+            data_message: Some(data_message),
+            ..
+        }) => process_data_message(manager, message.clone(), &data_message).await,
         // TODO: forward these properly
         presage::libsignal_service::content::ContentBody::TypingMessage(_) => None, // TODO Some(Msg::Received(&thread, "is typing...".into())), // too annyoing for now. also does not differentiate between "started typing" and "stopped typing"
         presage::libsignal_service::content::ContentBody::ReceiptMessage(_) => None, // TODO Some(Msg::Received(&thread, "received a message.".into())), // works, but too annyoing for now
-        presage::libsignal_service::content::ContentBody::EditMessage(_) => None,    // TODO
         c => {
+            // catch-all for everything else
             crate::bridge::purple_debug(message.account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("Unsupported message {c:?}\n"));
             None
         }
