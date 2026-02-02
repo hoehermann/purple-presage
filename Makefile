@@ -19,7 +19,7 @@ src/rust/target/debug/libpurple_presage_backend.a:
 
 PLUGINDIR ?= $(shell pkg-config purple --variable=plugindir)
 
-install: libpresage.$(SUFFIX)
+install:
 	install -m 755 libpresage.so "$(PLUGINDIR)"
 
 clean:
