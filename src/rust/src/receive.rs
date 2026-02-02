@@ -152,7 +152,6 @@ async fn process_attachments<C: presage::store::Store>(
     message: crate::bridge::Message,
     attachments: &Vec<presage::proto::AttachmentPointer>,
 ) -> Option<String> {
-    let account = message.account;
     let mut bodies = Vec::new();
 
     for attachment_pointer in attachments {
@@ -181,39 +180,7 @@ async fn process_attachments<C: presage::store::Store>(
                 );
             }
         } else {
-            match attachment_pointer.content_type.as_deref() {
-                None => {
-                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
-                }
-                Some(mimetype) => {
-                    let extension = match mimetype {
-                        // use the most poplular default for some common mimetypes
-                        "image/jpeg" => "jpg",
-                        "image/png" => "png",
-                        "video/mp4" => "mp4",
-                        mimetype => {
-                            let extensions = mime_guess::get_mime_extensions_str(mimetype);
-                            extensions.and_then(|e| e.first()).unwrap_or(&"bin")
-                        }
-                    };
-                    // TODO: have a user-configurable template for generating the file-name
-                    // NOTE: for some conversations, all images come with the same filename
-                    let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
-                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
-                        presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
-                    };
-
-                    let filename = std::path::Path::new(attachment_pointer.file_name());
-
-                    let mut msg = message.clone();
-                    msg.attachment_pointer = Some(attachment_pointer.clone());
-                    msg.hash = Some(hash);
-                    msg.filename = filename.file_stem().unwrap_or_default().to_str().map(|s| s.to_string());
-                    let ext = filename.extension().map_or(extension, |s| s.to_str().unwrap_or(extension)).to_string();
-                    msg.extension = Some(format!(".{ext}"));
-                    crate::bridge::append_message(msg);
-                }
-            }
+            process_non_text_attachment(attachment_pointer, message.clone());
         }
     }
 
@@ -224,12 +191,57 @@ async fn process_attachments<C: presage::store::Store>(
     }
 }
 
+fn process_non_text_attachment(
+    attachment_pointer: &presage::proto::AttachmentPointer,
+    mut message: crate::bridge::Message
+) {
+    match attachment_pointer.content_type.as_deref() {
+        None => {
+            crate::bridge::purple_debug(message.account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Received attachment without content type.\n"));
+        }
+        Some(mimetype) => {
+            let extension = match mimetype {
+                // use the most poplular default for some common mimetypes
+                "image/jpeg" => "jpg",
+                "image/png" => "png",
+                "video/mp4" => "mp4",
+                mimetype => {
+                    let extensions = mime_guess::get_mime_extensions_str(mimetype);
+                    extensions.and_then(|e| e.first()).unwrap_or(&"bin")
+                }
+            };
+            // TODO: have a user-configurable template for generating the file-name
+            // NOTE: for some conversations, all images come with the same filename
+            let hash = match attachment_pointer.attachment_identifier.clone().unwrap() {
+                presage::proto::attachment_pointer::AttachmentIdentifier::CdnId(id) => id.to_string(),
+                presage::proto::attachment_pointer::AttachmentIdentifier::CdnKey(key) => key,
+            };
+
+            let filename = std::path::Path::new(attachment_pointer.file_name());
+
+            message.attachment_pointer = Some(attachment_pointer.clone());
+            message.hash = Some(hash);
+            message.filename = filename.file_stem().unwrap_or_default().to_str().map(|s| s.to_string());
+            let ext = filename.extension().map_or(extension, |s| s.to_str().unwrap_or(extension)).to_string();
+            message.extension = Some(format!(".{ext}"));
+            crate::bridge::append_message(message);
+        }
+    }
+}
+
 async fn process_data_message<C: presage::store::Store>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     message: crate::bridge::Message,
     data_message: &presage::proto::DataMessage,
 ) -> Option<String> {
-    let body = process_attachments(manager, message.clone(), &data_message.attachments).await;
+    // download attachment (which might contain the message body)
+    let mut body = process_attachments(manager, message.clone(), &data_message.attachments).await;
+    if let Some(sticker) = &data_message.sticker {
+        body = sticker.emoji.clone().or(body);
+        if let Some(attachment) = &sticker.data {
+            process_non_text_attachment(attachment, message.clone());
+        }
+    }
     format_data_message(manager, message.account, message.thread, data_message, body).await
 }
 
