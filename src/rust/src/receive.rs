@@ -278,7 +278,12 @@ async fn process_received_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::NullMessage(_) => Some("Null message (for example deleted)".to_string()),
         presage::libsignal_service::content::ContentBody::DataMessage(data_message) => process_data_message(manager, message.clone(), data_message).await,
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(_) => {
-            panic!("SynchronizeMessage ended up in process_received_message!")
+            crate::bridge::purple_error(
+                message.account,
+                crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
+                "SynchronizeMessage ended up in process_received_message!".to_string(),
+            );
+            None
         }
         presage::libsignal_service::content::ContentBody::CallMessage(_) => Some("is calling!".to_string()),
         // TODO: forward these properly
