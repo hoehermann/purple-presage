@@ -1,6 +1,5 @@
-PKG_CONFIG ?= pkg-config
 RUST_LIBS ?= $(shell cd src/rust/ && cargo rustc -- --print native-static-libs 2>&1 | grep -Po '(?<=native-static-libs:).+')
-LDFLAGS ?= $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell $(PKG_CONFIG) --libs libqrencode) $(RUST_LIBS)
+LDFLAGS ?= $(shell pkg-config --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell pkg-config --libs libqrencode gdk-pixbuf-2.0) $(RUST_LIBS)
 
 SUFFIX := so
 ifeq ($(OS),Windows_NT)
@@ -18,8 +17,8 @@ src/c/purple-presage.a:
 src/rust/target/debug/libpurple_presage_backend.a:
 	$(MAKE) -C src/rust
 
-PLUGIN_DIR ?= $(shell $(PKG_CONFIG) purple --variable=plugindir)
-DATA_ROOT_DIR ?= $(shell $(PKG_CONFIG) purple --variable=datarootdir)
+PLUGIN_DIR ?= $(shell pkg-config purple --variable=plugindir)
+DATA_ROOT_DIR ?= $(shell pkg-config purple --variable=datarootdir)
 DIR_PERM = 0755
 FILE_PERM = 0644
 PIXMAP_SIZES = 16 22 48 64 512
