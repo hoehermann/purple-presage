@@ -99,6 +99,16 @@ async fn format_data_message<C: presage::store::Store>(
                 Some(format!("Reacted with {emoji} to unknown message (history not available for this conversation)."))
             }
         }
+        // Sticker emoji (the sticker itself has already been handled like an attachment)
+        presage::libsignal_service::content::DataMessage {
+            sticker: Some(presage::proto::data_message::Sticker {
+                emoji,
+                ..
+            }),
+            ..
+        } => {
+            emoji.clone()
+        }
         // Plain text message
         presage::libsignal_service::content::DataMessage {
             body: Some(body),
@@ -234,15 +244,14 @@ async fn process_data_message<C: presage::store::Store>(
     message: crate::bridge::Message,
     data_message: &presage::proto::DataMessage,
 ) -> Option<String> {
-    // download attachment (which might contain the message body)
-    let mut body = process_attachments(manager, message.clone(), &data_message.attachments).await;
+    // download sticker if present
     if let Some(sticker) = &data_message.sticker {
-        body = body.or(sticker.emoji.clone());
-        print!("(xx:xx:xx) presage: rust process_data_message(…) body is „{body:?}“ due to sticker.\n");
         if let Some(attachment) = &sticker.data {
             process_non_text_attachment(attachment, message.clone());
         }
     }
+    // download attachment (which – for long text messages – might contain the actual message body while the data message contains only a preview)
+    let body = process_attachments(manager, message.clone(), &data_message.attachments).await;
     format_data_message(manager, message.account, message.thread, data_message, body).await
 }
 
