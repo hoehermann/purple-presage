@@ -101,14 +101,9 @@ async fn format_data_message<C: presage::store::Store>(
         }
         // Sticker emoji (the sticker itself has already been handled like an attachment)
         presage::libsignal_service::content::DataMessage {
-            sticker: Some(presage::proto::data_message::Sticker {
-                emoji,
-                ..
-            }),
+            sticker: Some(presage::proto::data_message::Sticker { emoji, .. }),
             ..
-        } => {
-            emoji.clone()
-        }
+        } => emoji.clone(),
         // Plain text message
         presage::libsignal_service::content::DataMessage {
             body: Some(body),
@@ -203,7 +198,7 @@ async fn process_attachments<C: presage::store::Store>(
 
 fn process_non_text_attachment(
     attachment_pointer: &presage::proto::AttachmentPointer,
-    mut message: crate::bridge::Message
+    mut message: crate::bridge::Message,
 ) {
     match attachment_pointer.content_type.as_deref() {
         None => {
