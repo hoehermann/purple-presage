@@ -237,7 +237,8 @@ async fn process_data_message<C: presage::store::Store>(
     // download attachment (which might contain the message body)
     let mut body = process_attachments(manager, message.clone(), &data_message.attachments).await;
     if let Some(sticker) = &data_message.sticker {
-        body = sticker.emoji.clone().or(body);
+        body = body.or(sticker.emoji.clone());
+        print!("(xx:xx:xx) presage: rust process_data_message(…) body is „{body:?}“ due to sticker.\n");
         if let Some(attachment) = &sticker.data {
             process_non_text_attachment(attachment, message.clone());
         }

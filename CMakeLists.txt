@@ -18,6 +18,11 @@ find_library(QRENCODE_LIBRARIES qrencode)
 find_package(OpenSSL REQUIRED)
 cmake_path(GET OPENSSL_INCLUDE_DIR PARENT_PATH OPENSSL_DIR)
 
+find_package(PkgConfig QUIET)
+if (${PKG_CONFIG_FOUND})
+    pkg_check_modules(PIXBUF gdk-pixbuf-2.0)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git)
 FetchContent_MakeAvailable(Corrosion)
@@ -66,6 +71,7 @@ add_library(${TARGET_NAME} SHARED
     "src/c/presage.h"
     "src/c/attachment_common.c"
     "src/c/init.c"
+    "src/c/pixbuf.c"
 )
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
@@ -82,8 +88,8 @@ endif()
 set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
 
 target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
-target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS})
-target_link_libraries(${TARGET_NAME} PRIVATE ${PURPLE_LIBRARIES})
+target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS} ${PIXBUF_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} PRIVATE ${PURPLE_LIBRARIES} ${PIXBUF_LIBRARIES})
 set_target_properties(${TARGET_NAME} PROPERTIES PREFIX "lib")
 
 if (WIN32)

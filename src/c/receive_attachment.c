@@ -1,5 +1,6 @@
 #include "presage.h"
 #include "attachment_common.h"
+#include "pixbuf.h"
 
 struct _XferData {
     RustAttachmentPtr attachment_pointer;
@@ -94,7 +95,7 @@ static GHashTable * replacement_table_new(const char *sender, const char *chat, 
 }
 
 /*
- * This is called when we receive an attachment.
+ * This is called when a message comes with an attachment we might want to receive.
  */
 void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, uint64_t timestamp_ms, RustAttachmentPtr attachment_pointer, uint64_t size, const char *hash, const char *filename, const char *extension) {
     g_return_if_fail(connection != NULL);
@@ -117,14 +118,34 @@ void presage_handle_attachment(PurpleConnection *connection, const char *who, co
     }
 }
 
+// TODO: move this into attachment_common and share with whatsmeow plug-in
+static void presage_display_image_inline(PurpleXfer *xfer, PurpleMessageFlags flags, const char* mimetype) {
+    if (pixbuf_is_loadable_image_mimetype(mimetype)) {
+        const char *local_file_path = purple_xfer_get_local_filename(xfer);
+        gchar *data = NULL;
+        size_t len;
+        GError *err = NULL;
+        if (g_file_get_contents(local_file_path, &data, &len, &err)) {
+            int img_id = purple_imgstore_add_with_id(data, len, NULL); // MEMCHECK: released by purple_imgstore_unref_by_id (see below)
+            if (img_id > 0) {
+                gchar * text = g_strdup_printf("<img id=\"%u\"/>", img_id); // MEMCHECK: released here
+                XferData *xfer_data = xfer->data;
+                presage_display_text(purple_account_get_connection(purple_xfer_get_account(xfer)), xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_ms, text);
+                g_free(text);
+                purple_imgstore_unref_by_id(img_id); // we are no longer interested in the image data – the UI will keep a reference
+            }
+        }
+    }
+}
+
 /*
- * This gets called when a transfer finishes.
+ * This gets called when a transfer finishes (in happy and non-happy ways).
  *
  * Conveniently, the base-line mechanism is the same for all xfers regardless of direction (upload/download).
  * 
  * In case of automated downloads, the link to the stored file is written to the respective conversation window.
  */
-void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error) {
+void presage_handle_xfer_end(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error, const char* mimetype) {
     //purple_debug_info(PLUGIN_NAME, "presage_handle_xfer(…)…\n");
     PurpleAccount *account = purple_xfer_get_account(xfer);
     if (flags & PURPLE_MESSAGE_ERROR) {
@@ -133,10 +154,8 @@ void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char*
         purple_xfer_cancel_local(xfer);
         //gowhatsapp_display_text_message(gwamsg->account, gwamsg->senderJid, gwamsg->remoteJid, error, gwamsg->timestamp, gwamsg->isGroup, gwamsg->isOutgoing, gwamsg->name, PURPLE_MESSAGE_ERROR, gwamsg->messageId, TRUE);
     } else {
-        purple_xfer_set_bytes_sent(xfer, purple_xfer_get_size(xfer));
-        purple_xfer_set_completed(xfer, TRUE);
-        
         if (purple_xfer_get_type(xfer) == PURPLE_XFER_RECEIVE) {
+            presage_display_image_inline(xfer, flags, mimetype);
             const char *local_path_template = purple_account_get_string(account, PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION, "");
             if (local_path_template && local_path_template[0]) {
                 #ifndef WIN32
@@ -160,7 +179,8 @@ void presage_handle_xfer(PurpleXfer *xfer, PurpleMessageFlags flags, const char*
                 */
             }
         }
-        
+        purple_xfer_set_bytes_sent(xfer, purple_xfer_get_size(xfer));
+        purple_xfer_set_completed(xfer, TRUE);
         purple_xfer_end(xfer);
     }
 }

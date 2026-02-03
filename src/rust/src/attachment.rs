@@ -17,6 +17,7 @@ pub async fn get_attachment<C: presage::store::Store + 'static>(
                         crate::bridge::append_message(crate::bridge::Message {
                             account: account,
                             xfer: xfer,
+                            mimetype: attachment_pointer.content_type,
                             ..Default::default() // implies default for message flag which is not an error
                         });
                     }

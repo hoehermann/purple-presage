@@ -103,7 +103,7 @@ static void handle_message(Message * message) {
     } else if (message->attachment_pointer_box != NULL) {
         presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
     } else if (message->xfer != NULL) {
-        presage_handle_xfer(message->xfer, message->flags, message->body);
+        presage_handle_xfer_end(message->xfer, message->flags, message->body, message->mimetype);
     } else if (message->body != NULL) {
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
@@ -153,6 +153,7 @@ void presage_append_message(const Message *message_rust) {
     message_heap->hash = g_strdup(message_rust->hash);
     message_heap->filename = g_strdup(message_rust->filename);
     message_heap->extension = g_strdup(message_rust->extension);
+    message_heap->mimetype = g_strdup(message_rust->mimetype);
     // copy all groups to the heap
     message_heap->groups = g_new(Group, message_rust->groups_length);
     for (int gi = 0; gi < message_heap->groups_length; gi++) {

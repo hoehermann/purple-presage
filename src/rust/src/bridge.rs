@@ -23,6 +23,7 @@ pub struct Message {
     pub hash: Option<String>,
     pub filename: Option<String>,
     pub extension: Option<String>,
+    pub mimetype: Option<String>,
     pub groups: Vec<crate::bridge::Group>,
     pub xfer: *const crate::bridge_structs::PurpleXfer,
     pub thread: Option<presage::store::Thread>,
@@ -66,6 +67,7 @@ impl Default for Message {
             hash: None,
             filename: None,
             extension: None,
+            mimetype: None,
             phone_number: None,
             error: -1,
             debug: -1,
@@ -135,6 +137,7 @@ pub fn append_message(message: Message) {
     let hash = to_cstring(message.hash);
     let filename = to_cstring(message.filename);
     let extension = to_cstring(message.extension);
+    let mimetype = to_cstring(message.mimetype);
     let groups_length = message.groups.len();
     // create a CString for every field for every CGroup
     let groups: Vec<CGroup> = message
@@ -180,6 +183,7 @@ pub fn append_message(message: Message) {
         hash: get_cstring_ptr(&hash),
         filename: get_cstring_ptr(&filename),
         extension: get_cstring_ptr(&extension),
+        mimetype: get_cstring_ptr(&mimetype),
         timestamp: message.timestamp.unwrap_or(0),
         flags: message.flags,
         who: get_cstring_ptr(&who),
