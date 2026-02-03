@@ -107,56 +107,33 @@ async fn run<C: presage::store::Store + 'static>(
 }
 
 /*
- * Retrieves both: Commands from the command channel and messages from the receiver.
+ * Retrieves commands from the command channel and delegates work to `run`, but catches the errors for forwarding to the front-end.
  *
- * Delegates work to `run`, but catches the errors for forwarding to the front-end.
- *
- * Based on presage-cli's main loop and flare's manager thread.
+ * Based on presage-cli's main loop.
  */
-pub async fn mainloop<C: presage::store::Store + 'static>(
-    mut manager: presage::Manager<C, presage::manager::Registered>,
+pub async fn command_loop<C: presage::store::Store + 'static>(
+    manager: presage::Manager<C, presage::manager::Registered>,
     mut command_receiver: tokio::sync::mpsc::Receiver<crate::structs::Cmd>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("mainloop begins…\n"));
-    let messages = manager.receive_messages().await.expect("receive_messages failed");
-    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("messages ok\n"));
-
-    futures::pin_mut!(messages);
     let mut keep_running = true;
     while keep_running {
-        tokio::select! {
-            maybe_cmd = command_receiver.recv() => {
-                match maybe_cmd {
-                    Some(cmd) =>  {
-                        match run(cmd, manager.clone(), account).await {
-                            Ok(keep_running_commands) => {
-                                keep_running = keep_running_commands;
-                            },
-                            Err(err) => {
-                                crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
-                            },
-                        }
+        match command_receiver.recv().await {
+            Some(cmd) =>  {
+                match run(cmd, manager.clone(), account).await {
+                    Ok(keep_running_commands) => {
+                        keep_running = keep_running_commands;
                     },
-                    None => {
-                        // this should never happen
-                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Command channel disrupted."));
-                        keep_running = false;
-                    }
+                    Err(err) => {
+                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
+                    },
                 }
             },
-            maybe_received = futures::StreamExt::next(&mut messages) => {
-                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {maybe_received:?}\n"));
-                match maybe_received {
-                    Some(received) => crate::receive::handle_received(&mut manager, account, received).await,
-                    None => {
-                        // this happens when the main device unlinks this device
-                        // this also happens spuriously, perhaps due to network issues
-                        // re-connecting is a good idea in either case, so we forward a network error to purple
-                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
-                        keep_running = false;
-                    }
-                }
+            None => {
+                // this should never happen
+                crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Command channel disrupted."));
+                keep_running = false;
             }
         }
     }
@@ -296,6 +273,31 @@ async fn link(
 }
 
 /*
+ * Opens the stream of incoming messages and receives them one by one.
+ *
+ * Based on presage-cli's receive.
+ */
+async fn receive<S: presage::store::Store>(
+    mut manager: presage::Manager<S, presage::manager::Registered>,
+    account: *mut crate::bridge_structs::PurpleAccount,
+) -> anyhow::Result<()> {
+    let messages = manager.receive_messages().await.expect("receive_messages failed"); // I have never seen this fail, having expect here looks acceptable
+    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("message stream open. stand by while catching up…\n"));
+
+    futures::pin_mut!(messages);
+    while let Some(received) = futures::StreamExt::next(&mut messages).await {
+        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
+        crate::receive::handle_received(&mut manager, account, received).await;
+    }
+    // we can end up here when the main device unlinks this device
+    // this also happens spuriously, perhaps due to network issues
+    // re-connecting is a good idea in either case, so we forward a network error to purple
+    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
+
+    Ok(())
+}
+
+/*
  * Opens the store, does the log-in, then runs forever.
  *
  * Based on presage-cli's main loop.
@@ -332,7 +334,11 @@ pub async fn main(
             if let Some(mut manager) = login(config_store, account).await {
                 // Login has succeeded, forward (cached) contacts for bitlbee. It tends to forget them after re-connects.
                 crate::contacts::forward_contacts(account, &mut manager).await;
-                mainloop(manager, command_receiver, account).await;
+                // clone the manager so we can receive messages in one task and process commands in the other
+                let manager_receive = manager.clone();
+                let local = tokio::task::LocalSet::new();
+                local.spawn_local(receive(manager_receive, account));
+                local.run_until(command_loop(manager, command_receiver, account)).await;
             }
         }
     }
