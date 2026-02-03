@@ -96,7 +96,7 @@ These lists are not exhaustive.
 
 #### Install Dependencies
 
-If your distribution is rolling or very recent, the rust compiler might be recent enough. If not, install rust according to [the rustup instructions](https://www.rust-lang.org/tools/install).
+If your distribution is rolling or very new, the rust compiler might be recent enough. If not, install rust according to [the rustup instructions](https://www.rust-lang.org/tools/install).
 
 ##### Ubuntu and Debian 
 
@@ -112,6 +112,12 @@ If your distribution is rolling or very recent, the rust compiler might be recen
     cmake -S purple-presage -B build
     cmake --build build
     sudo cmake --install build
+
+or
+
+    git clone https://github.com/hoehermann/purple-presage .
+    make
+    sudo make install
 
 ### Windows
 
@@ -155,4 +161,4 @@ When using the "Debug" configuration, the linker complains about mismatching con
 
 ##### Notes
 
-Needs a whooping 6 GB of disk space during build! 😳 And, depending on the amount of concurrenty, several gigabytes of RAM, too.
+Needs a whooping 6 GB of disk space during build! 😳 And, depending on the amount of concurrency, several gigabytes of RAM, too.
