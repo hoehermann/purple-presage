@@ -4,17 +4,20 @@ LDFLAGS ?= $(shell pkg-config --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell p
 SUFFIX := so
 ifeq ($(OS),Windows_NT)
     SUFFIX := dll
+    #export RUST_TARGET := i686-win7-windows-gnu
+    #export CARGO_BUILD_FLAGS := --target $(RUST_TARGET) -Zbuild-std
+    # thanks to https://blog.bemyak.net/dev/building-rust-tier-3-on-stable/ for the hint
 endif
 
-libpresage.$(SUFFIX): src/c/purple-presage.a src/rust/target/debug/libpurple_presage_backend.a Makefile
-	$(CC) -shared -o $@ -static-libgcc -Wl,--whole-archive src/c/purple-presage.a -Wl,--no-whole-archive src/rust/target/debug/libpurple_presage_backend.a $(LDFLAGS)
+libpresage.$(SUFFIX): src/c/purple-presage.a src/rust/target/$(RUST_TARGET)/debug/libpurple_presage_backend.a Makefile
+	$(CC) -shared -o $@ -static-libgcc -Wl,--whole-archive src/c/purple-presage.a -Wl,--no-whole-archive src/rust/target/$(RUST_TARGET)/debug/libpurple_presage_backend.a $(LDFLAGS)
 
-.PHONY: clean src/c/purple-presage.a src/rust/target/debug/libpurple_presage_backend.a
+.PHONY: clean src/c/purple-presage.a src/rust/target/$(RUST_TARGET)/debug/libpurple_presage_backend.a
 
 src/c/purple-presage.a:
 	$(MAKE) -C src/c
 
-src/rust/target/debug/libpurple_presage_backend.a:
+src/rust/target/$(RUST_TARGET)/debug/libpurple_presage_backend.a:
 	$(MAKE) -C src/rust
 
 PLUGIN_DIR ?= $(shell pkg-config purple --variable=plugindir)
