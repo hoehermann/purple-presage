@@ -72,26 +72,26 @@ async fn run<C: presage::store::Store + 'static>(
             Ok(true)
         }
         crate::structs::Cmd::GetProfile { uuid } => {
-            match manager.store().contact_by_id(&uuid).await {
-                Err(err) => crate::bridge::purple_debug(
-                    account,
-                    crate::bridge_structs::PURPLE_DEBUG_ERROR,
-                    format!("Error while looking up contact information for {uuid}: {err}\n"),
-                ),
-                Ok(contact) => match contact {
-                    None => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_WARNING, format!("No contact information available for {uuid}.\n")),
-                    Some(contact) => {
-                        let name = if contact.name.is_empty() { None } else { Some(contact.name) };
-                        let phone_number = contact.phone_number.map(|pn| pn.to_string());
-                        crate::bridge::append_message(crate::bridge::Message {
-                            account: account,
-                            who: Some(contact.uuid.to_string()),
-                            name: name,
-                            phone_number: phone_number,
-                            ..Default::default()
-                        });
-                    }
+            match crate::contacts::get_profile(account, &mut manager, uuid).await {
+                Ok(contact) => {
+                    let name = if contact.name.is_empty() { None } else { Some(contact.name) };
+                    let phone_number = contact.phone_number.map(|pn| pn.to_string());
+                    crate::bridge::append_message(crate::bridge::Message {
+                        account: account,
+                        who: Some(contact.uuid.to_string()),
+                        name: name,
+                        phone_number: phone_number,
+                        ..Default::default()
+                    });
                 },
+                Err(err) => crate::bridge::append_message(crate::bridge::Message {
+                    account: account,
+                    who: Some(uuid.to_string()),
+                    error: 1,
+                    body: Some(err.to_string()),
+                    ..Default::default()
+                }),
+                
             }
             Ok(true)
         }

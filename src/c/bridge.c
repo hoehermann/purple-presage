@@ -96,9 +96,17 @@ static void handle_message(Message * message) {
         presage_blist_buddies_all_set_online(purple_connection_get_account(connection)); // TODO: make user configurable
     } else if (message->error != -1) {
         // NOTE: also take a look at presage_account_error(…)
-        if (presage->error == FALSE) {
-            presage->error = TRUE;
-            purple_connection_error(connection, message->error, message->body);
+        if (message->who) {
+            // an error related to a specific contact – probably due to a failed profile look-up
+            presage_show_info(connection, message->who, message->name, message->phone_number, message->body);
+        } else {
+            // an error not related to a specific contact – affects the entire connection
+            if (presage->error == FALSE) {
+                // only handle the first error since that one is significant
+                // later, subsequent errors can override the original error message in the UI
+                presage->error = TRUE;
+                purple_connection_error(connection, message->error, message->body);
+            }
         }
     } else if (message->attachment_pointer_box != NULL) {
         presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
@@ -110,7 +118,7 @@ static void handle_message(Message * message) {
         presage_handle_groups(connection, message->groups, message->groups_length);
     } else if (message->who) {
         presage_handle_contact(connection, message->who, message->name, message->phone_number);
-        presage_show_info(connection, message->who, message->name, message->phone_number);
+        presage_show_info(connection, message->who, message->name, message->phone_number, NULL);
     }
     free_message(message);
 }
