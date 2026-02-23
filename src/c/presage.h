@@ -104,7 +104,7 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 void presage_handle_contact(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
 void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full);
 void presage_get_info(PurpleConnection *connection, const char *who);
-void presage_show_info(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number);
+void presage_show_info(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number, const char *error);
 
 // group management
 PurpleChat * presage_find_blist_chat(PurpleAccount *account, const char *identifier);
