@@ -89,8 +89,10 @@ async fn run<C: presage::store::Store + 'static>(
                         ..Default::default()
                     }),
                     Some(contact) => {
-                        match (contact.profile_key).try_into() {
-                            Ok(profilek) => {
+                        match contact.profile_key.len() {
+                            0 => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Missing profile key for {uuid}.\n")),
+                            presage::libsignal_service::zkgroup::PROFILE_KEY_LEN => {
+                                let profilek = contact.profile_key.try_into().expect("Invalid profile key although length has been checked.");
                                 let profile_key = presage::libsignal_service::prelude::ProfileKey::create(profilek);
                                 match manager.retrieve_profile_by_uuid(uuid, profile_key).await {
                                     Ok(profile) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Profile for {uuid}: {profile:?}\n")),
@@ -103,7 +105,7 @@ async fn run<C: presage::store::Store + 'static>(
                                     }),
                                 }
                             }
-                            Err(_) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Profile key missing for {uuid}.\n")),
+                            l => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("Expected profile key length {}, got {l} for {uuid}.\n", presage::libsignal_service::zkgroup::PROFILE_KEY_LEN)),
                         }
 
                         let name = if contact.name.is_empty() { None } else { Some(contact.name) };
