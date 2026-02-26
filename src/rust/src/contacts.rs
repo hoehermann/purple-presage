@@ -72,3 +72,59 @@ pub async fn forward_groups<C: presage::store::Store + 'static>(
         }
     }
 }
+
+pub async fn get_profile<C: presage::store::Store + 'static>(
+    account: *mut crate::bridge_structs::PurpleAccount, 
+    manager: &mut presage::Manager<C, presage::manager::Registered>, 
+    uuid: presage::libsignal_service::prelude::Uuid
+) {
+    // TODO: return a result and handle the error in caller instead of using the callbacks here
+    match manager.store().contact_by_id(&uuid).await {
+        Err(err) => crate::bridge::append_message(crate::bridge::Message {
+            account: account,
+            who: Some(uuid.to_string()),
+            error: 1,
+            body: Some(err.to_string()),
+            ..Default::default()
+        }),
+        Ok(contact) => match contact {
+            None => crate::bridge::append_message(crate::bridge::Message {
+                account: account,
+                who: Some(uuid.to_string()),
+                error: 1,
+                body: Some("No contact information available.".to_string()),
+                ..Default::default()
+            }),
+            Some(contact) => {
+                match contact.profile_key.len() {
+                    0 => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Missing profile key for {uuid}.\n")),
+                    presage::libsignal_service::zkgroup::PROFILE_KEY_LEN => {
+                        let profilek = contact.profile_key.try_into().expect("Invalid profile key although length has been checked.");
+                        let profile_key = presage::libsignal_service::prelude::ProfileKey::create(profilek);
+                        match manager.retrieve_profile_by_uuid(uuid, profile_key).await {
+                            Ok(profile) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Profile for {uuid}: {profile:?}\n")),
+                            Err(err) => crate::bridge::append_message(crate::bridge::Message {
+                                account: account,
+                                who: Some(uuid.to_string()),
+                                error: 1,
+                                body: Some(err.to_string()),
+                                ..Default::default()
+                            }),
+                        }
+                    }
+                    l => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Expected profile key length {}, got {l} for {uuid}.\n", presage::libsignal_service::zkgroup::PROFILE_KEY_LEN)),
+                }
+
+                let name = if contact.name.is_empty() { None } else { Some(contact.name) };
+                let phone_number = contact.phone_number.map(|pn| pn.to_string());
+                crate::bridge::append_message(crate::bridge::Message {
+                    account: account,
+                    who: Some(contact.uuid.to_string()),
+                    name: name,
+                    phone_number: phone_number,
+                    ..Default::default()
+                });
+            }
+        },
+    }
+}
