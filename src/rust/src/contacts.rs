@@ -74,9 +74,9 @@ pub async fn forward_groups<C: presage::store::Store + 'static>(
 }
 
 pub async fn get_profile<C: presage::store::Store + 'static>(
-    account: *mut crate::bridge_structs::PurpleAccount, 
-    manager: &mut presage::Manager<C, presage::manager::Registered>, 
-    uuid: presage::libsignal_service::prelude::Uuid
+    account: *mut crate::bridge_structs::PurpleAccount,
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
+    uuid: presage::libsignal_service::prelude::Uuid,
 ) -> Result<presage::model::contacts::Contact, Box<dyn std::error::Error>> {
     let contact = manager.store().contact_by_id(&uuid).await?;
     let contact = contact.ok_or("No contact information available.".to_string())?;
@@ -85,12 +85,16 @@ pub async fn get_profile<C: presage::store::Store + 'static>(
     match contact.profile_key.len() {
         0 => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Missing profile key for {uuid}.\n")),
         presage::libsignal_service::zkgroup::PROFILE_KEY_LEN => {
-            let profilek = contact.profile_key.clone().try_into().map_err(|_|"Invalid profile key although length has been checked.")?;
+            let profilek = contact.profile_key.clone().try_into().map_err(|_| "Invalid profile key although length has been checked.")?;
             let profile_key = presage::libsignal_service::prelude::ProfileKey::create(profilek);
             let profile = manager.retrieve_profile_by_uuid(uuid, profile_key).await?;
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Profile for {uuid}: {profile:?}\n"));
         }
-        l => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Expected profile key length {}, got {l} for {uuid}.\n", presage::libsignal_service::zkgroup::PROFILE_KEY_LEN)),
+        l => crate::bridge::purple_debug(
+            account,
+            crate::bridge_structs::PURPLE_DEBUG_INFO,
+            format!("Expected profile key length {}, got {l} for {uuid}.\n", presage::libsignal_service::zkgroup::PROFILE_KEY_LEN),
+        ),
     }
 
     Ok(contact)
