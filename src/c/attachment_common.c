@@ -20,7 +20,8 @@ char * attachment_fill_template(const char *template, GHashTable *replacements, 
     return replaced;
 }
 
-#ifndef WIN32
+#ifdef UNIX 
+// cannot use __has_include("unistd.h") since the Windows image used in the github action runner does come with a unistd.h which does not include the symlink(…) function ಠ_ಠ
 #include <unistd.h> // for symlink
 
 // This feature will not be implemented on win32, since creating directory junctions via reparse-points is insanely cumbersome:
