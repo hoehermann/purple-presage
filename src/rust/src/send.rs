@@ -62,7 +62,7 @@ pub async fn send<C: presage::store::Store + 'static>(
     xfer: *const crate::bridge_structs::PurpleXfer,
 ) -> Result<(), anyhow::Error> {
     // -> Result<(), presage::Error<<C>::Error>>
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
+    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as u64;
     let mut data_message = presage::libsignal_service::content::DataMessage {
         timestamp: Some(timestamp),
         ..Default::default()
