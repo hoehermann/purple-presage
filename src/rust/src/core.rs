@@ -83,7 +83,7 @@ async fn run<C: presage::store::Store + 'static>(
                         phone_number: phone_number,
                         ..Default::default()
                     });
-                },
+                }
                 Err(err) => crate::bridge::append_message(crate::bridge::Message {
                     account: account,
                     who: Some(uuid.to_string()),
@@ -91,7 +91,6 @@ async fn run<C: presage::store::Store + 'static>(
                     body: Some(err.to_string()),
                     ..Default::default()
                 }),
-                
             }
             Ok(true)
         }
@@ -120,14 +119,12 @@ pub async fn command_loop<C: presage::store::Store + 'static>(
     let mut keep_running = true;
     while keep_running {
         match command_receiver.recv().await {
-            Some(cmd) =>  {
-                match run(cmd, manager.clone(), account).await {
-                    Ok(keep_running_commands) => {
-                        keep_running = keep_running_commands;
-                    },
-                    Err(err) => {
-                        crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
-                    },
+            Some(cmd) => match run(cmd, manager.clone(), account).await {
+                Ok(keep_running_commands) => {
+                    keep_running = keep_running_commands;
+                }
+                Err(err) => {
+                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
                 }
             },
             None => {
@@ -280,21 +277,22 @@ async fn link(
 async fn receive<S: presage::store::Store>(
     mut manager: presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
-) -> anyhow::Result<()> {
-    let messages = manager.receive_messages().await.expect("receive_messages failed"); // I have never seen this fail, having expect here looks acceptable
-    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("message stream open. stand by while catching up…\n"));
-
-    futures::pin_mut!(messages);
-    while let Some(received) = futures::StreamExt::next(&mut messages).await {
-        crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
-        crate::receive::handle_received(&mut manager, account, received).await;
+) {
+    match manager.receive_messages().await {
+        Err(err) => crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, err.to_string()),
+        Ok(messages) => {
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("message stream open. stand by while catching up…\n"));
+            futures::pin_mut!(messages);
+            while let Some(received) = futures::StreamExt::next(&mut messages).await {
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
+                crate::receive::handle_received(&mut manager, account, received).await;
+            }
+            // we can end up here when the main device unlinks this device
+            // this also happens spuriously, perhaps due to network issues
+            // re-connecting is a good idea in either case, so we forward a network error to purple
+            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
+        }
     }
-    // we can end up here when the main device unlinks this device
-    // this also happens spuriously, perhaps due to network issues
-    // re-connecting is a good idea in either case, so we forward a network error to purple
-    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
-
-    Ok(())
 }
 
 /*
