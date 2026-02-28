@@ -5,3 +5,4 @@ target/$(RUST_TARGET)/debug/libpurple_presage_backend.a: Makefile Cargo.lock Car
 
 clean:
 	cargo clean --profile dev
+	rm -f target/$(RUST_TARGET)/debug/libpurple_presage_backend.a
