@@ -5,6 +5,7 @@ mod bridge;
 mod bridge_commands;
 mod contacts;
 mod core;
+mod debug;
 mod receive;
 mod send;
 mod structs;
