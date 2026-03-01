@@ -246,6 +246,9 @@ pub fn xfer_get_local_filename(xfer: *const crate::bridge_structs::PurpleXfer) -
  */
 #[no_mangle]
 pub extern "C" fn presage_rust_init() -> *mut tokio::runtime::Runtime {
+    // route debug information handled by the tracing crate to purple's debug functions
+    tracing_subscriber::util::SubscriberInitExt::init(tracing_subscriber::layer::SubscriberExt::with(tracing_subscriber::registry(), crate::debug::PurpleDebugLayer));
+
     let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").worker_threads(1).enable_all().build().unwrap();
     let runtime_box = Box::new(runtime);
     Box::into_raw(runtime_box)
