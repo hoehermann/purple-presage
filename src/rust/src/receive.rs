@@ -345,8 +345,8 @@ async fn process_incoming_message<C: presage::store::Store>(
     match presage::store::Thread::try_from(content) {
         Ok(thread) => {
             match thread {
-                presage::store::Thread::Contact(uuid) => {
-                    message.who = Some(uuid.to_string());
+                presage::store::Thread::Contact(service_id) => {
+                    message.who = Some(service_id.service_id_string());
                 }
                 presage::store::Thread::Group(key) => {
                     message.who = Some(content.metadata.sender.raw_uuid().to_string());

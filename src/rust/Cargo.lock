@@ -2009,7 +2009,7 @@ dependencies = [
 [[package]]
 name = "libsignal-service"
 version = "0.1.0"
-source = "git+https://github.com/whisperfish/libsignal-service-rs?rev=24ce40428d4ce329307cee23cff9101f0168166e#24ce40428d4ce329307cee23cff9101f0168166e"
+source = "git+https://github.com/whisperfish/libsignal-service-rs?rev=72669e18498c73c27ba8430db37aee626e549027#72669e18498c73c27ba8430db37aee626e549027"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2609,7 +2609,7 @@ dependencies = [
 [[package]]
 name = "presage"
 version = "0.8.0-dev"
-source = "git+https://github.com/whisperfish/presage?rev=5205708#52057088c979eb404432ef2f7f9939ce141bb964"
+source = "git+https://github.com/whisperfish/presage?rev=c3d4dd5#c3d4dd56444e264bbd9b416968e121c1fdc6972e"
 dependencies = [
  "base64",
  "bytes",
@@ -2630,7 +2630,7 @@ dependencies = [
 [[package]]
 name = "presage-store-sqlite"
 version = "0.8.0-dev"
-source = "git+https://github.com/whisperfish/presage?rev=5205708#52057088c979eb404432ef2f7f9939ce141bb964"
+source = "git+https://github.com/whisperfish/presage?rev=c3d4dd5#c3d4dd56444e264bbd9b416968e121c1fdc6972e"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4002,9 +4002,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.6.0"
+version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af407857209536a95c8e56f8231ef2c2e2aff839b22e07a1ffcbc617e9db9fa5"
+checksum = "5c55a2eff8b69ce66c84f85e1da1c233edc36ceb85a2058d11b0d6a3c7e7569c"
 dependencies = [
  "proc-macro2",
  "quote",
