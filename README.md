@@ -1,3 +1,7 @@
+# WARNING: git history re-write pending
+
+**In order to get the plug-in up and running again quickly, I pushed the dev branch to the default branch. 😬 You may clone, build and use the plug-in, but please do not prepare pull-requests on top of the current default branch.**
+
 A Pidgin/libpurple protocol plug-in for Signal using [presage](https://github.com/whisperfish/presage).
 
 Contains code from [flare](https://gitlab.com/schmiddi-on-mobile/flare) by [Schmiddi](https://github.com/Schmiddiii).
