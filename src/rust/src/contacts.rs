@@ -78,7 +78,7 @@ pub async fn get_profile<C: presage::store::Store + 'static>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     uuid: presage::libsignal_service::prelude::Uuid,
 ) -> Result<presage::model::contacts::Contact, Box<dyn std::error::Error>> {
-    let contact = manager.store().contact_by_id(&uuid).await?;
+    let contact = manager.store().contact_by_id(&presage::libsignal_service::protocol::ServiceId::Aci(uuid.into())).await?;
     let contact = contact.ok_or("No contact information available.".to_string())?;
 
     // we have a contact, try to update their profile
