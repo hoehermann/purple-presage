@@ -2,15 +2,15 @@ RUST_LIBS ?= $(shell cd src/rust/ && cargo rustc -- --print native-static-libs 2
 LDFLAGS ?= $(shell pkg-config --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell pkg-config --libs libqrencode gdk-pixbuf-2.0) $(RUST_LIBS)
 
 SHARED_SUFFIX := so
-export REMOVE_PROGRAM := rm -f
 ifeq ($(OS),Windows_NT)
     SHARED_SUFFIX := dll
     export LIBRARY_SUFFIX ?= lib
-    export REMOVE_PROGRAM := del
+    export REMOVE_PROGRAM := powershell -NoProfile -Command Remove-Item -ErrorAction Ignore -Force
     LINK_PROGRAM ?= link
 else
     export LIBRARY_SUFFIX ?= a
     LIBRARY_PREFIX ?= lib
+    export REMOVE_PROGRAM := rm
 endif
 
 presage: $(LIBRARY_PREFIX)presage.$(SHARED_SUFFIX)
@@ -41,6 +41,6 @@ install:
 	$(foreach size,$(PIXMAP_SIZES),mkdir -m $(DIR_PERM) -p "$(DESTDIR)$(DATA_ROOT_DIR)/pixmaps/pidgin/protocols/$(size)" ;)
 	$(foreach size,$(PIXMAP_SIZES),install -m $(FILE_PERM) assets/pixmaps/pidgin/protocols/$(size)/signal.png "$(DESTDIR)$(DATA_ROOT_DIR)/pixmaps/pidgin/protocols/$(size)/" ;)
 clean:
-	$(REMOVE_PROGRAM) $(LIBRARY_PREFIX)presage.$(SHARED_SUFFIX)
 	$(MAKE) -C src/c clean
 	$(MAKE) -C src/rust clean
+	$(REMOVE_PROGRAM) $(LIBRARY_PREFIX)presage.*

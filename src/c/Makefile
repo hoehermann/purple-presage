@@ -28,9 +28,9 @@ $(LIBRARY_PREFIX)purple-presage.a: $(OBJS)
 purple-presage.lib: $(OBJS)
 	$(LIB_PROGRAM) $(OBJS) /OUT:$@ 
 %.obj: %.c Makefile
-	$(CL_PROGRAM) /c /Qspectre- $<
+	$(CL_PROGRAM) /c $<
 
 .PHONY: clean
 
 clean:
-	$(REMOVE_PROGRAM) -f $(OBJS)
+	$(REMOVE_PROGRAM) *.$(OBJECT_SUFFIX)
