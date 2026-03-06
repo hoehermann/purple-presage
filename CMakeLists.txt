@@ -77,6 +77,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
+    add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 /Qspectre-)
     add_dependencies(${TARGET_NAME} libpurple_lib)
     target_link_libraries(${TARGET_NAME} PRIVATE OpenSSL::Crypto ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
     set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
