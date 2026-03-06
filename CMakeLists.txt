@@ -3,6 +3,20 @@ cmake_minimum_required(VERSION 3.19) # for string(JSON …)
 
 project("purple-presage")
 
+message(STATUS "C Compiler Path: ${CMAKE_C_COMPILER}")
+if(WIN32)
+    if (MSVC)
+        # in MSVC, target architecture is (hopefully) set by environment
+    else()
+        # not MSVC, assuming GCC which itself may or may not be 64 bit, so better specify target architecture to be 32 bit
+        add_compile_options(-m32)
+        add_link_options(-m32)
+        # sadly, the above have no effect on CMAKE_SIZEOF_VOID_P, so I force it 
+        # also see https://stackoverflow.com/questions/43379311/why-does-project-affect-cmakes-opinion-on-cmake-sizeof-void-p
+        set(CMAKE_SIZEOF_VOID_P 4)
+    endif()
+endif()
+
 set(Purple_DIR "${CMAKE_CURRENT_SOURCE_DIR}/submodules/purple-cmake" CACHE PATH "Where to find purple-config.cmake")
 find_package(Purple REQUIRED)
 message(STATUS "PURPLE_INCLUDE_DIRS: ${PURPLE_INCLUDE_DIRS}")
@@ -77,7 +91,6 @@ target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
-    add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 /Qspectre-)
     add_dependencies(${TARGET_NAME} libpurple_lib)
     target_link_libraries(${TARGET_NAME} PRIVATE OpenSSL::Crypto ws2_32.lib Crypt32.lib Ncrypt.lib Secur32.lib Userenv.lib NtDll.lib RuntimeObject.lib)
     set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded") # link vcruntime140 release version statically, see https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html
