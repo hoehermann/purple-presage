@@ -12,7 +12,7 @@ static gboolean rust_main_finished(gpointer account) {
     return FALSE; // tell the gtk event loop not to schedule calling this function again
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 static DWORD WINAPI
 #else

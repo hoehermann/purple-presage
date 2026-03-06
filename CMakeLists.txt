@@ -28,7 +28,7 @@ FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/co
 FetchContent_MakeAvailable(Corrosion)
 set(Rust_PROFILE "release" CACHE STRING "Rust profile")
 set_property(CACHE Rust_PROFILE PROPERTY STRINGS "dev" "release")
-corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml PROFILE ${Rust_PROFILE})
+corrosion_import_crate(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/Cargo.toml PROFILE ${Rust_PROFILE} FLAGS ${Rust_FLAGS})
 corrosion_set_env_vars(purple_presage_backend OPENSSL_DIR=${OPENSSL_DIR})
 corrosion_add_target_rustflags(purple_presage_backend "-C target-feature=+crt-static")
 # https://stackoverflow.com/questions/31770604/how-to-generate-statically-linked-executables
