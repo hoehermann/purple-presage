@@ -46,20 +46,26 @@ void presage_login(PurpleAccount *account) {
     Presage *presage = g_new0(Presage, 1);
     purple_connection_set_protocol_data(connection, presage);
     #ifdef WIN32
-    HANDLE thread = CreateThread(NULL, 0, rust_main, account, 0, NULL);
-    // TODO: detach and handle non-happy path
+    // the stack should grow automatically, but rust's tokio seems to be picky
+    // the stack size used here should match the value in bridge.rs
+    HANDLE thread = CreateThread(NULL, 32 * 1024 * 1024, rust_main, account, 0, NULL);
+    if (thread != NULL) {
+        // detach thread so its resources are released as soon it terminates
+        CloseHandle(thread);
+    }
     #else
     pthread_t presage_thread;
     int err = pthread_create(&presage_thread, NULL, rust_main, (void *)account);
     if (err == 0) {
-        // detach thread so it is "free'd" as soon it terminates
+        // detach thread so its resources are released as soon it terminates
         pthread_detach(presage_thread);
-    } else {
-        gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background: %s", strerror(err));
+    }
+    #endif
+    else {
+        gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background."/*: %s", strerror(err)*/);
         purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
         g_free(errmsg);
     }
-    #endif
 }
 
 void presage_close(PurpleConnection *connection) {
