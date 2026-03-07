@@ -3,8 +3,11 @@ src/rust/target/
 src/c/*.o
 src/c/*.obj
 src/c/*.a
-src/c/*.lib
 *.so
 *.dll
+*.exp
+*.ilk
+*.lib
+*.pdb
 .vscode
 ignore/
