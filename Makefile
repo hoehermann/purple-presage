@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
     SHARED_SUFFIX := dll
     export LIBRARY_SUFFIX ?= lib
     export REMOVE_PROGRAM := powershell -NoProfile -Command Remove-Item -ErrorAction Ignore -Force
-    LINK_PROGRAM ?= link
+    LINK_PROGRAM ?= link.exe
 else
     export LIBRARY_SUFFIX ?= a
     LIBRARY_PREFIX ?= lib
@@ -16,7 +16,7 @@ endif
 presage: $(LIBRARY_PREFIX)presage.$(SHARED_SUFFIX)
 
 presage.dll: src/c/$(LIBRARY_PREFIX)purple-presage.$(LIBRARY_SUFFIX) src/rust/target/$(RUST_TARGET)/debug/$(LIBRARY_PREFIX)purple_presage_backend.$(LIBRARY_SUFFIX) Makefile
-	$(LINK_PROGRAM) /DLL /MACHINE:X86 /OUT:$@ src/c/*.obj src/rust/target/$(RUST_TARGET)/debug/$(LIBRARY_PREFIX)purple_presage_backend.$(LIBRARY_SUFFIX) libpurple.lib glib-2.0.lib libcrypto.lib advapi32.lib qrencode.lib ntdll.lib Userenv.lib Crypt32.lib Bcrypt.lib
+	"$(LINK_PROGRAM)" /DLL /MACHINE:X86 /OUT:$@ src/c/*.obj src/rust/target/$(RUST_TARGET)/debug/$(LIBRARY_PREFIX)purple_presage_backend.$(LIBRARY_SUFFIX) libpurple.lib glib-2.0.lib libcrypto.lib advapi32.lib qrencode.lib ntdll.lib Userenv.lib Crypt32.lib Bcrypt.lib
 
 libpresage.$(SHARED_SUFFIX): src/c/$(LIBRARY_PREFIX)purple-presage.$(LIBRARY_SUFFIX) src/rust/target/$(RUST_TARGET)/debug/$(LIBRARY_PREFIX)purple_presage_backend.$(LIBRARY_SUFFIX) Makefile
 	$(CC) -shared -o $@ -static-libgcc -Wl,--whole-archive src/c/purple-presage.$(LIBRARY_SUFFIX) -Wl,--no-whole-archive src/rust/target/$(RUST_TARGET)/debug/libpurple_presage_backend.$(LIBRARY_SUFFIX) $(LDFLAGS)

@@ -1,0 +1,113 @@
+name: Windows
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  packages: write # necessary for vcpkg cache
+  contents: write # This is required to create/push the new git tag as well as the release
+
+jobs:
+
+  build:
+    runs-on: windows-2022
+    
+    steps:
+    - uses: actions/checkout@v5
+
+    # steps that download stuff are mentioned early since downloads may time out or rate-limit
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
+    - name: Install x86 mingw32-make from MSYS2
+      run: C:\msys64\usr\bin\pacman.exe --sync --needed --noconfirm mingw-w64-i686-make
+
+    - name: Setup MSVC Environment # everything here is a total guess
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64_x86
+        sdk: 10.0.17763.0
+        spectre: false
+        
+    - name: Setup Dependencies Cache
+      uses: actions/cache@v5
+      id: cache
+      with:
+        path: |
+          gtk+-bundle_2.16.6-20100912_win32.zip
+          pidgin-2.14.14-win32-bin.zip
+          pidgin-2.14.14.tar.bz2
+          vcpkg/installed
+        key: windows-2026-03-09_1
+
+    - name: gtk
+      run: |
+        curl.exe -L --skip-existing -o gtk+-bundle_2.16.6-20100912_win32.zip https://download.gnome.org/binaries/win32/gtk+/2.16/gtk+-bundle_2.16.6-20100912_win32.zip
+        Expand-Archive gtk+-bundle_2.16.6-20100912_win32.zip -DestinationPath gtk
+
+    - name: Fetch Precompiled Pidgin Binaries
+      run: |
+        curl.exe -L --skip-existing -o pidgin-2.14.14-win32-bin.zip http://prdownloads.sourceforge.net/pidgin/pidgin-2.14.14-win32-bin.zip
+        Expand-Archive pidgin-2.14.14-win32-bin.zip -DestinationPath .
+        pushd pidgin-2.14.14-win32bin
+        cmd /C ..\dll2lib.bat 32 libpurple.dll
+        popd
+        curl.exe -L --skip-existing -o pidgin-2.14.14.tar.bz2 http://prdownloads.sourceforge.net/pidgin/pidgin-2.14.14.tar.bz2
+        
+    - name: Extract Sources
+      uses: ihiroky/extract-action@v1
+      with:
+        file_path: pidgin-2.14.14.tar.bz2
+    
+    - name: Install Rust Toolchain
+      run: | # win7 target cannot use rust 1.92 or newer
+        rustup toolchain install 1.91.1-x86_64-pc-windows-msvc --profile minimal
+        rustup component add rust-src --toolchain 1.91.1-x86_64-pc-windows-msvc
+        rustup default 1.91.1-x86_64-pc-windows-msvc
+    
+    - name: Enable Rust Cache # maybe this helps with build times
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "src/rust"
+
+    - name: Prepare Release Info
+      run: |
+        $COMMIT_DATE = (git log -1 --date=format:'%Y%m%d' --format='%ad')
+        echo "COMMIT_DATE=$COMMIT_DATE" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        [string](Get-Content "src\rust\Cargo.toml") -match 'presage = [^}]+rev = \"([a-f0-9]+)\"' | Out-Null
+        $PRESAGE_REVISION = $matches[1]
+        echo "PRESAGE_REVISION=$PRESAGE_REVISION" | Out-File -FilePath $Env:GITHUB_ENV -Append
+
+    - name: vcpkg
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: johnwason/vcpkg-action@v6
+      with:
+        pkgs: libqrencode openssl
+        triplet: x86-windows-static
+        token: ${{ github.token }}
+
+    - name: make
+      run: |
+        $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\x86-windows-static"
+        $env:RUST_TARGET="i686-win7-windows-msvc" # rust shall target win7 as per user request (issue #3)
+        $env:RUSTC_BOOTSTRAP=1 # i686-win7-windows-msvc is a tier3 target, we must build rust-std ourselves
+        $env:CARGO_BUILD_FLAGS="--target "+$env:RUST_TARGET+" -Zbuild-std"
+        $env:RUSTFLAGS="-C target-feature=+crt-static"
+        $env:CL='/DPLUGIN_VERSION="0.0.0_${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}"' # include detailed version information
+        $env:CL=$env:CL+" /Od" # turn off optimization
+        $env:LINK=$env:LINK+" /DEBUG:FULL /LIBPATH:${{ github.workspace }}\vcpkg\installed\x86-windows-static\lib /LIBPATH:${{ github.workspace }}\pidgin-2.14.14-win32bin /LIBPATH:${{ github.workspace }}\gtk\lib"
+        $env:INCLUDE=$env:INCLUDE+";${{ github.workspace }}\pidgin-2.14.14\libpurple;${{ github.workspace }}\gtk\include\glib-2.0;${{ github.workspace }}\gtk\lib\glib-2.0\include;${{ github.workspace }}\vcpkg\installed\x86-windows-static\include"
+        $env:LINK_PROGRAM=$env:VCToolsInstallDir+"bin\Hostx64\x86\link.exe" # there seems to be another link.exe in PATH, so I need to specify explicitly
+        C:\msys64\mingw32\bin\mingw32-make.exe
+        mv presage.dll libpresage.dll
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: |
+            libpresage.dll
+        tag: nightly-${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        makeLatest: true
