@@ -9,8 +9,8 @@ CFLAGS += -fPIC -DPLUGIN_VERSION=$(PLUGIN_VERSION) $(shell pkg-config $(PKG_CONF
 OBJECT_SUFFIX := o
 ifeq ($(OS),Windows_NT)
     OBJECT_SUFFIX := obj
-    LIB_PROGRAM ?= lib
-    CL_PROGRAM = cl
+    LIB_PROGRAM ?= lib.exe
+    CL_PROGRAM = cl.exe
 endif
 
 SRCS := $(wildcard *.c)
