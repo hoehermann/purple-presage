@@ -87,7 +87,16 @@ add_library(${TARGET_NAME} SHARED
     "src/c/init.c"
     "src/c/pixbuf.c"
 )
+target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
+# depend on the rust part
 target_link_libraries(${TARGET_NAME} PRIVATE purple_presage_backend)
+# depend on libpurple
+target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} PRIVATE ${PURPLE_LIBRARIES})
+# depend on pixbuf (technically optiona, but does not hurt)
+target_include_directories(${TARGET_NAME} PRIVATE ${PIXBUF_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} PRIVATE ${PIXBUF_LIBRARIES})
+# depend on qrencode
 target_include_directories(${TARGET_NAME} PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${QRENCODE_LIBRARIES})
 if (MSVC)
@@ -98,12 +107,11 @@ else()
     target_link_libraries(purple_presage_backend INTERFACE crypto m ${TARGET_NAME})
     # additional libraries obtained via cargo rustc -- --print native-static-libs :
     # gcc_s util rt pthread m dl c
+    # on Debian 13, it looks line some dependency inside the back-end needs to be linked against libstdc++, see issue #36
+    target_link_libraries(purple_presage_backend INTERFACE stdc++)
 endif()
 set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON) # needs cmake 3.24, but is not critical
 
-target_compile_definitions(${TARGET_NAME} PRIVATE PLUGIN_VERSION=${PLUGIN_VERSION})
-target_include_directories(${TARGET_NAME} PRIVATE ${PURPLE_INCLUDE_DIRS} ${PIXBUF_INCLUDE_DIRS})
-target_link_libraries(${TARGET_NAME} PRIVATE ${PURPLE_LIBRARIES} ${PIXBUF_LIBRARIES})
 set_target_properties(${TARGET_NAME} PROPERTIES PREFIX "lib")
 
 if (WIN32)
