@@ -124,6 +124,7 @@ pub async fn command_loop<C: presage::store::Store + 'static>(
                     keep_running = keep_running_commands;
                 }
                 Err(err) => {
+                    // TODO: If we get "run Err ServiceError(WsError(Handshake(UnexpectedStatusCode(403))))" (do not know from which cmd, though probably whoami), then we probably need to re-link
                     crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
                 }
             },
@@ -242,7 +243,8 @@ async fn link(
                         ..Default::default()
                     });
 
-                    // request contacts now after linking once. requesting again on a subsequent log-in sometimes blocks forever.
+                    // request contacts now after linking once.
+                    // TODO: check whether requesting contacts again (on a subsequent log-in) still sometimes blocks forever.
                     if let Err(err) = manager.request_contacts().await {
                         crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Error while requesting contacts: {err:?}\n"));
                     }
