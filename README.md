@@ -121,13 +121,15 @@ or
 
 ### Windows
 
-#### MSYS2 GNU Toolchain
-
-Look into the Github Action [windows.yml](.github/workflows/windows.yml) to see how to build.
+This is going to get wild, hold on tight…
 
 #### MSVC Toolchain
 
-purple-presage is known to compile with MSVC 19.30 and rust 1.87. You need the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+On Windows, the GNU Toolchain cannot be used since it is not supported by the dependency [boring](https://github.com/cloudflare/boring/).
+
+#### MSVC Toolchain
+
+purple-presage is known to compile with MSVC 19.30 and rust 1.91.1. You need at least the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too, but 1.91.1 is the last rust version which supports Windows 7. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
 
 ##### Dependencies
 
@@ -149,7 +151,7 @@ Same as Linux build instructions, but may need to modify the configuration:
 
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_GENERATOR_PLATFORM=WIN32 -DCMAKE_TOOLCHAIN_FILE="…/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows-static -DRust_CARGO_TARGET="i686-pc-windows-msvc" -S purple-presage -B build
 
-    If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.87-i686-pc-windows-msvc"`.
+    If necessary, the rust tool-chain version can be specified via `-DRust_TOOLCHAIN="1.91.1-i686-pc-windows-msvc"`.
 
 2. Build, Install and Run:
 
@@ -159,6 +161,10 @@ Same as Linux build instructions, but may need to modify the configuration:
 
 When using the "Debug" configuration, the linker complains about mismatching configurations. The implications of this are unknown.
 
+##### Regarding Windows 7
+
+Corrosion does not support the `i686-win7-windows-msvc` target, so you cannot use CMake. You may look into the Github Action [windows.yml](.github/workflows/msvc-make.yml) to see how to build for Windows 7, with a weird mix of MSYS2's MinGW Make and MSVC.
+
 ##### Notes
 
-Needs a whooping 6 GB of disk space during build! 😳 And, depending on the amount of concurrency, several gigabytes of RAM, too.
+Needs a whooping 12 GB of disk space during build! 😳 And, depending on the amount of concurrency, several gigabytes of RAM, too.
