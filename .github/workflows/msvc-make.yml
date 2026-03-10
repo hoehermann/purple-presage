@@ -42,7 +42,7 @@ jobs:
         key: windows-2026-03-09_1
 
     - name: gtk
-      run: |
+      run: | # I have no idea why curl.exe is in the PATH, but I am not asking questions
         curl.exe -L --skip-existing -o gtk+-bundle_2.16.6-20100912_win32.zip https://download.gnome.org/binaries/win32/gtk+/2.16/gtk+-bundle_2.16.6-20100912_win32.zip
         Expand-Archive gtk+-bundle_2.16.6-20100912_win32.zip -DestinationPath gtk
 
@@ -100,13 +100,15 @@ jobs:
         $env:INCLUDE=$env:INCLUDE+";${{ github.workspace }}\pidgin-2.14.14\libpurple;${{ github.workspace }}\gtk\include\glib-2.0;${{ github.workspace }}\gtk\lib\glib-2.0\include;${{ github.workspace }}\vcpkg\installed\x86-windows-static\include"
         $env:LINK_PROGRAM=$env:VCToolsInstallDir+"bin\Hostx64\x86\link.exe" # there seems to be another link.exe in PATH, so I need to specify explicitly
         C:\msys64\mingw32\bin\mingw32-make.exe
-        mv presage.dll libpresage.dll
+        Compress-Archive -Path libpresage.dll -DestinationPath libpresage.dll.zip
+        Compress-Archive -Path libpresage.pdb -DestinationPath libpresage.pdb.zip
 
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
         artifacts: |
-            libpresage.dll
+            libpresage.dll.zip
+            libpresage.pdb.zip
         tag: nightly-${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}
         allowUpdates: true
         artifactErrorsFailBuild: true
