@@ -68,7 +68,7 @@ pub async fn send<C: presage::store::Store + 'static>(
         ..Default::default()
     };
 
-    if let Some(reply_needle) = body.as_ref().and_then(|s| get_needle_for_replying(s.as_str())) {
+    let body = if let Some(reply_needle) = body.as_ref().and_then(|s| get_needle_for_replying(s)) {
         let thread = match recipient {
             crate::structs::Recipient::Contact(uuid) => presage::store::Thread::Contact(presage::libsignal_service::protocol::ServiceId::Aci(uuid.into())),
             crate::structs::Recipient::Group(key) => presage::store::Thread::Group(key),
@@ -93,7 +93,11 @@ pub async fn send<C: presage::store::Store + 'static>(
                 r#type: Some(0), // type: NORMAL
             });
         }
-    }
+        //body.clone().map(|b| b[(reply_needle.len()+2)..].to_string())
+        Some(body.as_ref().unwrap().chars().skip(reply_needle.len()+2).collect())
+    } else {
+        body
+    };
 
     if xfer != std::ptr::null_mut() {
         let path = crate::bridge::xfer_get_local_filename(xfer);
