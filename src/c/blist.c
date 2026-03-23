@@ -92,8 +92,10 @@ void presage_blist_update_chat(PurpleAccount *account, const char *identifier, c
 }
 
 void presage_handle_contact(PurpleConnection *connection, const char *uuid, const char *name, const char *phone_number) {
-    PurpleBuddy *buddy = presage_blist_update_buddy(purple_connection_get_account(connection), uuid, name);
-    purple_blist_node_set_string(&buddy->node, "phone_number", phone_number);
+    if (phone_number != NULL) { 
+        PurpleBuddy *buddy = presage_blist_update_buddy(purple_connection_get_account(connection), uuid, name);
+        purple_blist_node_set_string(&buddy->node, "phone_number", phone_number);
+    }
 }
 
 void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full) {
