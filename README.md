@@ -100,7 +100,9 @@ If your distribution is rolling or very new, the rust compiler might be recent e
 
 ##### Ubuntu and Debian 
 
-    sudo apt install libpurple-dev libqrencode-dev protobuf-compiler
+    sudo apt install libpurple-dev libqrencode-dev protobuf-compiler gcc clang
+    
+`protoc` and both `gcc` and `clang` are needed by boring-sys.
 
 ##### Alpine
 
@@ -125,7 +127,7 @@ This is going to get wild, hold on tight…
 
 #### MSVC Toolchain
 
-On Windows, the GNU Toolchain cannot be used since it is not supported by the dependency [boring](https://github.com/cloudflare/boring/).
+On Windows, the GNU Toolchain cannot be used as it is not supported by the dependency [boring](https://github.com/cloudflare/boring/issues/71).
 
 #### MSVC Toolchain
 
