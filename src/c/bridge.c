@@ -1,11 +1,5 @@
 #include "presage.h"
-
-/////////////////////////////////////////////////////////////////////
-//                                                                 //
-//      WELCOME TO THE LAND OF ABANDONMENT OF TYPE AND SAFETY      //
-//                        Wanderer, beware.                        //
-//                                                                 //
-/////////////////////////////////////////////////////////////////////
+#include <inttypes.h> // for fprinting the 6bit timestamp without warnings on both 64 bit and 32 bit targets
 
 /*
  * Whether the given pointer actually refers to an existing account.
@@ -61,9 +55,78 @@ void free_message(Message * message) {
  * Handle a message according to its content.
  */
 static void handle_message(Message * message) {
-    //purple_debug_info(PLUGIN_NAME, "handle_message({.account=%p, .qrcode=„%s“, .uuid=„%s“, .who=„%s“, .name=„%s“, .phone_number=„%s“, .group=„%s“, .flags=0x%x, .body=„%s“})\n", 
-    //message->account, message->qrcode, message->uuid, message->who, message->name, message->phone_number, message->group, message->flags, message->body);
-
+    /*purple_debug_info(PLUGIN_NAME, 
+        "handle_message({"
+        ".account=%p, "
+        ".qrcode=\"%s\", "
+        ".uuid=\"%s\", "
+        ".debug=%d, "
+        ".error=%d, "
+        ".connected=%d, "
+        ".attachment_size=%u, "
+        ".timestamp=%lu, "
+        ".flags=0x%x, "
+        ".who=\"%s\", "
+        ".name=\"%s\", "
+        ".phone_number=\"%s\", "
+        ".group=\"%s\", "
+        ".body=\"%s\", "
+        ".attachment_pointer_box=%p, "
+        ".hash=\"%s\", "
+        ".filename=\"%s\", "
+        ".extension=\"%s\", "
+        ".mimetype=\"%s\", "
+        ".groups=%p, "
+        ".groups_length=%zu, "
+        ".xfer=%p"
+        "})\n", 
+        message->account,
+        message->qrcode,
+        message->uuid,
+        message->debug,
+        message->error,
+        message->connected,
+        message->attachment_size,
+        message->timestamp,
+        message->flags,
+        message->who,
+        message->name,
+        message->phone_number,
+        message->group,
+        message->body,
+        message->attachment_pointer_box,
+        message->hash,
+        message->filename,
+        message->extension,
+        message->mimetype,
+        message->groups,
+        message->groups_length,
+        message->xfer
+    );*/
+printf("handle_message({\n");
+printf("  .account=%p,\n", message->account);
+printf("  .qrcode=\"%s\",\n", message->qrcode);
+printf("  .uuid=\"%s\",\n", message->uuid);
+printf("  .debug=%d,\n", message->debug);
+printf("  .error=%d,\n", message->error);
+printf("  .connected=%d,\n", message->connected);
+printf("  .attachment_size=%u,\n", message->attachment_size);
+printf("  .timestamp=%"PRIu64",\n", message->timestamp);
+printf("  .flags=0x%x,\n", message->flags);
+printf("  .who=\"%s\",\n", message->who);
+printf("  .name=\"%s\",\n", message->name);
+printf("  .phone_number=\"%s\",\n", message->phone_number);
+printf("  .group=\"%s\",\n", message->group);
+printf("  .body=\"%s\",\n", message->body);
+printf("  .attachment_pointer_box=%p,\n", message->attachment_pointer_box);
+printf("  .hash=\"%s\",\n", message->hash);
+printf("  .filename=\"%s\",\n", message->filename);
+printf("  .extension=\"%s\",\n", message->extension);
+printf("  .mimetype=\"%s\",\n", message->mimetype);
+printf("  .groups=%p,\n", message->groups);
+printf("  .groups_length=%zu,\n", message->groups_length);
+printf("  .xfer=%p\n", message->xfer);
+printf("})\n");
     if (message->debug != -1) {
         // log messages do not need an active connection
         purple_debug(message->debug, PLUGIN_NAME, "%s", message->body);
@@ -85,10 +148,13 @@ static void handle_message(Message * message) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     if (message->tx_ptr != NULL) {
         presage->tx_ptr = message->tx_ptr; // store tx_ptr for use throughout the connection lifetime
+        purple_debug_info(PLUGIN_NAME, "calling presage_rust_whoami()...\n");
         presage_rust_whoami(message->account, rust_runtime, presage->tx_ptr);
     } else if (message->qrcode != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_qrcode()...\n");
         presage_handle_qrcode(connection, message->qrcode);
     } else if (message->uuid != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_uuid()...\n");
         presage_handle_uuid(connection, message->uuid);
     } else if (message->connected > 0) {
         // backend says, connection has been set-up
@@ -109,19 +175,31 @@ static void handle_message(Message * message) {
             }
         }
     } else if (message->attachment_pointer_box != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_attachment()...\n");
         presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
     } else if (message->xfer != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_xfer_end()...\n");
         presage_handle_xfer_end(message->xfer, message->flags, message->body, message->mimetype);
     } else if (message->body != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_text()...\n");
         presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
     } else if (message->groups != NULL) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_groups()...\n");
         presage_handle_groups(connection, message->groups, message->groups_length);
     } else if (message->who) {
+        purple_debug_info(PLUGIN_NAME, "calling presage_handle_contact()...\n");
         presage_handle_contact(connection, message->who, message->name, message->phone_number);
         presage_show_info(connection, message->who, message->name, message->phone_number, NULL);
     }
     free_message(message);
 }
+
+/////////////////////////////////////////////////////////////////////
+//                                                                 //
+//      WELCOME TO THE LAND OF ABANDONMENT OF TYPE AND SAFETY      //
+//                        Wanderer, beware.                        //
+//                                                                 //
+/////////////////////////////////////////////////////////////////////
 
 /*
  * Process a message received by rust.
