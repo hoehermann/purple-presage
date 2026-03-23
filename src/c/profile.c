@@ -19,8 +19,12 @@ void presage_show_info(PurpleConnection *connection, const char *uuid, const cha
             purple_notify_user_info_add_pair_plaintext(user_info, "Error", error);
         } else {
             purple_notify_user_info_add_pair_plaintext(user_info, "UUID", uuid);
-            purple_notify_user_info_add_pair_plaintext(user_info, "Name", name);
-            purple_notify_user_info_add_pair_plaintext(user_info, "Phone Number", phone_number);
+            if (name != NULL) {
+                purple_notify_user_info_add_pair_plaintext(user_info, "Name", name);
+            }
+            if (phone_number != NULL) {
+                purple_notify_user_info_add_pair_plaintext(user_info, "Number", phone_number);
+            }
         }
         purple_notify_userinfo(connection, uuid, user_info, NULL, NULL);
         purple_notify_user_info_destroy(user_info);
