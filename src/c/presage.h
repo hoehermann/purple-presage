@@ -9,6 +9,12 @@
 extern const char * PRESAGE_STARTUP_DELAY_SECONDS_OPTION;
 extern const char * PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION;
 
+#ifdef _WIN32
+static_assert(sizeof(time_t) == 4, "time_t must be 4 bytes (32 bit)");
+#else
+// I trust non-windows platforms to be consistent in regard to the size of time_t
+#endif 
+
 // https://github.com/LLNL/lbann/issues/117#issuecomment-334333286
 #define MAKE_STR(x) _MAKE_STR(x)
 #define _MAKE_STR(x) #x
