@@ -45,8 +45,9 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 ### Present
 
 * Can link as secondary device via QR-Code.
-* Receives a simple text message from a contact or a group.
+* Receives a styled (bold, italic, strikethrough, monospace) text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
+* Resolves mentioned group chat participants by their local alias.
 * Receives stickers and attachments in general. Special handling for long text messages.
 * Can send a simple text message. 
 * Can send an attachment.
@@ -73,7 +74,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Configuration option whether to add contacts to buddy list or not
 * Use the hostname (or a user-defined string) as a device name
 * Reasonable generation of C headers and rust constants
-* Properly process mentions, styles, contact,…
+* Properly process message extensions, e.g. containing a contact
 * Display typing notifications
 * Display receipts (not important)
 * Support for alternative host applications (Bitlbee, Spectrum)
@@ -89,6 +90,7 @@ These lists are not exhaustive.
 * Own name is not transferred to the buddy list and therefore not resolved in group chats.
 * Sometimes, the database cannot be opened due to locking issues.
 * Spectrum support is very flaky. Crashes, infinite loops and silent disconnects may happen. Please keep an eye on your system and check the logs frequently. Issue reports are welcome.
+* On Windows, the font Noto Emoji does not work. The monochrome Segoe UI Emoji font does work.
 
 ## Building
 

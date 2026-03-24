@@ -1,12 +1,8 @@
 #include "presage.h"
 
 void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
-    // Signal is a plain-text protocol, but Pidgin expects HTML
-    gchar *html = purple_markup_escape_text(body, -1);
-    gchar *text = purple_strdup_withhtml(html); // this turns newlines into br-tags which might mess up textual representation of QR-codes, but I have not added that feature to this prpl
-    g_free(html);
-    presage_display_text(connection, who, name, group, flags, timestamp_ms, text);
-    g_free(text);
+    // escaping is now done in rust part
+    presage_display_text(connection, who, name, group, flags, timestamp_ms, body);
 }
 
 void presage_display_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *text) {

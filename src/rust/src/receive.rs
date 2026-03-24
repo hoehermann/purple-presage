@@ -53,6 +53,7 @@ async fn format_data_message<C: presage::store::Store>(
     data_message: &presage::libsignal_service::content::DataMessage,
     body_override: Option<String>,
 ) -> Option<String> {
+    let get_alias = |uuid: String| crate::bridge::blist_get_alias(account, uuid);
     match data_message {
         // Quote
         presage::libsignal_service::content::DataMessage {
@@ -66,10 +67,10 @@ async fn format_data_message<C: presage::store::Store>(
             body_ranges,
             ..
         } => {
-            let quote = resolve_mentions(quoted_text.to_owned(), quoted_text_ranges);
+            let quote = pidgin_flavoured_html_from_body_with_ranges(quoted_text.to_owned(), quoted_text_ranges, get_alias);
             let firstline = quote.split("\n").next().unwrap_or("<message body missing>");
             // TODO: add ellipsis if quoted_text contains more than one line
-            let body = resolve_mentions(body_override.unwrap_or(body.to_owned()), body_ranges);
+            let body = pidgin_flavoured_html_from_body_with_ranges(body_override.unwrap_or(body.to_owned()), body_ranges, get_alias);
             Some(format!("> {firstline}\n\n{body}"))
         }
         // Reaction
@@ -109,7 +110,7 @@ async fn format_data_message<C: presage::store::Store>(
             body: Some(body),
             body_ranges,
             ..
-        } => Some(resolve_mentions(body_override.unwrap_or(body.to_owned()), body_ranges)),
+        } => Some(pidgin_flavoured_html_from_body_with_ranges(body_override.unwrap_or(body.to_owned()), body_ranges, get_alias)),
         // Default (catch all other cases)
         c => {
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("DataMessage without body {c:?}\n"));
@@ -123,31 +124,85 @@ async fn format_data_message<C: presage::store::Store>(
 }
 
 /*
- * Resolve mentions by Object Replacement Character with UUIDs.
+ * Turn text body with style ranges into HTML. Mentions are turned into Links for keeping the UUID.
+ * 
+ * In the end, this becomes Pango markup (see https://docs.gtk.org/Pango/pango_markup.html), 
+ * but not all features are supported since Pidgin does the HTML → Pango conversion 
+ * in gtk_imhtml_insert_html_at_iter(…), see pidgin/gtkimhtml.c.
  */
-// TODO: forward body ranges and let front-end take care of resolving the UUIDs
+// TODO: forward body ranges and let front-end take care of resolving the UUIDs to friendly names
 // NOTE: keep an eye on PurpleMarkupSpan documented at https://issues.imfreedom.org/issue/PIDGIN-17842
-fn resolve_mentions(
+// TODO: it would probably be smarter to emit an iterator of char instead of converting a single char to a string
+fn pidgin_flavoured_html_from_body_with_ranges<F: Fn(String) -> String>(
     body: String,
     body_ranges: &Vec<presage::proto::BodyRange>,
+    get_alias: F,
 ) -> String {
-    let mut body_ranges_iter = body_ranges.into_iter();
     body.chars()
-        .map(|c| {
-            if c == '￼' {
-                if let Some(presage::proto::BodyRange {
-                    associated_value: Some(presage::proto::body_range::AssociatedValue::MentionAci(mention_aci)),
-                    ..
-                }) = body_ranges_iter.next()
-                {
-                    // NOTE: This relies on mentions being sorted. This may or may not always be the case.
-                    format!("@{mention_aci}")
-                } else {
-                    c.to_string()
+        .enumerate()
+        .map(|(index, character)| {
+            // taken from purple_markup_escape_text and append_escaped_text from libpurple/util.c
+            let mut output = match character {
+                '&' => "&amp;".to_string(),
+                '<' => "&lt;".to_string(),
+                '>' => "&gt;".to_string(),
+                '"' => "&quot;".to_string(),
+                '\n' => "<br>".to_string(),
+                '\r' => "".to_string(),
+                default => default.to_string(), // TODO: use XML numeric character references for all non-latin chars?
+            };
+            // start the style and resolve mentions along the way
+            for body_range in body_ranges.iter().filter(|br| br.start.is_some_and(|s| s as usize == index)) {
+                if let Some(associated_value) = &body_range.associated_value {
+                    match associated_value {
+                        presage::proto::body_range::AssociatedValue::MentionAci(mention_aci) => {
+                            let alias = get_alias(mention_aci.clone());
+                            output = format!("<a href=\"#{mention_aci}>@{alias}</a>")
+                        },
+                        presage::proto::body_range::AssociatedValue::Style(style_id) => {
+                            if let Ok(style) = presage::proto::body_range::Style::try_from(*style_id) {
+                                match style {
+                                    presage::proto::body_range::Style::None => {},
+                                    presage::proto::body_range::Style::Bold => output = format!("<b>{output}"),
+                                    presage::proto::body_range::Style::Italic => output = format!("<i>{output}"),
+                                    presage::proto::body_range::Style::Spoiler => output = format!("<span style=\"color: #FFFFFF\">{output}"), // TODO: set color to background color for "invisibility"
+                                    presage::proto::body_range::Style::Strikethrough => output = format!("<s>{output}"),
+                                    presage::proto::body_range::Style::Monospace => output = format!("<font face=\"monospace\">{output}"),
+                                }
+                            }
+                        },
+                        presage::proto::body_range::AssociatedValue::MentionAciBinary(mention_aci_binary) => {
+                            if let Ok(uuid) = presage::libsignal_service::prelude::Uuid::from_slice(mention_aci_binary) {
+                                let alias = get_alias(uuid.to_string());
+                                output = format!("<a href=\"#{uuid}>@{alias}</a>")
+                            }
+                        },
+                    }
                 }
-            } else {
-                c.to_string()
             }
+            // end the style
+            // mentions are already resolved and the replacement characters replaced, so there is nothing to do with them
+            for body_range in body_ranges.iter().filter(|br| br.start.is_some_and(|s| (s+br.length()-1) as usize == index)) {
+                if let Some(associated_value) = &body_range.associated_value {
+                    match associated_value {
+                        presage::proto::body_range::AssociatedValue::MentionAci(_) => {},
+                        presage::proto::body_range::AssociatedValue::Style(style_id) => {
+                            if let Ok(style) = presage::proto::body_range::Style::try_from(*style_id) {
+                                match style {
+                                    presage::proto::body_range::Style::None => {},
+                                    presage::proto::body_range::Style::Bold => output = format!("{output}</b>"),
+                                    presage::proto::body_range::Style::Italic => output = format!("{output}</i>"),
+                                    presage::proto::body_range::Style::Spoiler => output = format!("{output}</span>"),
+                                    presage::proto::body_range::Style::Strikethrough => output = format!("{output}</s>"),
+                                    presage::proto::body_range::Style::Monospace => output = format!("{output}</font>"),
+                                }
+                            }
+                        },
+                        presage::proto::body_range::AssociatedValue::MentionAciBinary(_) => {},
+                    }
+                }
+            }
+            output
         })
         .collect()
 }
