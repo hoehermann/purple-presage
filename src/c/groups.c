@@ -81,7 +81,7 @@ void presage_join_chat(PurpleConnection *connection, GHashTable *data) {
                 PurpleConvChat *conv_chat = purple_conversation_get_chat_data(conv);
                 // let the chat topic be the group name
                 if (topic != NULL) {
-                    purple_conv_chat_set_topic(conv_chat, NULL, topic);
+                    purple_conv_chat_set_topic(conv_chat, NULL, topic); // TODO: find out why this does not work on Windows
                 }
                 // set own identity in this chat
                 purple_conv_chat_set_nick(conv_chat, purple_account_get_username(account));
