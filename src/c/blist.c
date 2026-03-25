@@ -124,8 +124,8 @@ void presage_tooltip_text(PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboole
  * Find group chat in blist.
  * 
  * This reimplements the default behaviour of purple_blist_find_chat 
- * in libpurple/blist.c and could be removed from here.
- * Difference: purple_blist_find_chat returns NULL when account is not connected.
+ * in libpurple/blist.c, but purple_blist_find_chat returns NULL when account is not connected
+ * and the Signal protocol exchanges messages during the catch-up phase before fully establishing the connection.
  * 
  * Largely borrowed from:
  * https://github.com/EionRobb/purple-discord/blob/master/libdiscord.c

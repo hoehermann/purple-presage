@@ -27,6 +27,7 @@ void presage_display_text(PurpleConnection *connection, const char *who, const c
         }
     } else {
         // group message
+        presage_blist_update_chat(account, group, name);
         PurpleConversation *conv = purple_find_chat(connection, g_str_hash(group));
         if (conv == NULL) {
             // no conversation for this group chat
