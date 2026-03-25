@@ -64,9 +64,8 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 #### On Hold
 
-* Fetch contact names from the main device.
+* Display names of contacts and groups. This is blocked by a regression in presage, see [#303](https://github.com/whisperfish/presage/issues/303). In fact, the kist of contacts is currently empty.
 * Mark messages as "read". This is currently not implemented in back-end, see [#141](https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
-* A group chat is only added to the buddy list when receiving a message. There seems to be no way to fetch the list of groups from the main device, see [#303](https://github.com/whisperfish/presage/issues/303).
 * The maximum allowed length of a text-message is unknown.
 
 #### "Contributions Welcome"
@@ -96,6 +95,12 @@ These lists are not exhaustive.
 
 ### Linux
 
+Note: The GNU Linker emits this warning:
+
+    missing .note.GNU-stack section implies executable stack
+
+It originates from the [sha2-asm](https://docs.rs/sha2-asm/0.6.4/sha2_asm/) crate.
+
 #### Install Dependencies
 
 If your distribution is rolling or very new, the rust compiler might be recent enough. If not, install rust according to [the rustup instructions](https://www.rust-lang.org/tools/install).
@@ -104,7 +109,7 @@ If your distribution is rolling or very new, the rust compiler might be recent e
 
     sudo apt install libpurple-dev libqrencode-dev protobuf-compiler gcc clang
     
-`protoc` and both `gcc` and `clang` are needed by boring-sys.
+`protoc` is required by libsignal-svrb. Both `gcc` and `clang` are needed by boring-sys call to bindgen.
 
 ##### Alpine
 
