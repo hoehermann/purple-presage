@@ -108,6 +108,7 @@ pub async fn send<C: presage::store::Store + 'static>(
         let pointer = upload_attachments_result.into_iter().next().ok_or(anyhow::anyhow!("Not a single attachment upload succeeded."))??;
         data_message.attachments.push(pointer.clone());
     }
+    // TODO: a message with a body longer than 2048 bytes must be sent as an attachment, see https://github.com/whisperfish/presage/pull/384
 
     data_message.body = body;
     match recipient {
