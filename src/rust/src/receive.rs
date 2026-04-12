@@ -125,9 +125,9 @@ async fn format_data_message<C: presage::store::Store>(
 
 /*
  * Turn text body with style ranges into HTML. Mentions are turned into Links for keeping the UUID.
- * 
- * In the end, this becomes Pango markup (see https://docs.gtk.org/Pango/pango_markup.html), 
- * but not all features are supported since Pidgin does the HTML → Pango conversion 
+ *
+ * In the end, this becomes Pango markup (see https://docs.gtk.org/Pango/pango_markup.html),
+ * but not all features are supported since Pidgin does the HTML → Pango conversion
  * in gtk_imhtml_insert_html_at_iter(…), see pidgin/gtkimhtml.c.
  */
 // TODO: forward body ranges and let front-end take care of resolving the UUIDs to friendly names
@@ -157,12 +157,12 @@ fn pidgin_flavoured_html_from_body_with_ranges<F: Fn(String) -> String>(
                     match associated_value {
                         presage::proto::body_range::AssociatedValue::MentionAci(mention_aci) => {
                             let alias = get_alias(mention_aci.clone());
-                            output = format!("<a href=\"#{mention_aci}>@{alias}</a>")
-                        },
+                            output = format!("<a href=\"#{mention_aci}\">@{alias}</a>")
+                        }
                         presage::proto::body_range::AssociatedValue::Style(style_id) => {
                             if let Ok(style) = presage::proto::body_range::Style::try_from(*style_id) {
                                 match style {
-                                    presage::proto::body_range::Style::None => {},
+                                    presage::proto::body_range::Style::None => {}
                                     presage::proto::body_range::Style::Bold => output = format!("<b>{output}"),
                                     presage::proto::body_range::Style::Italic => output = format!("<i>{output}"),
                                     presage::proto::body_range::Style::Spoiler => output = format!("<span style=\"color: #FFFFFF\">{output}"), // TODO: set color to background color for "invisibility"
@@ -170,26 +170,27 @@ fn pidgin_flavoured_html_from_body_with_ranges<F: Fn(String) -> String>(
                                     presage::proto::body_range::Style::Monospace => output = format!("<font face=\"monospace\">{output}"),
                                 }
                             }
-                        },
+                        }
                         presage::proto::body_range::AssociatedValue::MentionAciBinary(mention_aci_binary) => {
                             if let Ok(uuid) = presage::libsignal_service::prelude::Uuid::from_slice(mention_aci_binary) {
                                 let alias = get_alias(uuid.to_string());
-                                output = format!("<a href=\"#{uuid}>@{alias}</a>")
+                                output = format!("<a href=\"#{uuid}\">@{alias}</a>");
                             }
-                        },
+                        }
                     }
                 }
             }
             // end the style
-            // mentions are already resolved and the replacement characters replaced, so there is nothing to do with them
-            for body_range in body_ranges.iter().filter(|br| br.start.is_some_and(|s| (s+br.length()-1) as usize == index)) {
+            // mentions are already resolved and the replacement characters replaced, so there is nothing to do with them here
+            for body_range in body_ranges.iter().filter(|br| br.start.is_some_and(|s| (s + br.length() - 1) as usize == index)) {
+                // -1 is needed as I want to end the style after this caracter and there might not be a next character when at the end of the body
                 if let Some(associated_value) = &body_range.associated_value {
                     match associated_value {
-                        presage::proto::body_range::AssociatedValue::MentionAci(_) => {},
+                        presage::proto::body_range::AssociatedValue::MentionAci(_) => {}
                         presage::proto::body_range::AssociatedValue::Style(style_id) => {
                             if let Ok(style) = presage::proto::body_range::Style::try_from(*style_id) {
                                 match style {
-                                    presage::proto::body_range::Style::None => {},
+                                    presage::proto::body_range::Style::None => {}
                                     presage::proto::body_range::Style::Bold => output = format!("{output}</b>"),
                                     presage::proto::body_range::Style::Italic => output = format!("{output}</i>"),
                                     presage::proto::body_range::Style::Spoiler => output = format!("{output}</span>"),
@@ -197,8 +198,8 @@ fn pidgin_flavoured_html_from_body_with_ranges<F: Fn(String) -> String>(
                                     presage::proto::body_range::Style::Monospace => output = format!("{output}</font>"),
                                 }
                             }
-                        },
-                        presage::proto::body_range::AssociatedValue::MentionAciBinary(_) => {},
+                        }
+                        presage::proto::body_range::AssociatedValue::MentionAciBinary(_) => {}
                     }
                 }
             }
