@@ -94,7 +94,7 @@ pub async fn send<C: presage::store::Store + 'static>(
             });
         }
         // Note: std::string returns number of bytes (not graphemes) so we must slice instead of using chars().skip()
-        Some(body.as_ref().unwrap()[(reply_needle.len()+2)..].to_string())
+        Some(body.as_ref().unwrap()[(reply_needle.len() + 2)..].to_string())
     } else {
         body
     };

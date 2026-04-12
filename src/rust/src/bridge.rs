@@ -105,7 +105,10 @@ extern "C" {
     // TODO: automatically generate declaration from ft.h
     fn purple_xfer_get_local_filename(xfer: *const crate::bridge_structs::PurpleXfer) -> *const std::os::raw::c_char;
 
-    fn presage_blist_get_alias(account: *mut crate::bridge_structs::PurpleAccount, who: *const std::os::raw::c_char) -> *const std::os::raw::c_char;
+    fn presage_blist_get_alias(
+        account: *mut crate::bridge_structs::PurpleAccount,
+        who: *const std::os::raw::c_char,
+    ) -> *const std::os::raw::c_char;
 }
 
 // I want to forward a Vec of groups to the C part, but the rust-allocated C-compatible CStrings must live somewhere, so we have this intermediate type
@@ -241,7 +244,10 @@ pub fn xfer_get_local_filename(xfer: *const crate::bridge_structs::PurpleXfer) -
 
 // wrapper around unsafe presage_blist_get_alias
 // In case there is no alias, the origial UUID is passed thorugh
-pub fn blist_get_alias(account: *mut crate::bridge_structs::PurpleAccount, uuid: String) -> String {
+pub fn blist_get_alias(
+    account: *mut crate::bridge_structs::PurpleAccount,
+    uuid: String,
+) -> String {
     let c_uuid = std::ffi::CString::new(uuid.clone()).expect("String → CString conversion failed on a UUID. How did you manage that?");
     unsafe {
         let c_alias = presage_blist_get_alias(account, c_uuid.as_ptr());
