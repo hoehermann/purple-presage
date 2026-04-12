@@ -193,6 +193,11 @@ pub async fn login(
                     // Fallback for other HTTP errors
                     crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login ServiceError {http_err:?}"));
                 }
+                // presage::libsignal_service::prelude::ServiceError::UnhandledResponseCode { http_code } => {
+                //     if http_code == 499 {
+                //         // this can happen on invalid/damaged/obsolete login information
+                //     }
+                // }
                 _ => {
                     crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("login ServiceError {err:?}"));
                 }
