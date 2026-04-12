@@ -48,12 +48,12 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 * Receives a styled (bold, italic, strikethrough, monospace) text message from a contact or a group.
 * Displays quotes, reactions and incoming calls.
 * Resolves mentioned group chat participants by their local alias.
-* Receives stickers and attachments in general. Special handling for long text messages.
+* Receives attachments. Special handling for images, stickers and long text messages.
 * Can send a simple text message. 
+* Can reply to a specific message via "@searchstring:".
 * Can send an attachment.
 * Will add buddies to contact list unconditionally.
 * Uses special handling of login procedure for bitlbee.
-* Can reply to a specific message via "@searchstring:".
 * Some very basic support for Spectrum.
 
 ### Missing
@@ -64,7 +64,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 
 #### On Hold
 
-* Display names of contacts and groups. This is blocked by a regression in presage, see [#303](https://github.com/whisperfish/presage/issues/303). In fact, the kist of contacts is currently empty.
+* Display names of contacts and groups. This is blocked by a regression in presage, see [#303](https://github.com/whisperfish/presage/issues/303). In fact, the list of contacts is currently empty.
 * Mark messages as "read". This is currently not implemented in back-end, see [#141](https://github.com/whisperfish/presage/issues/141). At time of writing, notifications on main device are deleted after answering via linked device. So that is working alright.
 * The maximum allowed length of a text-message is unknown.
 
@@ -83,12 +83,9 @@ These lists are not exhaustive.
 
 ### Known Issues
 
-* When using the main device to send a message to a new contact for the first time, the plug-in does not know the contact yet.
-* Contacts are fetched from the main device only once after linking.
-* Information about contact names arrive after the first messages.
-* Own name is not transferred to the buddy list and therefore not resolved in group chats.
-* Sometimes, the database cannot be opened due to locking issues.
-* Spectrum support is very flaky. Crashes, infinite loops and silent disconnects may happen. Please keep an eye on your system and check the logs frequently. Issue reports are welcome.
+* When an error occurs while downloading an attachment, the UI may freeze for a couple of seconds before finally displaying the error message.
+* Contact information of the own account is not transferred to the buddy list and therefore not resolved in group chats.
+* Usage with Spectrum and bitlbee is largely untested. Please keep an eye on your system and check the logs frequently. Issue reports are welcome.
 * On Windows, the font Noto Emoji does not work. The monochrome Segoe UI Emoji font does work.
 
 ## Building
@@ -99,7 +96,7 @@ Note: The GNU Linker emits this warning:
 
     missing .note.GNU-stack section implies executable stack
 
-It originates from the [sha2-asm](https://docs.rs/sha2-asm/0.6.4/sha2_asm/) crate.
+It originates from the [sha2-asm](https://docs.rs/sha2-asm/0.6.4/sha2_asm/) crate. An upstream update is expected.
 
 #### Install Dependencies
 
