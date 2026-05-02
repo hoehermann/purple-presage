@@ -62,6 +62,13 @@ pub async fn send<C: presage::store::Store + 'static>(
     xfer: *const crate::bridge_structs::PurpleXfer,
 ) -> Result<(), anyhow::Error> {
     // -> Result<(), presage::Error<<C>::Error>>
+    if let Some(body) = body.as_ref() {
+        if body.len() > 2048 {
+            // until https://github.com/whisperfish/presage/pull/384 is merged
+            return Err(anyhow::anyhow!("Cannot send a message longer than 2048 bytes."))
+        }
+    }
+
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as u64;
     let mut data_message = presage::libsignal_service::content::DataMessage {
         timestamp: Some(timestamp),
