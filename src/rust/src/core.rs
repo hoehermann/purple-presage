@@ -124,7 +124,6 @@ pub async fn command_loop<C: presage::store::Store + 'static>(
                     keep_running = keep_running_commands;
                 }
                 Err(err) => {
-                    // TODO: If we get "run Err ServiceError(WsError(Handshake(UnexpectedStatusCode(403))))" (do not know from which cmd, though probably whoami), then we probably need to re-link
                     crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
                 }
             },
@@ -144,8 +143,19 @@ pub async fn login(
     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("login begins…\n"));
     match presage::Manager::load_registered(config_store.clone()).await {
         Ok(manager) => {
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("manager ok\n"));
-            return Some(manager);
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("account information was loaded\n"));
+            match manager.whoami().await {
+                Ok(whoami) => {
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Linked to account: {whoami:?}.\n"));
+                    return Some(manager);
+                }
+                Err(err) => {
+                    // so far, err usually is ServiceError(WsError(Handshake(UnexpectedStatusCode(403))))
+                    // happens when main device removed our linked device
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("Unable to confirm log-in due to {err:?}.\n"));
+                    return link(config_store, account).await;
+                }
+            }
         }
         Err(presage::Error::NotYetRegisteredError) => {
             // happens on pristine set-ups
