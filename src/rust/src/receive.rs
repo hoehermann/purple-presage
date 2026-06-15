@@ -105,6 +105,32 @@ async fn format_data_message<C: presage::store::Store>(
             sticker: Some(presage::proto::data_message::Sticker { emoji, .. }),
             ..
         } => emoji.clone(),
+        // Poll Creation
+        presage::libsignal_service::content::DataMessage {
+            poll_create: Some(poll_create),
+            ..
+        } => {
+            let question = poll_create.question();
+            let options = poll_create.options.iter().enumerate().map(|(index, option_description)| {
+                let option_number = index + 1;
+                format!("{option_number}. {option_description}\n")}
+            ).fold(String::new(), |a,b|format!("{a}{b}"));
+            let multiple = if poll_create.allow_multiple() {
+                "Multiple options are allowed."
+            } else {
+                "Only one option is allowed."
+            };
+            return Some(format!("Poll: {question}\n\n{options}\n{multiple}"));
+        },
+        // Poll Vote
+        presage::libsignal_service::content::DataMessage {
+            poll_vote: Some(poll_vote),
+            ..
+        } => {
+            // TODO: find appropriate poll via poll_vote.target_sent_timestamp()?
+            let chosen_options = itertools::Itertools::join(&mut poll_vote.option_indexes.iter().map(|i|(i+1).to_string()), ", ");
+            Some(format!("voted for options {chosen_options}."))
+        }
         // Plain text message
         presage::libsignal_service::content::DataMessage {
             body: Some(body),
@@ -113,7 +139,7 @@ async fn format_data_message<C: presage::store::Store>(
         } => Some(pidgin_flavoured_html_from_body_with_ranges(body_override.unwrap_or(body.to_owned()), body_ranges, get_alias)),
         // Default (catch all other cases)
         c => {
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("DataMessage without body {c:?}\n"));
+            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("DataMessage with unhandled fields: {c:?}\n"));
             // NOTE: This happens when receiving a file, but not providing a text
             // TODO: suppress this debug message if data message contained an attachment
             // NOTE: flags: Some(4) with a timestamp (and a profile_key?) may indicate "message sent"

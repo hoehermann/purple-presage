@@ -2272,6 +2272,7 @@ dependencies = [
  "futures",
  "hex",
  "hyper-util",
+ "itertools",
  "mime-sniffer",
  "mime_guess",
  "presage",
