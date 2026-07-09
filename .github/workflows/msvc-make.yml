@@ -27,7 +27,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: amd64_x86
-        sdk: 10.0.17763.0
+        sdk: 10.0.17763.0 # for Windows 7, allegedly
         spectre: false
         
     - name: Setup Dependencies Cache
@@ -61,10 +61,10 @@ jobs:
         file_path: pidgin-2.14.14.tar.bz2
     
     - name: Install Rust Toolchain
-      run: | # win7 target cannot use rust 1.92 or newer
-        rustup toolchain install 1.91.1-x86_64-pc-windows-msvc --profile minimal
-        rustup component add rust-src --toolchain 1.91.1-x86_64-pc-windows-msvc
-        rustup default 1.91.1-x86_64-pc-windows-msvc
+      run: | # NOTE: win7 target cannot use rust 1.92 or newer, and https://github.com/transact-rs/sqlx/blob/75bc048/CHANGELOG.md#breaking killed it
+        rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal
+        rustup component add rust-src --toolchain stable-x86_64-pc-windows-msvc
+        rustup default stable-x86_64-pc-windows-msvc
     
     - name: Enable Rust Cache # maybe this helps with build times
       uses: Swatinem/rust-cache@v2
@@ -90,9 +90,8 @@ jobs:
     - name: make
       run: |
         $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\x86-windows-static"
-        $env:RUST_TARGET="i686-win7-windows-msvc" # rust shall target win7 as per user request (issue #3)
-        $env:RUSTC_BOOTSTRAP=1 # i686-win7-windows-msvc is a tier3 target, we must build rust-std ourselves
-        $env:CARGO_BUILD_FLAGS="--target "+$env:RUST_TARGET+" -Zbuild-std"
+        $env:RUST_TARGET="i686-pc-windows-msvc"
+        $env:CARGO_BUILD_FLAGS="--target "+$env:RUST_TARGET
         $env:RUSTFLAGS="-C target-feature=+crt-static"
         $env:CL='/DPLUGIN_VERSION="0.0.0_${{ env.COMMIT_DATE }}-${{ env.PRESAGE_REVISION }}"' # include detailed version information
         $env:CL=$env:CL+" /Od" # turn off optimization

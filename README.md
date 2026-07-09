@@ -135,7 +135,9 @@ On Windows, the GNU Toolchain cannot be used as it is not supported by the depen
 
 #### MSVC Toolchain
 
-purple-presage is known to compile with MSVC 19.30 and rust 1.91.1. You need at least the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions). A newer version will probably work, too, but 1.91.1 is the last rust version which supports Windows 7. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+purple-presage is known to compile with MSVC 19.30 and rust 1.97.0. You need at least the version of rust mentioned in [libsignal-service-rs](https://github.com/whisperfish/libsignal-service-rs/tree/main#note-on-supported-rust-versions) and [sqlx](https://github.com/transact-rs/sqlx/commit/75bc048). A newer version will probably work, too. Using the "x86 Native Tools Command Prompt for VS 2022" is recommended.
+
+1.91.1 was the last rust version to supports Windows 7. Consequently, there is no support for Windows 7 or earlier.
 
 ##### Dependencies
 
@@ -166,10 +168,6 @@ Same as Linux build instructions, but may need to modify the configuration:
         cmake --build build --target run
 
 When using the "Debug" configuration, the linker complains about mismatching configurations. The implications of this are unknown.
-
-##### Regarding Windows 7
-
-Corrosion does not support the `i686-win7-windows-msvc` target, so you cannot use CMake. You may look into the Github Action [windows.yml](.github/workflows/msvc-make.yml) to see how to build for Windows 7, with a weird mix of MSYS2's MinGW Make and MSVC.
 
 ##### Notes
 

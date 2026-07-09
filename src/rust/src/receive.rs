@@ -419,7 +419,7 @@ async fn process_incoming_message<C: presage::store::Store>(
 ) {
     let mut message = crate::bridge::Message {
         account: account,
-        timestamp: Some(content.metadata.timestamp),
+        timestamp: Some(content.metadata.timestamp.timestamp() as u64),
         ..Default::default()
     };
     // TODO: check where thread is actually needed and look it up conditionally?
