@@ -91,7 +91,7 @@ pub async fn send<C: presage::store::Store + 'static>(
                 _ => None,
             };
             data_message.quote = Some(presage::proto::data_message::Quote {
-                id: Some(quoted_message.metadata.timestamp.timestamp() as u64),
+                id: Some(quoted_message.metadata.timestamp.timestamp_millis() as u64),
                 author_aci_binary: Some(quoted_message.metadata.sender.raw_uuid().as_bytes().to_vec()),
                 author_aci: Some(quoted_message.metadata.sender.raw_uuid().to_string()),
                 text: body,
