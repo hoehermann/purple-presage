@@ -1,16 +1,7 @@
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *body) {
-    // escaping is now done in rust part
-    presage_display_text(connection, who, name, group, flags, timestamp_ms, body);
-}
-
-void presage_display_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, uint64_t timestamp_ms, const char *text) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, time_t timestamp_seconds, const char *text) {
     PurpleAccount *account = purple_connection_get_account(connection);
-
-    // in Signal, timestamps are milliseconds, but purple wants seconds
-    time_t timestamp_seconds = timestamp_ms/1000;
-    
     if (group == NULL) {
         // direct message
         presage_blist_update_buddy(account, who, name); // add to blist first for aliasing

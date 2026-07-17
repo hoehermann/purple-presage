@@ -145,7 +145,7 @@ pub struct Message {
     pub error: PurpleConnectionError,
     pub connected: i32,
     pub attachment_size: u32,
-    pub timestamp: u64,
+    pub timestamp_seconds: u64,
     pub flags: PurpleMessageFlags,
     pub who: *const ::std::os::raw::c_char,
     pub name: *const ::std::os::raw::c_char,

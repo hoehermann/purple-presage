@@ -56,7 +56,7 @@ typedef struct {
     const PurpleConnectionError error;
     const int32_t connected;
     const uint32_t attachment_size;
-    const uint64_t timestamp;
+    const uint64_t timestamp_seconds;
     const PurpleMessageFlags flags;
     char *who;
     char *name;
@@ -96,8 +96,7 @@ void presage_request_qrcode(PurpleConnection *connection);
 void presage_handle_uuid(PurpleConnection *connection, const char *uuid);
 
 // text messages
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags sent, uint64_t timestamp_ms, const char *body);
-void presage_display_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags sent, uint64_t timestamp_ms, const char *body);
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags sent, time_t timestamp_seconds, const char *body);
 int presage_send_im(PurpleConnection *connection, const char *who, const char *message, PurpleMessageFlags flags);
 int presage_send_chat(PurpleConnection *connection, int id, const gchar *message, PurpleMessageFlags flags);
 
@@ -122,7 +121,7 @@ void presage_handle_groups(PurpleConnection *connection, const Group *groups, ui
 PurpleRoomlist * presage_roomlist_get_list(PurpleConnection *connection);
 
 // attachments
-void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, uint64_t timestamp, RustAttachmentPtr attachment_pointer_box, uint64_t attachment_size, const char *hash, const char *filename, const char *extension);
+void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, time_t timestamp_seconds, RustAttachmentPtr attachment_pointer_box, uint64_t attachment_size, const char *hash, const char *filename, const char *extension);
 void presage_send_file(PurpleConnection *connection, const gchar *who, const gchar *filename);
 void presage_chat_send_file(PurpleConnection *connection, int id, const char *filename);
 void presage_handle_xfer_end(PurpleXfer *xfer, PurpleMessageFlags flags, const char* error, const char *mimetype);

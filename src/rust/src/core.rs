@@ -27,7 +27,7 @@ async fn run<C: presage::store::Store + 'static>(
             // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge::Message {
                 account: account,
-                timestamp: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
+                timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
                 xfer: xfer, // in case of attachments, this is the reference to the respective purple Xfer
                 ..Default::default()
             };
