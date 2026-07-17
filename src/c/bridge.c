@@ -109,11 +109,11 @@ static void handle_message(Message * message) {
             }
         }
     } else if (message->attachment_pointer_box != NULL) {
-        presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
+        presage_handle_attachment(connection, message->who, message->group, message->flags, message->timestamp_seconds, message->attachment_pointer_box, message->attachment_size, message->hash, message->filename, message->extension);
     } else if (message->xfer != NULL) {
         presage_handle_xfer_end(message->xfer, message->flags, message->body, message->mimetype);
     } else if (message->body != NULL) {
-        presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp, message->body);
+        presage_handle_text(connection, message->who, message->name, message->group, message->flags, message->timestamp_seconds, message->body);
     } else if (message->groups != NULL) {
         presage_handle_groups(connection, message->groups, message->groups_length);
     } else if (message->who) {

@@ -6,16 +6,16 @@ struct _XferData {
     RustAttachmentPtr attachment_pointer;
     char *who;
     char *chat;
-    uint64_t timestamp_ms;
+    time_t timestamp_seconds;
 };
 typedef struct _XferData XferData;
 
-static XferData * xfer_data_new(RustAttachmentPtr attachment_pointer, const char* who, const char *chat, uint64_t timestamp_ms) {
+static XferData * xfer_data_new(RustAttachmentPtr attachment_pointer, const char* who, const char *chat, time_t timestamp_seconds) {
     XferData *xfer_data = g_new0(XferData, 1);
     xfer_data->attachment_pointer = attachment_pointer;
     xfer_data->who = g_strdup(who);
     xfer_data->chat = g_strdup(chat);
-    xfer_data->timestamp_ms = timestamp_ms;
+    xfer_data->timestamp_seconds = timestamp_seconds;
     return xfer_data;
 }
 
@@ -47,7 +47,7 @@ static void xfer_release(PurpleXfer * xfer) {
     }
 }
 
-static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *chat, uint64_t timestamp_ms, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
+static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *chat, time_t timestamp_seconds, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
     const char *sender = who;
     if (chat) {
         sender = chat;
@@ -55,7 +55,7 @@ static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char
     PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, sender);
     purple_xfer_set_filename(xfer, filename);
     purple_xfer_set_size(xfer, size);
-    xfer->data = xfer_data_new(attachment_pointer, who, chat, timestamp_ms);
+    xfer->data = xfer_data_new(attachment_pointer, who, chat, timestamp_seconds);
     // NOTE: xfer->message cannot be used for the caption since in purple_xfer_ask_recv message is automatically written to the conversation of the sender, but purple_xfer_ask_recv does not consider the case where the sender is a chat. also purple_xfer_ask_recv disregards the message timestamp
     
     purple_xfer_set_init_fnc(xfer, xfer_init);
@@ -97,7 +97,7 @@ static GHashTable * replacement_table_new(const char *sender, const char *chat, 
 /*
  * This is called when a message comes with an attachment we might want to receive.
  */
-void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, uint64_t timestamp_ms, RustAttachmentPtr attachment_pointer, uint64_t size, const char *hash, const char *filename, const char *extension) {
+void presage_handle_attachment(PurpleConnection *connection, const char *who, const char *chat, PurpleMessageFlags flags, time_t timestamp_seconds, RustAttachmentPtr attachment_pointer, uint64_t size, const char *hash, const char *filename, const char *extension) {
     g_return_if_fail(connection != NULL);
     Presage *presage = purple_connection_get_protocol_data(connection);
     PurpleAccount *account = purple_connection_get_account(connection);
@@ -105,14 +105,14 @@ void presage_handle_attachment(PurpleConnection *connection, const char *who, co
     const char *local_path_template = purple_account_get_string(account, PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION, "");
     if (local_path_template && local_path_template[0]) {
         GHashTable * replacements = replacement_table_new(who, chat, flags, hash, filename, extension);
-        char *local_path = attachment_fill_template(local_path_template, replacements, timestamp_ms/1000);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_ms, size, NULL, NULL);
+        char *local_path = attachment_fill_template(local_path_template, replacements, timestamp_seconds);
+        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_seconds, size, NULL, NULL);
         purple_xfer_set_local_filename(xfer, local_path); // NOTE: when this is set, purple_xfer_request(xfer) will not ask the user for the file destination
         presage_rust_get_attachment(account, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
         g_free(local_path);
     } else {
         char *filename_full = g_strdup_printf("%s%s%s", hash, filename, extension);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_ms, size, filename_full, attachment_pointer);
+        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_seconds, size, filename_full, attachment_pointer);
         purple_xfer_request(xfer);
         g_free(filename_full);
     }
@@ -130,7 +130,7 @@ static void presage_display_image_inline(PurpleXfer *xfer, PurpleMessageFlags fl
             if (img_id > 0) {
                 gchar * text = g_strdup_printf("<img id=\"%u\"/>", img_id); // MEMCHECK: released here
                 XferData *xfer_data = xfer->data;
-                presage_display_text(purple_account_get_connection(purple_xfer_get_account(xfer)), xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_ms, text);
+                presage_handle_text(purple_account_get_connection(purple_xfer_get_account(xfer)), xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_seconds, text);
                 g_free(text);
                 purple_imgstore_unref_by_id(img_id); // we are no longer interested in the image data – the UI will keep a reference
             }
@@ -164,7 +164,7 @@ void presage_handle_xfer_end(PurpleXfer *xfer, PurpleMessageFlags flags, const c
                 PurpleConnection *connection = purple_account_get_connection(account);
                 XferData *xfer_data = xfer->data;
                 char *body = g_filename_to_uri(purple_xfer_get_local_filename(xfer), NULL, NULL);;
-                presage_handle_text(connection, xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_ms, body);
+                presage_handle_text(connection, xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_seconds, body);
                 g_free(body);
                 /*
                 const char *url_template = purple_account_get_string(gwamsg->account, GOWHATSAPP_ATTACHMENT_URL_TEMPLATE_OPTION, GOWHATSAPP_ATTACHMENT_URL_TEMPLATE_DEFAULT);
