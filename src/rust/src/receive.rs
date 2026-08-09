@@ -484,5 +484,16 @@ pub async fn handle_received<S: presage::store::Store>(
             crate::contacts::forward_groups(account, manager).await; // TODO: find out how to actually request list of groups
         }
         presage::model::messages::Received::Content(content) => process_incoming_message(manager, &content, account).await,
+        presage::model::messages::Received::DecryptionError(service_id) => {
+            let msg = crate::bridge::Message {
+                account: account,
+                timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
+                who: Some(service_id.raw_uuid().to_string()),
+                flags: crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR,
+                body: Some(format!("Message cannot be displayed due to a DecryptionError.")),
+                ..Default::default()
+            };
+            crate::bridge::append_message(msg);
+        },
     }
 }
