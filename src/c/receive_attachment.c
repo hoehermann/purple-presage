@@ -6,15 +6,17 @@ struct _XferData {
     RustAttachmentPtr attachment_pointer;
     char *who;
     char *chat;
+    PurpleMessageFlags flags;
     time_t timestamp_seconds;
 };
 typedef struct _XferData XferData;
 
-static XferData * xfer_data_new(RustAttachmentPtr attachment_pointer, const char* who, const char *chat, time_t timestamp_seconds) {
+static XferData * xfer_data_new(RustAttachmentPtr attachment_pointer, const char* who, const char *chat, PurpleMessageFlags flags, time_t timestamp_seconds) {
     XferData *xfer_data = g_new0(XferData, 1);
     xfer_data->attachment_pointer = attachment_pointer;
     xfer_data->who = g_strdup(who);
     xfer_data->chat = g_strdup(chat);
+    xfer_data->flags = flags;
     xfer_data->timestamp_seconds = timestamp_seconds;
     return xfer_data;
 }
@@ -47,7 +49,7 @@ static void xfer_release(PurpleXfer * xfer) {
     }
 }
 
-static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *chat, time_t timestamp_seconds, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
+static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char *chat, PurpleMessageFlags flags, time_t timestamp_seconds, const size_t size, const char *filename, RustAttachmentPtr attachment_pointer) {    
     const char *sender = who;
     if (chat) {
         sender = chat;
@@ -55,7 +57,7 @@ static PurpleXfer * xfer_new(PurpleAccount *account, const char *who, const char
     PurpleXfer * xfer = purple_xfer_new(account, PURPLE_XFER_RECEIVE, sender);
     purple_xfer_set_filename(xfer, filename);
     purple_xfer_set_size(xfer, size);
-    xfer->data = xfer_data_new(attachment_pointer, who, chat, timestamp_seconds);
+    xfer->data = xfer_data_new(attachment_pointer, who, chat, flags, timestamp_seconds);
     // NOTE: xfer->message cannot be used for the caption since in purple_xfer_ask_recv message is automatically written to the conversation of the sender, but purple_xfer_ask_recv does not consider the case where the sender is a chat. also purple_xfer_ask_recv disregards the message timestamp
     
     purple_xfer_set_init_fnc(xfer, xfer_init);
@@ -106,20 +108,21 @@ void presage_handle_attachment(PurpleConnection *connection, const char *who, co
     if (local_path_template && local_path_template[0]) {
         GHashTable * replacements = replacement_table_new(who, chat, flags, hash, filename, extension);
         char *local_path = attachment_fill_template(local_path_template, replacements, timestamp_seconds);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_seconds, size, NULL, NULL);
+        PurpleXfer * xfer = xfer_new(account, who, chat, flags, timestamp_seconds, size, NULL, NULL);
         purple_xfer_set_local_filename(xfer, local_path); // NOTE: when this is set, purple_xfer_request(xfer) will not ask the user for the file destination
         presage_rust_get_attachment(account, rust_runtime, presage->tx_ptr, attachment_pointer, xfer);
         g_free(local_path);
     } else {
         char *filename_full = g_strdup_printf("%s%s%s", hash, filename, extension);
-        PurpleXfer * xfer = xfer_new(account, who, chat, timestamp_seconds, size, filename_full, attachment_pointer);
+        PurpleXfer * xfer = xfer_new(account, who, chat, flags, timestamp_seconds, size, filename_full, attachment_pointer);
         purple_xfer_request(xfer);
         g_free(filename_full);
     }
 }
 
 // TODO: move this into attachment_common and share with whatsmeow plug-in
-static void presage_display_image_inline(PurpleXfer *xfer, PurpleMessageFlags flags, const char* mimetype) {
+// while doing that, remove access to xfer_data and transfer the fields as function parameters instead
+static void presage_display_image_inline(PurpleXfer *xfer, const char* mimetype) {
     if (pixbuf_is_loadable_image_mimetype(mimetype)) {
         const char *local_file_path = purple_xfer_get_local_filename(xfer);
         gchar *data = NULL;
@@ -130,7 +133,7 @@ static void presage_display_image_inline(PurpleXfer *xfer, PurpleMessageFlags fl
             if (img_id > 0) {
                 gchar * text = g_strdup_printf("<img id=\"%u\"/>", img_id); // MEMCHECK: released here
                 XferData *xfer_data = xfer->data;
-                presage_handle_text(purple_account_get_connection(purple_xfer_get_account(xfer)), xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_seconds, text);
+                presage_handle_text(purple_account_get_connection(purple_xfer_get_account(xfer)), xfer_data->who, NULL, xfer_data->chat, xfer_data->flags, xfer_data->timestamp_seconds, text);
                 g_free(text);
                 purple_imgstore_unref_by_id(img_id); // we are no longer interested in the image data – the UI will keep a reference
             }
@@ -155,16 +158,16 @@ void presage_handle_xfer_end(PurpleXfer *xfer, PurpleMessageFlags flags, const c
         //gowhatsapp_display_text_message(gwamsg->account, gwamsg->senderJid, gwamsg->remoteJid, error, gwamsg->timestamp, gwamsg->isGroup, gwamsg->isOutgoing, gwamsg->name, PURPLE_MESSAGE_ERROR, gwamsg->messageId, TRUE);
     } else {
         if (purple_xfer_get_type(xfer) == PURPLE_XFER_RECEIVE) {
-            presage_display_image_inline(xfer, flags, mimetype);
+            presage_display_image_inline(xfer, mimetype);
             const char *local_path_template = purple_account_get_string(account, PRESAGE_ATTACHMENT_PATH_TEMPLATE_OPTION, "");
             if (local_path_template && local_path_template[0]) {
                 #ifndef WIN32
                 //create_symlinks(account, local_path_template, timestamp, hash, filename, extension, group, who, NULL, flags);
                 #endif
                 PurpleConnection *connection = purple_account_get_connection(account);
-                XferData *xfer_data = xfer->data;
                 char *body = g_filename_to_uri(purple_xfer_get_local_filename(xfer), NULL, NULL);;
-                presage_handle_text(connection, xfer_data->who, NULL, xfer_data->chat, flags, xfer_data->timestamp_seconds, body);
+                XferData *xfer_data = xfer->data;
+                presage_handle_text(connection, xfer_data->who, NULL, xfer_data->chat, xfer_data->flags, xfer_data->timestamp_seconds, body);
                 g_free(body);
                 /*
                 const char *url_template = purple_account_get_string(gwamsg->account, GOWHATSAPP_ATTACHMENT_URL_TEMPLATE_OPTION, GOWHATSAPP_ATTACHMENT_URL_TEMPLATE_DEFAULT);
