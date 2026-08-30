@@ -9,11 +9,10 @@ extern "C" {
 
 unsafe fn send_cmd(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     cmd: crate::structs::Cmd,
 ) {
-    if let Err(err) = send_cmd_impl(rt, tx, cmd) {
+    if let Err(err) = send_cmd_impl(tx, cmd) {
         let errmsg = std::ffi::CString::new(format!("send cmd error: {err}")).unwrap();
         presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, errmsg.as_ptr());
     }
@@ -21,25 +20,27 @@ unsafe fn send_cmd(
 
 /*
  * Feeds a command into the channel c → rust.
+ *
+ * Called on the GTK main thread, which is a plain OS thread, not a tokio runtime thread –
+ * blocking_send() is the intended way to send from such a context and needs no runtime handle.
+ * It blocks until the (bounded) channel has capacity, which only happens if the command loop
+ * on the rust side is stuck; that is a pre-existing condition this call cannot make worse.
  */
 unsafe fn send_cmd_impl(
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     cmd: crate::structs::Cmd,
 ) -> Result<(), anyhow::Error> {
     let command_tx = tx.as_ref().ok_or(anyhow::anyhow!("send_cmd: command channel is missing"))?;
-    let runtime = rt.as_ref().ok_or(anyhow::anyhow!("send_cmd: runtime is missing"))?;
-    runtime.block_on(command_tx.send(cmd)).map_err(|err| anyhow::anyhow!(err.to_string()))
+    command_tx.blocking_send(cmd).map_err(|err| anyhow::anyhow!(err.to_string()))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_exit(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::Exit {};
-    send_cmd(account, rt, tx, cmd);
+    send_cmd(account, tx, cmd);
     // we should be done with this connection instance, drop the box containing the sender
     // tx is NULL when the connection is closed before the rust part announced the channel (e.g. log-in failed early)
     if !tx.is_null() {
@@ -51,28 +52,25 @@ pub unsafe extern "C" fn presage_rust_exit(
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_whoami(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::Whoami {};
-    send_cmd(account, rt, tx, cmd);
+    send_cmd(account, tx, cmd);
 }
 
 // TODO: wire this up completely
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_list_groups(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
 ) {
     let cmd = crate::structs::Cmd::ListGroups {};
-    send_cmd(account, rt, tx, cmd);
+    send_cmd(account, tx, cmd);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_get_group_members(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_group: *const std::os::raw::c_char,
 ) {
@@ -82,7 +80,7 @@ pub unsafe extern "C" fn presage_rust_get_group_members(
             let cmd = crate::structs::Cmd::GetGroupMembers {
                 master_key_bytes: master_key_bytes,
             };
-            send_cmd(account, rt, tx, cmd);
+            send_cmd(account, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
@@ -94,7 +92,6 @@ pub unsafe extern "C" fn presage_rust_get_group_members(
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_send(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_destination: *const std::os::raw::c_char,
     c_message: *const std::os::raw::c_char,
@@ -121,7 +118,7 @@ pub unsafe extern "C" fn presage_rust_send(
                 },
                 xfer: xfer,
             };
-            send_cmd(account, rt, tx, cmd);
+            send_cmd(account, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
@@ -141,14 +138,13 @@ fn parse_group_master_key(value: &str) -> Result<presage::libsignal_service::zkg
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_get_profile(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     c_uuid: *const std::os::raw::c_char,
 ) {
     match presage::libsignal_service::prelude::Uuid::parse_str(std::ffi::CStr::from_ptr(c_uuid).to_str().unwrap()) {
         Ok(uuid) => {
             let cmd = crate::structs::Cmd::GetProfile { uuid };
-            send_cmd(account, rt, tx, cmd);
+            send_cmd(account, tx, cmd);
         }
         Err(err) => {
             let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
@@ -160,7 +156,6 @@ pub unsafe extern "C" fn presage_rust_get_profile(
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_get_attachment(
     account: *mut crate::bridge_structs::PurpleAccount,
-    rt: *mut tokio::runtime::Runtime,
     tx: *mut tokio::sync::mpsc::Sender<crate::structs::Cmd>,
     attachment_pointer_box: *mut presage::proto::AttachmentPointer,
     xfer: *const crate::bridge_structs::PurpleXfer,
@@ -170,7 +165,7 @@ pub unsafe extern "C" fn presage_rust_get_attachment(
         attachment_pointer: *attachment_pointer,
         xfer: xfer,
     };
-    send_cmd(account, rt, tx, cmd);
+    send_cmd(account, tx, cmd);
 }
 
 #[no_mangle]

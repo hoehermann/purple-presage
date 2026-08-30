@@ -27,14 +27,14 @@ typedef struct _RustAttachment * RustAttachmentPtr;
 RustRuntimePtr presage_rust_init();
 void presage_rust_main(PurpleAccount *, RustRuntimePtr, char *, int32_t startup_delay_seconds);
 void presage_rust_destroy(RustRuntimePtr);
-void presage_rust_whoami(PurpleAccount *, RustRuntimePtr, RustChannelPtr);
-void presage_rust_exit(PurpleAccount *, RustRuntimePtr, RustChannelPtr);
-void presage_rust_send(PurpleAccount *, RustRuntimePtr, RustChannelPtr, const char *, const char *, PurpleXfer *);
-void presage_rust_get_attachment(PurpleAccount *, RustRuntimePtr, RustChannelPtr, RustAttachmentPtr, PurpleXfer *);
+void presage_rust_whoami(PurpleAccount *, RustChannelPtr);
+void presage_rust_exit(PurpleAccount *, RustChannelPtr);
+void presage_rust_send(PurpleAccount *, RustChannelPtr, const char *, const char *, PurpleXfer *);
+void presage_rust_get_attachment(PurpleAccount *, RustChannelPtr, RustAttachmentPtr, PurpleXfer *);
 void presage_rust_drop_attachment(RustAttachmentPtr);
-void presage_rust_get_group_members(PurpleAccount *, RustRuntimePtr, RustChannelPtr, const char *);
-void presage_rust_get_profile(PurpleAccount *, RustRuntimePtr, RustChannelPtr, const char *);
-void presage_rust_list_groups(PurpleAccount *, RustRuntimePtr, RustChannelPtr);
+void presage_rust_get_group_members(PurpleAccount *, RustChannelPtr, const char *);
+void presage_rust_get_profile(PurpleAccount *, RustChannelPtr, const char *);
+void presage_rust_list_groups(PurpleAccount *, RustChannelPtr);
 
 extern RustRuntimePtr rust_runtime;
 

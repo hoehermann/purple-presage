@@ -18,7 +18,7 @@ static void presage_xfer_send_init(PurpleXfer *xfer) {
     PurpleAccount *account = purple_xfer_get_account(xfer);
     PurpleConnection *connection = purple_account_get_connection(account);
     Presage *presage = purple_connection_get_protocol_data(connection);
-    presage_rust_send(account, rust_runtime, presage->tx_ptr, xfer->who, NULL, xfer);
+    presage_rust_send(account, presage->tx_ptr, xfer->who, NULL, xfer);
 }
 
 void xfer_new(PurpleConnection *connection, const char *destination, intptr_t destination_type, const char *filename) {
