@@ -41,7 +41,10 @@ pub unsafe extern "C" fn presage_rust_exit(
     let cmd = crate::structs::Cmd::Exit {};
     send_cmd(account, rt, tx, cmd);
     // we should be done with this connection instance, drop the box containing the sender
-    drop(Box::from_raw(tx));
+    // tx is NULL when the connection is closed before the rust part announced the channel (e.g. log-in failed early)
+    if !tx.is_null() {
+        drop(Box::from_raw(tx));
+    }
     // NOTE: the C part should mark their representation of the channel sender as "deleted", too
 }
 

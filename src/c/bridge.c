@@ -51,6 +51,7 @@ void free_message(Message * message) {
             for (int mi = 0; mi < message->groups[gi].population; mi++) {
                 g_free(message->groups[gi].members[mi]);
             }
+            g_free(message->groups[gi].members);
         }
     }
     g_free(message->groups);
