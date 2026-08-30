@@ -97,7 +97,7 @@ pub async fn send<C: presage::store::Store + 'static>(
                 text: body,
                 attachments: vec![], // TODO
                 body_ranges: vec![],
-                r#type: Some(0), // type: NORMAL
+                r#type: Some(presage::proto::data_message::quote::Type::Normal as i32),
             });
         }
         // Note: std::string returns number of bytes (not graphemes) so we must slice instead of using chars().skip()
