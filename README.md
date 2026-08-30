@@ -18,7 +18,7 @@ Note: bitlbee users will receive the login QR-code in form of a URI from a syste
 ## Configuration
 
 * `startup-delay-seconds` int  
-  Tells the plug-in to wait the specified amount of seconds (default: 1) between spawning the native thread for the rust runtime and actually starting the rust runtime. This magically alleviates database locking issues.
+  Tells the plug-in to wait the specified amount of seconds (default: 1) before actually starting the rust main task. This magically alleviates database locking issues.
 
 * `attachment-path-template` string  
   This is a template for specifying a path to a local file-name. Setting this to a non-empty value will enable the automated downloader which stores attachments immediately, completely bypassing libpurple's file transfer mechanism. This can be useful for message bridges with limited resources. Also it can help with maintaining the order of messages. Sub-directories will be created as needed.

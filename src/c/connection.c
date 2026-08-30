@@ -1,6 +1,11 @@
 #include "presage.h"
 
-static gboolean rust_main_finished(gpointer account) {
+/*
+ * The rust part announced that its main function has terminated (via a message with connected < 0).
+ * This runs on the main thread. Since the rust → C bridge queue preserves order,
+ * all messages the rust part sent before terminating have already been processed.
+ */
+void presage_handle_rust_main_finished(PurpleAccount *account) {
     PurpleConnection *connection = purple_account_get_connection(account);
     if (connection == NULL) {
         purple_debug_info(PLUGIN_NAME, "rust runtime has finished after connection ceased to exist.\n");
@@ -9,26 +14,6 @@ static gboolean rust_main_finished(gpointer account) {
     } else {
         purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, "rust runtime has finished unexpectedly.");
     }
-    return FALSE; // tell the gtk event loop not to schedule calling this function again
-}
-
-#ifdef _WIN32
-#include <windows.h>
-static DWORD WINAPI
-#else
-static void * 
-#endif 
-rust_main(void* account) {
-    // NOTE: This code is not being run on the main thread. Reading from account here is asking for trouble. Yet I am optimistic that the data will not be moved around while we are reading it.
-    const char *user_dir = purple_user_dir();
-    const char *username = purple_account_get_username(account);
-    const int startup_delay_seconds = purple_account_get_int(account, PRESAGE_STARTUP_DELAY_SECONDS_OPTION, 1);
-    char *store_path = g_strdup_printf("%s/presage/%s.db3", user_dir, username);
-    g_usleep(G_USEC_PER_SEC * startup_delay_seconds); // waiting here for alleviates database locking issues O_o
-    presage_rust_main(account, rust_runtime, store_path);
-    g_free(store_path);
-    purple_timeout_add(500, rust_main_finished, account); // wait half a second before assessing the termination – there might be messages lingering in the rust → C bridge queue
-    return 0;
 }
 
 void presage_login(PurpleAccount *account) {
@@ -45,27 +30,12 @@ void presage_login(PurpleAccount *account) {
     purple_connection_set_state(connection, PURPLE_CONNECTION_STATE_CONNECTING);
     Presage *presage = g_new0(Presage, 1);
     purple_connection_set_protocol_data(connection, presage);
-    #ifdef WIN32
-    // the stack should grow automatically, but rust's tokio seems to be picky
-    // the stack size used here should match the value in bridge.rs
-    HANDLE thread = CreateThread(NULL, 32 * 1024 * 1024, rust_main, account, 0, NULL);
-    if (thread != NULL) {
-        // detach thread so its resources are released as soon it terminates
-        CloseHandle(thread);
-    }
-    #else
-    pthread_t presage_thread;
-    int err = pthread_create(&presage_thread, NULL, rust_main, (void *)account);
-    if (err == 0) {
-        // detach thread so its resources are released as soon it terminates
-        pthread_detach(presage_thread);
-    }
-    #endif
-    else {
-        gchar *errmsg = g_strdup_printf("Could not create thread for connecting in background."/*: %s", strerror(err)*/);
-        purple_connection_error(connection, PURPLE_CONNECTION_ERROR_OTHER_ERROR, errmsg);
-        g_free(errmsg);
-    }
+    const char *user_dir = purple_user_dir();
+    const char *username = purple_account_get_username(account);
+    const int startup_delay_seconds = purple_account_get_int(account, PRESAGE_STARTUP_DELAY_SECONDS_OPTION, 1);
+    char *store_path = g_strdup_printf("%s/presage/%s.db3", user_dir, username);
+    presage_rust_main(account, rust_runtime, store_path, startup_delay_seconds); // returns immediately, the actual work happens on the rust runtime's threads
+    g_free(store_path);
 }
 
 void presage_close(PurpleConnection *connection) {

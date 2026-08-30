@@ -76,6 +76,13 @@ static void handle_message(Message * message) {
         free_message(message);
         return;
     }
+    if (message->connected < 0) {
+        // the rust runtime's main task has terminated
+        // handled before the connection check since the connection may already be gone at this point
+        presage_handle_rust_main_finished(message->account);
+        free_message(message);
+        return;
+    }
     PurpleConnection *connection = purple_account_get_connection(message->account);
     if (connection == NULL) {
         purple_debug_warning(PLUGIN_NAME, "No active connection for account %p. Ignoring message.\n", message->account);

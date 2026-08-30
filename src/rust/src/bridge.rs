@@ -272,6 +272,7 @@ pub extern "C" fn presage_rust_init() -> *mut tokio::runtime::Runtime {
     // route debug information handled by the tracing crate to purple's debug functions
     tracing_subscriber::util::SubscriberInitExt::init(tracing_subscriber::layer::SubscriberExt::with(tracing_subscriber::registry(), crate::debug::PurpleDebugLayer));
     // NOTE: a stack size of 25 MB has proven to be insufficient in March 2026
+    // NOTE: thread_stack_size also applies to the blocking pool threads which presage_rust_main runs the core's main function on
     let runtime = tokio::runtime::Builder::new_multi_thread().thread_name("presage Tokio").thread_stack_size(32 * 1024 * 1024).worker_threads(2).enable_all().build().unwrap();
     let runtime_box = Box::new(runtime);
     Box::into_raw(runtime_box)
@@ -287,28 +288,44 @@ pub extern "C" fn presage_rust_destroy(runtime: *mut tokio::runtime::Runtime) {
 /*
  * Around the core's main function.
  *
- * This blocks until the rust main function finishes.
+ * This may be called from the main thread: it hands the core's main function to the runtime's blocking pool and returns immediately.
+ * Termination is announced via a message with connected < 0. Since the bridge queue preserves order,
+ * that message arrives after everything else the core has sent.
  */
 #[no_mangle]
 pub unsafe extern "C" fn presage_rust_main(
     account: *mut crate::bridge_structs::PurpleAccount,
     rt: *mut tokio::runtime::Runtime,
     c_store_path: *const std::os::raw::c_char,
+    startup_delay_seconds: i32,
 ) {
     let store_path = std::ffi::CStr::from_ptr(c_store_path).to_str().unwrap().to_owned();
-
-    // create a channel for asynchronous communication of commands c → rust
-    let (tx, rx) = tokio::sync::mpsc::channel(32);
-    // put the sender into a box so it can live in the C part
-    let tx_box = Box::new(tx);
-    append_message(Message {
-        account: account,
-        tx_ptr: Box::into_raw(tx_box) as *const tokio::sync::mpsc::Sender<crate::structs::Cmd>,
-        ..Default::default()
-    }); // let front-end know how to reach us
-
-    // now execute the actual program
     let runtime = rt.as_ref().unwrap();
-    runtime.block_on(crate::core::main(store_path, None, rx, account));
-    purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("rust runtime finishes now…\n"));
+    let handle = runtime.handle().clone();
+    // raw pointers are not Send – the account travels as an address and is only ever handed back to the C part
+    let account_address = account as usize;
+    runtime.spawn_blocking(move || {
+        let account = account_address as *mut crate::bridge_structs::PurpleAccount;
+        std::thread::sleep(std::time::Duration::from_secs(startup_delay_seconds.max(0) as u64)); // waiting here alleviates database locking issues O_o
+
+        // create a channel for asynchronous communication of commands c → rust
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+        // put the sender into a box so it can live in the C part
+        let tx_box = Box::new(tx);
+        append_message(Message {
+            account: account,
+            tx_ptr: Box::into_raw(tx_box) as *const tokio::sync::mpsc::Sender<crate::structs::Cmd>,
+            ..Default::default()
+        }); // let front-end know how to reach us
+
+        // now execute the actual program
+        // the LocalSet inside keeps all tasks on this blocking pool thread, whose stack size is set by thread_stack_size in presage_rust_init
+        handle.block_on(crate::core::main(store_path, None, rx, account));
+        purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("rust runtime finishes now…\n"));
+        append_message(Message {
+            account: account,
+            connected: -1, // termination announcement, see above
+            ..Default::default()
+        });
+    });
 }

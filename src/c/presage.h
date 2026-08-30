@@ -25,7 +25,7 @@ typedef struct _RustRuntime * RustRuntimePtr;
 typedef struct _RustChannelTx * RustChannelPtr;
 typedef struct _RustAttachment * RustAttachmentPtr;
 RustRuntimePtr presage_rust_init();
-void presage_rust_main(PurpleAccount *, RustRuntimePtr, char *);
+void presage_rust_main(PurpleAccount *, RustRuntimePtr, char *, int32_t startup_delay_seconds);
 void presage_rust_destroy(RustRuntimePtr);
 void presage_rust_whoami(PurpleAccount *, RustRuntimePtr, RustChannelPtr);
 void presage_rust_exit(PurpleAccount *, RustRuntimePtr, RustChannelPtr);
@@ -89,6 +89,7 @@ GList * presage_add_account_options(GList *account_options);
 void presage_login(PurpleAccount *account);
 void presage_close(PurpleConnection *pc);
 void presage_account_error(PurpleAccount *account, PurpleConnectionError reason, const char *description);
+void presage_handle_rust_main_finished(PurpleAccount *account);
 
 // qrcode (linking and identification)
 void presage_handle_qrcode(PurpleConnection * connection, const char *qrcode);
