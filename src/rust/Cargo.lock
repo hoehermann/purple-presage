@@ -1743,7 +1743,7 @@ dependencies = [
 [[package]]
 name = "libsignal-service"
 version = "0.1.0"
-source = "git+https://github.com/whisperfish/libsignal-service-rs?rev=bb43e8125e0c9e7a1ce20d57fb330f6fbd9257eb#bb43e8125e0c9e7a1ce20d57fb330f6fbd9257eb"
+source = "git+https://github.com/whisperfish/libsignal-service-rs?rev=fae0679db1659bb2decb650fd07437c5dfd72f37#fae0679db1659bb2decb650fd07437c5dfd72f37"
 dependencies = [
  "aes 0.9.2",
  "aes-gcm",
@@ -1766,7 +1766,7 @@ dependencies = [
  "prost",
  "prost-build",
  "rand 0.9.4",
- "reqwest 0.13.4",
+ "reqwest",
  "reqwest-websocket",
  "rustls",
  "serde",
@@ -2210,7 +2210,7 @@ dependencies = [
 [[package]]
 name = "presage"
 version = "0.8.0-dev"
-source = "git+https://github.com/whisperfish/presage?rev=f74b96e#f74b96e0fb9099ce8be2b28b7ca9d11f78a6faea"
+source = "git+https://github.com/whisperfish/presage?rev=07815e7e2f649396f2fdd8f44c722688b612c854#07815e7e2f649396f2fdd8f44c722688b612c854"
 dependencies = [
  "base64",
  "bytes",
@@ -2232,7 +2232,7 @@ dependencies = [
 [[package]]
 name = "presage-store-sqlite"
 version = "0.8.0-dev"
-source = "git+https://github.com/whisperfish/presage?rev=f74b96e#f74b96e0fb9099ce8be2b28b7ca9d11f78a6faea"
+source = "git+https://github.com/whisperfish/presage?rev=07815e7e2f649396f2fdd8f44c722688b612c854#07815e7e2f649396f2fdd8f44c722688b612c854"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2413,7 +2413,7 @@ dependencies = [
  "mime_guess",
  "presage",
  "presage-store-sqlite",
- "reqwest 0.12.28",
+ "reqwest",
  "tokio",
  "tracing",
  "tracing-core",
@@ -2583,38 +2583,6 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "reqwest"
-version = "0.12.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
-dependencies = [
- "base64",
- "bytes",
- "futures-core",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "js-sys",
- "log",
- "percent-encoding",
- "pin-project-lite",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sync_wrapper",
- "tokio",
- "tower",
- "tower-http",
- "tower-service",
- "url",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "reqwest"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
@@ -2662,7 +2630,7 @@ dependencies = [
  "async-tungstenite",
  "bytes",
  "futures-util",
- "reqwest 0.13.4",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2781,7 +2749,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2806,12 +2774,6 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
-
-[[package]]
-name = "ryu"
-version = "1.0.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "same-file"
@@ -2907,18 +2869,6 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
-]
-
-[[package]]
-name = "serde_urlencoded"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
-dependencies = [
- "form_urlencoded",
- "itoa",
- "ryu",
- "serde",
 ]
 
 [[package]]
@@ -3956,7 +3906,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

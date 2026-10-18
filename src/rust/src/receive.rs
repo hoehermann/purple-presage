@@ -21,11 +21,12 @@ async fn lookup_message_body_by_timestamp<S: presage::store::Store>(
         Ok(Some(message)) => {
             if let presage::libsignal_service::content::ContentBody::DataMessage(presage::libsignal_service::content::DataMessage { body, .. })
             | presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::libsignal_service::content::SyncMessage {
-                sent:
-                    Some(presage::proto::sync_message::Sent {
+                content: Some(
+                    presage::proto::sync_message::Content::Sent(presage::proto::sync_message::Sent {
                         message: Some(presage::libsignal_service::content::DataMessage { body, .. }),
                         ..
-                    }),
+                    })
+                ),
                 ..
             }) = message.body
             {
@@ -366,7 +367,7 @@ async fn process_sync_message<C: presage::store::Store>(
     sync_message: &presage::proto::SyncMessage,
 ) {
     // TODO: explicitly ignore SynchronizeMessage(SyncMessage { sent: None, contacts: None, request: None, read: [], blocked: None, verified: None, configuration: None, padding: Some([…]), …, delete_for_me: Some(DeleteForMe { message_deletes: [MessageDeletes { conversation: Some(ConversationIdentifier { identifier: Some(ThreadServiceId("REDACTED")) }), messages: [AddressableMessage { sent_timestamp: Some(1674147919685), author: Some(AuthorServiceId("REDACTED")) }] }], conversation_deletes: [], local_only_conversation_deletes: [], attachment_deletes: [] }) })
-    if let Some(sent) = &sync_message.sent {
+    if let Some(presage::proto::sync_message::Content::Sent(sent)) = &sync_message.content {
         process_sent_message(manager, message, sent).await;
     }
 }
@@ -419,7 +420,7 @@ async fn process_incoming_message<C: presage::store::Store>(
 ) {
     let mut message = crate::bridge::Message {
         account: account,
-        timestamp_seconds: Some(content.metadata.timestamp.timestamp() as u64),
+        timestamp_seconds: Some(content.metadata.server_timestamp.timestamp() as u64), // TODO: find out whether showing the server or the client timestamp is more reasonable
         ..Default::default()
     };
     // TODO: check where thread is actually needed and look it up conditionally?

@@ -16,10 +16,11 @@ async fn lookup_message_by_body_contains<S: presage::store::Store>(
                         let body = &content.body;
                         match body {
                             presage::libsignal_service::content::ContentBody::DataMessage(data_message) => data_message.body().contains(&needle),
-                            presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => sync_message
-                                .sent
-                                .as_ref()
-                                .is_some_and(|sent| sent.message.as_ref().is_some_and(|data_message| data_message.body().contains(&needle))),
+                            presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => matches!(
+                                &sync_message.content,
+                                Some(presage::proto::sync_message::Content::Sent(presage::proto::sync_message::Sent { message: Some(m), .. }))
+                                    if m.body().contains(&needle)
+                            ),
                             //presage::libsignal_service::content::ContentBody::EditMessage(edit_message) => … TODO
                             _ => false,
                         }
@@ -85,13 +86,11 @@ pub async fn send<C: presage::store::Store + 'static>(
             //print!("(xx:xx:xx) presage: Found message to quote: {quoted_message:#?}\n");
             let body = match &quoted_message.body {
                 presage::libsignal_service::content::ContentBody::DataMessage(data_message) => data_message.body.clone(),
-                presage::libsignal_service::content::ContentBody::SynchronizeMessage(sync_message) => {
-                    sync_message.sent.as_ref().and_then(|sent| sent.message.as_ref().and_then(|data_message| data_message.body.clone()))
-                }
+                presage::libsignal_service::content::ContentBody::SynchronizeMessage(presage::proto::SyncMessage{content: Some(presage::proto::sync_message::Content::Sent(presage::proto::sync_message::Sent { message: Some(data_message), .. })), ..}) => data_message.body.clone(),
                 _ => None,
             };
             data_message.quote = Some(presage::proto::data_message::Quote {
-                id: Some(quoted_message.metadata.timestamp.timestamp_millis() as u64),
+                id: Some(quoted_message.metadata.server_timestamp.timestamp_millis() as u64), // TODO: check if server_timestamp is actually the correct timestamp to identify the message
                 author_aci_binary: Some(quoted_message.metadata.sender.raw_uuid().as_bytes().to_vec()),
                 author_aci: Some(quoted_message.metadata.sender.raw_uuid().to_string()),
                 text: body,

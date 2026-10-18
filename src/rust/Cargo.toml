@@ -8,23 +8,23 @@ name = "purple_presage_backend"
 path = "src/lib.rs"
 crate-type = ["staticlib"]
 
-# presage needs this, taken from https://github.com/whisperfish/presage/blob/f74b96e/Cargo.toml
+# presage needs this, taken from https://github.com/whisperfish/presage/blob/07815e7e2f649396f2fdd8f44c722688b612c854/Cargo.toml
 [patch.crates-io]
 libsqlite3-sys = { version = "0.36.0", git = "https://github.com/whisperfish/rusqlite", rev = '2a42b3354c9194700d08aa070f70a131a470e7dc' }
 
 [dependencies]
-presage = { git = "https://github.com/whisperfish/presage", rev = "f74b96e" }
-presage-store-sqlite = { git = "https://github.com/whisperfish/presage", rev = "f74b96e" }
+presage = { git = "https://github.com/whisperfish/presage", rev = "07815e7e2f649396f2fdd8f44c722688b612c854" }
+presage-store-sqlite = { git = "https://github.com/whisperfish/presage", rev = "07815e7e2f649396f2fdd8f44c722688b612c854" }
 mime-sniffer = { git = "https://github.com/kamadorueda/rust-mime-sniffer"}
 mime_guess = "2.0"
 anyhow = "1"
 chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 #stdint = "0.2" # TODO: find out how to use this for more reliable type widths
-# these are mentioned in https://github.com/whisperfish/presage/blob/f74b96e/Cargo.lock
-reqwest = { version = "0.12.28", default-features = false, features = [] }
+# these are mentioned in https://github.com/whisperfish/presage/blob/07815e7e2f649396f2fdd8f44c722688b612c854/Cargo.lock
+reqwest = { version = "0.13", default-features = false, features = [] }
 hyper-util = "0.1.20"
 itertools = "*"
-# these version numbers are taken from https://github.com/whisperfish/presage/blob/f74b96e/presage-cli/Cargo.toml
+# these version numbers are taken from https://github.com/whisperfish/presage/blob/07815e7e2f649396f2fdd8f44c722688b612c854/presage-cli/Cargo.toml
 tracing = "0.1"
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
