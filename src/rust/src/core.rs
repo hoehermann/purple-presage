@@ -60,6 +60,7 @@ async fn run<C: presage::store::Store + 'static>(
                                 flags: crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR,
                                 body: Some(format!("Error: no Signal contact found for {phone}")),
                                 timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
+                                timestamp_ms: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
                                 ..Default::default()
                             });
                             return Ok(true);
@@ -72,6 +73,7 @@ async fn run<C: presage::store::Store + 'static>(
             let mut msg = crate::bridge::Message {
                 account: account,
                 timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
+                timestamp_ms: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
                 xfer: xfer, // in case of attachments, this is the reference to the respective purple Xfer
                 ..Default::default()
             };
