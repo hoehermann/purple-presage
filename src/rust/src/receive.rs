@@ -465,11 +465,19 @@ pub async fn handle_received<S: presage::store::Store>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
     received: presage::model::messages::Received,
+    first_connect: &mut bool,
 ) {
     match received {
         presage::model::messages::Received::QueueEmpty => {
-            // this happens once after all old messages have been received and processed
+            // Not only once after the backlog: this fires again whenever the receive stream is
+            // re-opened and has drained, every 30-90 s on an otherwise idle connection.
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
+
+            if !*first_connect {
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("already connected, not announcing again.\n"));
+                return;
+            }
+            *first_connect = false;
 
             // now that the initial sync has completed, the account can be regarded as "connected" since it is ready to send messages
             // see https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 which says:

@@ -354,6 +354,11 @@ async fn receive<S: presage::store::Store>(
     // only give up after several *consecutive* hard errors (which usually means the main device
     // unlinked us). Once catching-up finishes, handle_received() marks the account connected.
     let mut consecutive_errors: u32 = 0;
+    // The stream is re-opened transparently after network hiccups, and every re-open drains to a
+    // fresh Received::QueueEmpty. Reporting connected and priming phone numbers only need to happen
+    // once per login, so remember whether they have been done. Scoped to this receive() call, so a
+    // genuinely new login still gets them.
+    let mut first_connect = true;
     loop {
         match manager.receive_messages().await {
             Err(err) => {
@@ -372,7 +377,7 @@ async fn receive<S: presage::store::Store>(
                 futures::pin_mut!(messages);
                 while let Some(received) = futures::StreamExt::next(&mut messages).await {
                     crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
-                    crate::receive::handle_received(&mut manager, account, received).await;
+                    crate::receive::handle_received(&mut manager, account, received, &mut first_connect).await;
                 }
                 crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("receive stream ended; reconnecting…\n"));
             }
