@@ -1,4 +1,5 @@
 #include "presage.h"
+#include <glib/gstdio.h>
 
 /*
  * The rust part announced that its main function has terminated (via a message with connected < 0).
@@ -43,6 +44,59 @@ void presage_close(PurpleConnection *connection) {
     Presage *presage = purple_connection_get_protocol_data(connection);
     presage_rust_exit(account, presage->tx_ptr);
     presage->tx_ptr = NULL; // presage_rust_exit drops tx, we must no longer use it
+}
+
+/* Per-account store teardown on account deletion.
+ *
+ * The webOS transport deletes an account via purple_accounts_delete(), which first disconnects the
+ * account (-> presage_close -> presage_rust_exit drops the Rust command channel, so the Rust runtime
+ * terminates and releases the sqlite store) and only THEN emits libpurple's "account-removed" signal.
+ * Without this hook the on-disk Signal store (E2EE identity/session keys) at
+ * <purple_user_dir()>/presage/<username>.db3 is left orphaned. We delete it here, keyed strictly on
+ * the removed account's own username so one account's deletion never touches another's store.
+ *
+ * The store path is built identically to rust_main() above so the paths match exactly.
+ */
+void presage_account_removed_cb(PurpleAccount *account, void *unused) {
+    (void)unused;
+    if (account == NULL) {
+        return;
+    }
+    // The signal fires process-wide for EVERY prpl - only act on Signal (presage) accounts.
+    if (g_strcmp0(purple_account_get_protocol_id(account), "prpl-hehoe-presage") != 0) {
+        return;
+    }
+    // Normally the account has already been disconnected before this fires, so no connection exists.
+    // Guard the "client still live" case anyway: drop the Rust command channel first so the store's
+    // sqlite handle is released before we unlink the files.
+    PurpleConnection *connection = purple_account_get_connection(account);
+    if (connection != NULL) {
+        Presage *presage = purple_connection_get_protocol_data(connection);
+        if (presage != NULL && presage->tx_ptr != NULL) {
+            presage_rust_exit(account, presage->tx_ptr);
+            presage->tx_ptr = NULL;
+        }
+    }
+    const char *user_dir = purple_user_dir();
+    const char *username = purple_account_get_username(account);
+    if (username == NULL || username[0] == '\0') {
+        return;
+    }
+    // Base store path is exactly what rust_main() opens; also sweep the sqlite sidecar files.
+    char *store_path = g_strdup_printf("%s/presage/%s.db3", user_dir, username);
+    static const char * const suffixes[] = { "", "-wal", "-shm", "-journal" };
+    for (unsigned int i = 0; i < G_N_ELEMENTS(suffixes); i++) {
+        char *path = g_strdup_printf("%s%s", store_path, suffixes[i]);
+        if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+            if (g_unlink(path) == 0) {
+                purple_debug_info(PLUGIN_NAME, "account-removed: deleted store file %s\n", path);
+            } else {
+                purple_debug_error(PLUGIN_NAME, "account-removed: failed to delete store file %s\n", path);
+            }
+        }
+        g_free(path);
+    }
+    g_free(store_path);
 }
 
 /*
