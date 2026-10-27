@@ -1,5 +1,5 @@
 RUST_LIBS ?= $(shell cd src/rust/ && cargo rustc -- --print native-static-libs 2>&1 | grep -Po '(?<=native-static-libs:).+')
-LDFLAGS ?= $(shell pkg-config --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell pkg-config --libs libqrencode gdk-pixbuf-2.0) $(RUST_LIBS)
+LDFLAGS += $(shell pkg-config --libs $(PKG_CONFIG_PURPLE_ARGS) purple) $(shell pkg-config --libs libqrencode gdk-pixbuf-2.0) $(RUST_LIBS)
 
 SHARED_SUFFIX := so
 ifeq ($(OS),Windows_NT)
