@@ -381,10 +381,13 @@ async fn process_received_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::NullMessage(_) => Some("Null message (for example deleted)".to_string()),
         presage::libsignal_service::content::ContentBody::DataMessage(data_message) => process_data_message(manager, message.clone(), data_message).await,
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(_) => {
-            crate::bridge::purple_error(
+            // Defensive: a SynchronizeMessage should have been routed to process_sync_message by the
+            // dispatch. If one slips through, just log it -- do NOT purple_error, which would drop the
+            // whole Signal connection over a single stray message.
+            crate::bridge::purple_debug(
                 message.account,
-                crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
-                "SynchronizeMessage ended up in process_received_message!".to_string(),
+                crate::bridge_structs::PURPLE_DEBUG_WARNING,
+                "SynchronizeMessage ended up in process_received_message (ignored)\n".to_string(),
             );
             None
         }
@@ -462,11 +465,19 @@ pub async fn handle_received<S: presage::store::Store>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
     received: presage::model::messages::Received,
+    first_connect: &mut bool,
 ) {
     match received {
         presage::model::messages::Received::QueueEmpty => {
-            // this happens once after all old messages have been received and processed
+            // Not only once after the backlog: this fires again whenever the receive stream is
+            // re-opened and has drained, every 30-90 s on an otherwise idle connection.
             crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("finished catching up.\n"));
+
+            if !*first_connect {
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("already connected, not announcing again.\n"));
+                return;
+            }
+            *first_connect = false;
 
             // now that the initial sync has completed, the account can be regarded as "connected" since it is ready to send messages
             // see https://github.com/whisperfish/presage/blob/3f55d5f/presage/src/manager/registered.rs#L574 which says:
