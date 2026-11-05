@@ -104,6 +104,11 @@ pub unsafe extern "C" fn presage_rust_send(
         presage::libsignal_service::prelude::Uuid::parse_str(destination)
             .map(|uuid| crate::structs::Recipient::Contact(uuid))
             .map_err(|err| anyhow::anyhow!(err))
+    } else if d.first() == Some(&b'+') && d.len() > 1 && d[1..].iter().all(|c| c.is_ascii_digit()) {
+        // destination is an E.164 phone number (e.g. "+15555550100") -> resolve to the contact's
+        // UUID in the command loop. Previously this fell through to parse_group_master_key(), which
+        // failed with "Invalid character '+' at position 0" and (below) disconnected the account.
+        Ok(crate::structs::Recipient::ContactByPhone(destination.to_owned()))
     } else {
         parse_group_master_key(destination).map(|master_key_bytes| crate::structs::Recipient::Group(master_key_bytes))
     };
@@ -121,8 +126,14 @@ pub unsafe extern "C" fn presage_rust_send(
             send_cmd(account, tx, cmd);
         }
         Err(err) => {
-            let c_errmsg = std::ffi::CString::new(err.to_string()).unwrap();
-            presage_account_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, c_errmsg.as_ptr());
+            // Do NOT tear the whole Signal connection down over a single unparseable recipient
+            // (this used to purple_error(OTHER_ERROR) -> disconnect on every send to an
+            // unrecognized address). Just log it; the message simply is not sent.
+            crate::bridge::purple_debug(
+                account,
+                crate::bridge_structs::PURPLE_DEBUG_ERROR,
+                format!("Cannot send: unrecognized recipient \"{destination}\": {err}\n"),
+            );
         }
     }
 }

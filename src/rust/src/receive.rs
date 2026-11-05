@@ -381,10 +381,13 @@ async fn process_received_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::NullMessage(_) => Some("Null message (for example deleted)".to_string()),
         presage::libsignal_service::content::ContentBody::DataMessage(data_message) => process_data_message(manager, message.clone(), data_message).await,
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(_) => {
-            crate::bridge::purple_error(
+            // Defensive: a SynchronizeMessage should have been routed to process_sync_message by the
+            // dispatch. If one slips through, just log it -- do NOT purple_error, which would drop the
+            // whole Signal connection over a single stray message.
+            crate::bridge::purple_debug(
                 message.account,
-                crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
-                "SynchronizeMessage ended up in process_received_message!".to_string(),
+                crate::bridge_structs::PURPLE_DEBUG_WARNING,
+                "SynchronizeMessage ended up in process_received_message (ignored)\n".to_string(),
             );
             None
         }
