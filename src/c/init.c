@@ -17,6 +17,7 @@
  */
 
 #include "presage.h"
+#include <gmodule.h> // g_module_make_resident - pin the Rust/Tokio .so so libpurple can't dlclose/unmap it
 
 // for displaying an externally managed version number
 #ifndef PLUGIN_VERSION
@@ -34,6 +35,20 @@ static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
         return FALSE;
     }
     rust_runtime = presage_rust_init();
+    // Pin this module resident. It runs Rust Tokio worker threads; libpurple dlcloses plugins during
+    // a plugin (re)probe, which unmaps code the Tokio threads execute AND unregisters prpl-hehoe-presage.
+    // Once the prpl is gone, the transport's next Util::createPurpleAccount() call hits
+    // purple_find_prpl()==NULL -> getProtocolInfo throws an uncaught MojoException -> std::terminate ->
+    // abort -> the whole imlibpurpletransport SIGABRT crash-loops (every account down). Every other
+    // async prpl (whatsmeow, tdlib) already pins itself resident; presage was the one that didn't.
+    if (plugin && plugin->handle) {
+        g_module_make_resident((GModule *) plugin->handle);
+    }
+    // Per-account store teardown: when the transport deletes an account, purple_accounts_delete()
+    // emits "account-removed". Hook it (keyed to this plugin's accounts inside the callback) so the
+    // orphaned on-disk Signal store is removed. Handle is the plugin, so it is disconnected in unload.
+    purple_signal_connect(purple_accounts_get_handle(), "account-removed", plugin,
+                          PURPLE_CALLBACK(presage_account_removed_cb), NULL);
     return TRUE;
 }
 
