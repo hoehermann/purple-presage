@@ -413,7 +413,31 @@ async fn process_received_message<C: presage::store::Store>(
  *
  * Based on presage-cli's `process_incoming_message`.
  */
-async fn process_incoming_message<C: presage::store::Store>(
+thread_local! {
+    // UUIDs we have already spawned a background name-resolution for this session, so a chatty
+    // contact does not trigger a profile fetch on every single message. Reset on reconnect (the
+    // whole LocalSet/task tree is torn down and rebuilt), which is when re-resolving is useful anyway.
+    static NAME_RESOLVE_ATTEMPTED: std::cell::RefCell<std::collections::HashSet<presage::libsignal_service::prelude::Uuid>>
+        = std::cell::RefCell::new(std::collections::HashSet::new());
+}
+
+// The message's profile_key belongs to whoever SENT the message. Only hand it to the resolver when
+// the sender is the contact we're naming (an incoming direct message); for sync (sent-by-me)
+// messages the key is not the recipient's, so let the resolver fall back to the store instead.
+fn contact_profile_key_hint(
+    content: &presage::libsignal_service::content::Content,
+    contact_uuid: presage::libsignal_service::prelude::Uuid,
+) -> Option<Vec<u8>> {
+    if content.metadata.sender.raw_uuid() != contact_uuid {
+        return None;
+    }
+    match &content.body {
+        presage::libsignal_service::content::ContentBody::DataMessage(dm) => dm.profile_key.clone(),
+        _ => None,
+    }
+}
+
+async fn process_incoming_message<C: presage::store::Store + Clone + 'static>(
     manager: &mut presage::Manager<C, presage::manager::Registered>,
     content: &presage::libsignal_service::content::Content,
     account: *mut crate::bridge_structs::PurpleAccount,
@@ -430,6 +454,20 @@ async fn process_incoming_message<C: presage::store::Store>(
             match thread {
                 presage::store::Thread::Contact(service_id) => {
                     message.who = Some(service_id.service_id_string());
+                    // Resolve a display name for this contact WITHOUT blocking the receive loop.
+                    // An earlier version fetched the name inline with an untimed network call, which
+                    // stalled the entire loop when it hung (no further messages arrived). Instead
+                    // spawn a fire-and-forget task on a cloned manager (bounded by a timeout inside),
+                    // throttled to one attempt per UUID per session. This names contacts you have only
+                    // messaged (never saved on the phone) -- forward_contacts can't, as they aren't in
+                    // the address book. The receive loop continues immediately.
+                    let uuid = service_id.raw_uuid();
+                    let first_attempt = NAME_RESOLVE_ATTEMPTED.with(|seen| seen.borrow_mut().insert(uuid));
+                    if first_attempt {
+                        let hint = contact_profile_key_hint(content, uuid);
+                        let manager_name = manager.clone();
+                        tokio::task::spawn_local(crate::contacts::resolve_name_background(account, manager_name, uuid, hint));
+                    }
                 }
                 presage::store::Thread::Group(key) => {
                     message.who = Some(content.metadata.sender.raw_uuid().to_string());
@@ -458,7 +496,7 @@ async fn process_incoming_message<C: presage::store::Store>(
     }
 }
 
-pub async fn handle_received<S: presage::store::Store>(
+pub async fn handle_received<S: presage::store::Store + Clone + 'static>(
     manager: &mut presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
     received: presage::model::messages::Received,
