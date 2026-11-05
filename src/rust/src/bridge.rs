@@ -13,6 +13,7 @@ pub struct Message {
     pub error: i32,
     pub connected: i32,
     pub timestamp_seconds: Option<u64>,
+    pub timestamp_ms: Option<u64>, // Signal's message id: the sent timestamp in milliseconds
     pub flags: crate::bridge_structs::PurpleMessageFlags,
     pub who: Option<String>,
     pub name: Option<String>,
@@ -58,6 +59,7 @@ impl Default for Message {
             thread: None,
             account: std::ptr::null_mut(),
             timestamp_seconds: None,
+            timestamp_ms: None,
             flags: crate::bridge_structs::PurpleMessageFlags::default(),
             who: None,
             name: None,
@@ -190,6 +192,7 @@ pub fn append_message(message: Message) {
         extension: get_cstring_ptr(&extension),
         mimetype: get_cstring_ptr(&mimetype),
         timestamp_seconds: message.timestamp_seconds.unwrap_or(0),
+        timestamp_ms: message.timestamp_ms.unwrap_or(0),
         flags: message.flags,
         who: get_cstring_ptr(&who),
         name: get_cstring_ptr(&name),
