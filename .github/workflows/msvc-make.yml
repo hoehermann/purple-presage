@@ -76,7 +76,7 @@ jobs:
         $COMMIT_DATE = (git log -1 --date=format:'%Y%m%d' --format='%ad')
         echo "COMMIT_DATE=$COMMIT_DATE" | Out-File -FilePath $Env:GITHUB_ENV -Append
         [string](Get-Content "src\rust\Cargo.toml") -match 'presage = [^}]+rev = \"([a-f0-9]+)\"' | Out-Null
-        $PRESAGE_REVISION = $matches[1]
+        $PRESAGE_REVISION = $matches[1].Substring(0, 7)
         echo "PRESAGE_REVISION=$PRESAGE_REVISION" | Out-File -FilePath $Env:GITHUB_ENV -Append
 
     - name: vcpkg
