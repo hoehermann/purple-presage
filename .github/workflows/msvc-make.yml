@@ -20,8 +20,11 @@ jobs:
     - name: Install Protoc
       uses: arduino/setup-protoc@v3
 
-    - name: Install x86 mingw32-make from MSYS2
-      run: C:\msys64\usr\bin\pacman.exe --sync --needed --noconfirm mingw-w64-i686-make
+    - name: Install  mingw32-make from MSYS2
+      run: C:\msys64\usr\bin\pacman.exe --sync --needed --noconfirm mingw-w64-x86_64-make
+
+    - name: Setup NASM # needed for something managed by cargo, probably something crypto-related
+      uses: ilammy/setup-nasm@v1
 
     - name: Setup MSVC Environment # everything here is a total guess
       uses: ilammy/msvc-dev-cmd@v1
@@ -83,13 +86,12 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       uses: johnwason/vcpkg-action@v6
       with:
-        pkgs: libqrencode openssl
+        pkgs: libqrencode
         triplet: x86-windows-static
         token: ${{ github.token }}
 
     - name: make
       run: |
-        $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\x86-windows-static"
         $env:RUST_TARGET="i686-pc-windows-msvc"
         $env:CARGO_BUILD_FLAGS="--target "+$env:RUST_TARGET
         $env:RUSTFLAGS="-C target-feature=+crt-static"
@@ -98,7 +100,7 @@ jobs:
         $env:LINK=$env:LINK+" /DEBUG:FULL /LIBPATH:${{ github.workspace }}\vcpkg\installed\x86-windows-static\lib /LIBPATH:${{ github.workspace }}\pidgin-2.14.14-win32bin /LIBPATH:${{ github.workspace }}\gtk\lib"
         $env:INCLUDE=$env:INCLUDE+";${{ github.workspace }}\pidgin-2.14.14\libpurple;${{ github.workspace }}\gtk\include\glib-2.0;${{ github.workspace }}\gtk\lib\glib-2.0\include;${{ github.workspace }}\vcpkg\installed\x86-windows-static\include"
         $env:LINK_PROGRAM=$env:VCToolsInstallDir+"bin\Hostx64\x86\link.exe" # there seems to be another link.exe in PATH, so I need to specify explicitly
-        C:\msys64\mingw32\bin\mingw32-make.exe
+        C:\msys64\mingw64\bin\mingw32-make.exe
         Compress-Archive -Path libpresage.dll -DestinationPath libpresage.dll.zip
         Compress-Archive -Path libpresage.pdb -DestinationPath libpresage.pdb.zip
 
