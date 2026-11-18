@@ -88,7 +88,7 @@ jobs:
         token: ${{ github.token }}
 
     - name: make
-    - uses: ilammy/setup-nasm@v1
+      uses: ilammy/setup-nasm@v1
       run: |
         $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\x86-windows-static"
         $env:RUST_TARGET="i686-pc-windows-msvc"
