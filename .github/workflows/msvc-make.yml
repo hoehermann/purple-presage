@@ -23,6 +23,9 @@ jobs:
     - name: Install  mingw32-make from MSYS2
       run: C:\msys64\usr\bin\pacman.exe --sync --needed --noconfirm mingw-w64-x86_64-make
 
+    - name: Setup NASM
+      uses: ilammy/setup-nasm@v1
+
     - name: Setup MSVC Environment # everything here is a total guess
       uses: ilammy/msvc-dev-cmd@v1
       with:
@@ -88,7 +91,6 @@ jobs:
         token: ${{ github.token }}
 
     - name: make
-      uses: ilammy/setup-nasm@v1
       run: |
         $env:OPENSSL_DIR = "${{ github.workspace }}\vcpkg\installed\x86-windows-static"
         $env:RUST_TARGET="i686-pc-windows-msvc"
