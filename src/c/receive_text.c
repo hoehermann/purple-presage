@@ -1,6 +1,7 @@
 #include "presage.h"
 
-void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, time_t timestamp_seconds, const char *text) {
+void presage_handle_text(PurpleConnection *connection, const char *who, const char *name, const char *group, PurpleMessageFlags flags, time_t timestamp_seconds, uint64_t timestamp_ms, const char *text) {
+    (void)timestamp_ms; // the message's Signal id; for a UI that targets it with a reaction or a quote
     PurpleAccount *account = purple_connection_get_account(connection);
     if (group == NULL) {
         // direct message

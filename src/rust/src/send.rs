@@ -79,6 +79,7 @@ pub async fn send<C: presage::store::Store + 'static>(
     let body = if let Some(reply_needle) = body.as_ref().and_then(|s| get_needle_for_replying(s)) {
         let thread = match recipient {
             crate::structs::Recipient::Contact(uuid) => presage::store::Thread::Contact(presage::libsignal_service::protocol::ServiceId::Aci(uuid.into())),
+            crate::structs::Recipient::ContactByPhone(_) => unreachable!("phone recipient is resolved to a UUID before send()"),
             crate::structs::Recipient::Group(key) => presage::store::Thread::Group(key),
         };
         //print!("(xx:xx:xx) presage: Trying to Quote something with {pat:?}. Thread is {thread:?}.“\n");
@@ -126,6 +127,7 @@ pub async fn send<C: presage::store::Store + 'static>(
                 )
                 .await?;
         }
+        crate::structs::Recipient::ContactByPhone(_) => unreachable!("phone recipient is resolved to a UUID before send()"),
         crate::structs::Recipient::Group(master_key) => {
             data_message.group_v2 = Some(presage::proto::GroupContextV2 {
                 master_key: Some(master_key.to_vec()),

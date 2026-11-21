@@ -146,6 +146,7 @@ pub struct Message {
     pub connected: i32,
     pub attachment_size: u32,
     pub timestamp_seconds: u64,
+    pub timestamp_ms: u64,
     pub flags: PurpleMessageFlags,
     pub who: *const ::std::os::raw::c_char,
     pub name: *const ::std::os::raw::c_char,

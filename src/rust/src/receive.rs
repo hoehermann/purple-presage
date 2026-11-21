@@ -381,10 +381,13 @@ async fn process_received_message<C: presage::store::Store>(
         presage::libsignal_service::content::ContentBody::NullMessage(_) => Some("Null message (for example deleted)".to_string()),
         presage::libsignal_service::content::ContentBody::DataMessage(data_message) => process_data_message(manager, message.clone(), data_message).await,
         presage::libsignal_service::content::ContentBody::SynchronizeMessage(_) => {
-            crate::bridge::purple_error(
+            // Defensive: a SynchronizeMessage should have been routed to process_sync_message by the
+            // dispatch. If one slips through, just log it -- do NOT purple_error, which would drop the
+            // whole Signal connection over a single stray message.
+            crate::bridge::purple_debug(
                 message.account,
-                crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR,
-                "SynchronizeMessage ended up in process_received_message!".to_string(),
+                crate::bridge_structs::PURPLE_DEBUG_WARNING,
+                "SynchronizeMessage ended up in process_received_message (ignored)\n".to_string(),
             );
             None
         }
@@ -421,6 +424,7 @@ async fn process_incoming_message<C: presage::store::Store>(
     let mut message = crate::bridge::Message {
         account: account,
         timestamp_seconds: Some(content.metadata.server_timestamp.timestamp() as u64), // TODO: find out whether showing the server or the client timestamp is more reasonable
+        timestamp_ms: Some(content.metadata.client_timestamp.timestamp_millis() as u64), // the sender's timestamp: Signal's id for the message
         ..Default::default()
     };
     // TODO: check where thread is actually needed and look it up conditionally?
@@ -489,6 +493,7 @@ pub async fn handle_received<S: presage::store::Store>(
             let msg = crate::bridge::Message {
                 account: account,
                 timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
+                timestamp_ms: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64),
                 who: Some(service_id.raw_uuid().to_string()),
                 flags: crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR,
                 body: Some(format!("Message cannot be displayed due to a DecryptionError.")),
