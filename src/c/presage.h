@@ -36,6 +36,10 @@ void presage_rust_get_group_members(PurpleAccount *, RustChannelPtr, const char 
 void presage_rust_get_profile(PurpleAccount *, RustChannelPtr, const char *);
 void presage_rust_list_groups(PurpleAccount *, RustChannelPtr);
 
+// connection.c - per-account store teardown: hooked to libpurple's "account-removed" signal at plugin
+// load; deletes <purple_user_dir()>/presage/<username>.db3 (+ sqlite sidecars) for the removed account.
+void presage_account_removed_cb(PurpleAccount *account, void *unused);
+
 extern RustRuntimePtr rust_runtime;
 
 // structures for receiving messages from rust

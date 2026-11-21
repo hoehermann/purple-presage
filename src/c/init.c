@@ -17,6 +17,7 @@
  */
 
 #include "presage.h"
+#include <gmodule.h> // g_module_make_resident - pin the Rust/Tokio .so so libpurple can't dlclose/unmap it
 
 // for displaying an externally managed version number
 #ifndef PLUGIN_VERSION
@@ -29,15 +30,49 @@ static const char * list_icon(PurpleAccount *account, PurpleBuddy *buddy) {
     return "signal";
 }
 
+// The idle callback that is to connect the account-removed hook, while it has not run
+static guint account_removed_source = 0;
+
+// Run before anything else the main loop has to do, a request to delete an account among it
+static gboolean connect_account_removed(gpointer plugin) {
+    account_removed_source = 0;
+    if (!purple_signal_connect(purple_accounts_get_handle(), "account-removed", plugin,
+                               PURPLE_CALLBACK(presage_account_removed_cb), NULL)) {
+        purple_debug_error(PLUGIN_NAME, "account-removed: not connected, a removed account's store will be left\n");
+    }
+    return G_SOURCE_REMOVE;
+}
+
 static gboolean libpurple2_plugin_load(PurplePlugin *plugin) {
     if (rust_runtime != NULL) {
         return FALSE;
     }
     rust_runtime = presage_rust_init();
+    // Pin this module resident. It runs Rust Tokio worker threads; libpurple dlcloses plugins during
+    // a plugin (re)probe, which unmaps code the Tokio threads execute AND unregisters prpl-hehoe-presage.
+    // Once the prpl is gone, the transport's next Util::createPurpleAccount() call hits
+    // purple_find_prpl()==NULL -> getProtocolInfo throws an uncaught MojoException -> std::terminate ->
+    // abort -> the whole imlibpurpletransport SIGABRT crash-loops (every account down). Every other
+    // async prpl (whatsmeow, tdlib) already pins itself resident; presage was the one that didn't.
+    if (plugin && plugin->handle) {
+        g_module_make_resident((GModule *) plugin->handle);
+    }
+    // Per-account store teardown: when the transport deletes an account, purple_accounts_delete()
+    // emits "account-removed". Hook it (keyed to this plugin's accounts inside the callback) so the
+    // orphaned on-disk Signal store is removed. Handle is the plugin, so it is disconnected in unload.
+    // Not here but once the main loop runs: purple_core_init loads protocol plug-ins before
+    // purple_accounts_init registers the accounts' signals, so a connection made now is refused.
+    if (!account_removed_source) {
+        account_removed_source = g_idle_add_full(G_PRIORITY_HIGH, connect_account_removed, plugin, NULL);
+    }
     return TRUE;
 }
 
 static gboolean libpurple2_plugin_unload(PurplePlugin *plugin) {
+    if (account_removed_source) {
+        g_source_remove(account_removed_source);
+        account_removed_source = 0;
+    }
     purple_signals_disconnect_by_handle(plugin);
     if (rust_runtime != NULL) {
         presage_rust_destroy(rust_runtime);
