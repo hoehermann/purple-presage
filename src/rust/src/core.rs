@@ -291,7 +291,7 @@ async fn link(
  *
  * Based on presage-cli's receive.
  */
-async fn receive<S: presage::store::Store>(
+async fn receive<S: presage::store::Store + Clone + 'static>(
     mut manager: presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
@@ -345,9 +345,40 @@ pub async fn main(
             if let Some(mut manager) = login(config_store, account).await {
                 // Login has succeeded, forward (cached) contacts for bitlbee. It tends to forget them after re-connects.
                 crate::contacts::forward_contacts(account, &mut manager).await;
+                // webOS: re-request the contact list from the primary (phone) on EVERY login, not just
+                // at initial link. The address-book NAMES the user has on their phone only reach a
+                // linked device via this contact sync; without re-requesting, contacts added/renamed
+                // since pairing stay nameless (shown as bare +<phone>). The primary answers with a
+                // ContactSync in the receive stream (started just below), which presage stores and
+                // receive.rs feeds back through forward_contacts so the buddies gain their names.
+                // Bounded by a timeout so a non-responding primary can't wedge the login (see the
+                // historical "blocks forever" note in link()); the receive loop keeps running regardless.
+                match tokio::time::timeout(std::time::Duration::from_secs(20), manager.request_contacts()).await {
+                    Ok(Ok(())) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("requested contact sync from primary device\n")),
+                    Ok(Err(err)) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("request_contacts error: {err:?}\n")),
+                    Err(_) => crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("request_contacts timed out (primary not responding)\n")),
+                }
                 // clone the manager so we can receive messages in one task and process commands in the other
                 let manager_receive = manager.clone();
                 let local = tokio::task::LocalSet::new();
+                // Re-request the contact sync a few times with backoff, in the background. The single
+                // 20s request above just times out and NEVER retries, so a sleeping or slow primary
+                // (phone) at login time loses the ENTIRE Signal contact list until the next reboot --
+                // buddies then never appear (only bare +<phone> from message exchanges). The
+                // ContactSync response is handled by the receive loop as usual; this only nudges the
+                // primary again. Bounded to a handful of attempts, and cancelled with the LocalSet
+                // when the connection ends.
+                let manager_resync = manager.clone();
+                let account_resync = account;
+                local.spawn_local(async move {
+                    let mut m = manager_resync;
+                    for delay in [45u64, 90, 180, 360] {
+                        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                        if let Ok(Ok(())) = tokio::time::timeout(std::time::Duration::from_secs(20), m.request_contacts()).await {
+                            crate::bridge::purple_debug(account_resync, crate::bridge_structs::PURPLE_DEBUG_INFO, String::from("re-requested contact sync from primary (background retry)\n"));
+                        }
+                    }
+                });
                 local.spawn_local(receive(manager_receive, account));
                 local.run_until(command_loop(manager, command_receiver, account)).await;
             }
