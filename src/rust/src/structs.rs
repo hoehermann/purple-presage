@@ -26,5 +26,8 @@ pub enum Cmd {
 #[derive(Debug, Clone)]
 pub enum Recipient {
     Contact(presage::libsignal_service::prelude::Uuid),
+    // An E.164 phone number (e.g. "+15555550100"); resolved to a contact UUID in the command loop.
+    // Signal buddies are UUID-keyed, but a phone address reaches us from cross-service contact linking.
+    ContactByPhone(String),
     Group(presage::libsignal_service::zkgroup::GroupMasterKeyBytes),
 }

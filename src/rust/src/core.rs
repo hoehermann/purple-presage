@@ -1,3 +1,25 @@
+// Resolve an E.164 phone number ("+15555550100") to a stored contact's UUID, so a phone-addressed
+// Signal send (which reaches us via cross-service contact linking) can be delivered. None if no
+// stored contact carries that number.
+async fn resolve_phone_to_uuid<C: presage::store::Store>(
+    manager: &mut presage::Manager<C, presage::manager::Registered>,
+    phone: &str,
+) -> Option<presage::libsignal_service::prelude::Uuid> {
+    match manager.store().contacts().await {
+        Ok(contacts) => {
+            for contact in contacts.flatten() {
+                if let Some(pn) = &contact.phone_number {
+                    if pn.to_string() == phone {
+                        return Some(contact.uuid);
+                    }
+                }
+            }
+            None
+        }
+        Err(_) => None,
+    }
+}
+
 /*
  * Runs a command.
  *
@@ -24,6 +46,28 @@ async fn run<C: presage::store::Store + 'static>(
             message,
             xfer,
         } => {
+            // Resolve a phone-number recipient to the contact's UUID (see resolve_phone_to_uuid). If
+            // there is no matching Signal contact, report it in the conversation and keep the loop
+            // running -- never disconnect over one unsendable message.
+            let recipient = match recipient {
+                crate::structs::Recipient::ContactByPhone(phone) => {
+                    match resolve_phone_to_uuid(&mut manager, &phone).await {
+                        Some(uuid) => crate::structs::Recipient::Contact(uuid),
+                        None => {
+                            crate::bridge::append_message(crate::bridge::Message {
+                                account: account,
+                                who: Some(phone.clone()),
+                                flags: crate::bridge_structs::PurpleMessageFlags::PURPLE_MESSAGE_ERROR,
+                                body: Some(format!("Error: no Signal contact found for {phone}")),
+                                timestamp_seconds: Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()),
+                                ..Default::default()
+                            });
+                            return Ok(true);
+                        }
+                    }
+                }
+                other => other,
+            };
             // prepare a PurplePresage message for providing feed-back (send success or error)
             let mut msg = crate::bridge::Message {
                 account: account,
@@ -35,6 +79,7 @@ async fn run<C: presage::store::Store + 'static>(
                 crate::structs::Recipient::Contact(uuid) => {
                     msg.who = Some(uuid.to_string());
                 }
+                crate::structs::Recipient::ContactByPhone(_) => {} // resolved to Contact above; unreachable
                 crate::structs::Recipient::Group(master_key) => {
                     msg.group = Some(hex::encode(master_key));
                 }
@@ -124,7 +169,13 @@ pub async fn command_loop<C: presage::store::Store + 'static>(
                     keep_running = keep_running_commands;
                 }
                 Err(err) => {
-                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_OTHER_ERROR, format!("run Err {err:?}"));
+                    // Do NOT tear the whole account down for a single failed command. This branch
+                    // used to call purple_error(OTHER_ERROR), which the webOS transport turns into a
+                    // full connection failure -> Signal disconnected on basically every send (the
+                    // sent message's sync echo, a profile/group lookup, or any transient "Invalid…"
+                    // surfaced here). Log it and keep the mainloop running; genuine connection loss
+                    // is handled by the receive loop (receive_messages retry / stream-ended reconnect).
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_ERROR, format!("command error (connection kept alive): {err:?}\n"));
                 }
             },
             None => {
@@ -295,20 +346,39 @@ async fn receive<S: presage::store::Store>(
     mut manager: presage::Manager<S, presage::manager::Registered>,
     account: *mut crate::bridge_structs::PurpleAccount,
 ) {
-    match manager.receive_messages().await {
-        Err(err) => crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, err.to_string()),
-        Ok(messages) => {
-            crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("message stream open. stand by while catching up…\n"));
-            futures::pin_mut!(messages);
-            while let Some(received) = futures::StreamExt::next(&mut messages).await {
-                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
-                crate::receive::handle_received(&mut manager, account, received).await;
+    // webOS: the receive stream ends spuriously (network hiccups) and, on a freshly-linked device,
+    // often before Received::QueueEmpty — so `connected:1` (receive.rs) is never sent and the account
+    // never reaches "online". The upstream code's own comment says "re-connecting is a good idea", but
+    // it forwarded a fatal network error instead, which libpurple/the transport turned into a hard
+    // login failure (account stuck "signing in" then offline). Loop and re-open the stream on end;
+    // only give up after several *consecutive* hard errors (which usually means the main device
+    // unlinked us). Once catching-up finishes, handle_received() marks the account connected.
+    let mut consecutive_errors: u32 = 0;
+    loop {
+        match manager.receive_messages().await {
+            Err(err) => {
+                consecutive_errors += 1;
+                if consecutive_errors >= 6 {
+                    crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR,
+                        format!("Receiver failed {consecutive_errors} times (device may have been unlinked): {err}"));
+                    return;
+                }
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO,
+                    format!("receive_messages error ({consecutive_errors}/6): {err}; retrying…\n"));
             }
-            // we can end up here when the main device unlinks this device
-            // this also happens spuriously, perhaps due to network issues
-            // re-connecting is a good idea in either case, so we forward a network error to purple
-            crate::bridge::purple_error(account, crate::bridge_structs::PURPLE_CONNECTION_ERROR_NETWORK_ERROR, format!("Receiver was disconnected."));
+            Ok(messages) => {
+                consecutive_errors = 0;
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("message stream open. stand by while catching up…\n"));
+                futures::pin_mut!(messages);
+                while let Some(received) = futures::StreamExt::next(&mut messages).await {
+                    crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("received: {received:?}\n"));
+                    crate::receive::handle_received(&mut manager, account, received).await;
+                }
+                crate::bridge::purple_debug(account, crate::bridge_structs::PURPLE_DEBUG_INFO, format!("receive stream ended; reconnecting…\n"));
+            }
         }
+        // brief back-off so we never busy-spin on immediate failures
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 }
 
